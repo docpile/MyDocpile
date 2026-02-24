@@ -11,7 +11,7 @@ Where security critical, I also intervened and even did some coding myself. The 
 
 MyCloud is a highly responsive, AJAX-only web file explorer that provides a native Windows-style layout directly in the browser. It features a rich set of file management tools, real-time media streaming, document previews, and an integrated SSH terminal.
 
-**Very Important Notice:** *None* - I repeat: *none* - of the MyCloud PHP code is to be stored within the www-root. From the very beginning, it was designed to completely live outside of www-root. This was a deliberate design decision to elimiate many security risks. 
+**Very Important Notice:** *None* - I repeat: *none* - of the MyCloud PHP code is to be stored within the www-root. From the very beginning, it was designed to, except a small index.php stub, completely live outside of www-root. This was a deliberate design decision to elimiate many security risks. 
 
 ## 🚀 Features
 
