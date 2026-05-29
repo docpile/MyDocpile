@@ -177,11 +177,15 @@ The system expects several config.php variables to be defined. Most of them are 
 ### 3. Integration Into Other Applications
 The login UI submitted here is just an excerpt of the login used in my much larger (and safer) real-life application login; however, it gives you an impression of the needs of the MyDocpile application itself and should be sufficiently secure for smaller implementations.  
 
-### 2. Installation on Your Server
+### 4. Installation on Your Server
 
 1. Create a domain with an empty www-root on your webserver.
 
-2. Download the whole code into an empty directory (or, download and umpack an release ZIP file):
+2. Secure it with a certificate.
+
+3. Get PHP 8.4 running on that domain.
+
+4. Now download the whole code into an empty directory (or, download and umpack an release ZIP file):
 
 `git clone https://github.com/docpile/MyDocpile.git`
 
