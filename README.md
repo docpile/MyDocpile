@@ -55,7 +55,7 @@ Optional: **OnlyOffice integration** - makes the cloud almost a desktop replacem
 
 ![End-To-End File Encryption](https://github.com/docpile/MyDocpile/blob/main/images/11_dark_mode.png?raw=true)
 
-**Many more Options** - For mobile devices or people with impaired vision
+**Many more Options** - Mostly, for each device type different settings. E.g. on your tablet larger fonts, on your mobile dark mode, and so on.
 
 ![Options](https://github.com/docpile/MyDocpile/blob/main/images/12_options.png?raw=true)
 
