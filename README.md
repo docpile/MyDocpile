@@ -195,7 +195,9 @@ then execute the file install.sh
 
 `bash ./install.sh`
 
-Follow the on-screen instructions. 
+5. Follow the on-screen instructions. 
+
+6. Implement the changes as layed out in the respective .sample files here (e.g. to get webdav and/or OnlyOffice running). 
 
 That's it.
 
