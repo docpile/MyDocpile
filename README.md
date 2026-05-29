@@ -9,9 +9,43 @@ Nobody said the resulting code would be beautiful (in fact, in most places it's 
 
 Where security critical, I also intervened and even did some coding myself. The login handler here is just a simplified version of the one I use in reality (would be to complex in the setup to include all the stuff here). The code published here is not "bullet proof" - but likely more than sufficient for your "private NAS" at home.
 
+[Skip screenshots](#mydocpile)
+
+## Screenshots
+
+Login
+![Login](https://github.com/docpile/MyDocpile/blob/main/images/01_login.png?raw=true)
+
+Webmail UI
+![Webmail UI](https://github.com/docpile/MyDocpile/blob/main/images/03_main_webmail_ui.png.png?raw=true)
+
+Gallery Mode - especially handy ion mobile devices
+![Login](https://github.com/docpile/MyDocpile/blob/main/images/04_gallery_mode.png?raw=true)
+
+File Preview - for many different file types
+![Login](https://github.com/docpile/MyDocpile/blob/main/images/05_file_preview_for_many_filetypes.png?raw=true)
+
+Optional: OnlyOffice integration - makes the cloud almost a desktop replacement
+![Login](https://github.com/docpile/MyDocpile/blob/main/images/06_optional_onlyoffice.png?raw=true)
+
+PDF Management (also stacking/unstacking documents, print e.g. Word documents to PDF and so on)
+![Login](https://github.com/docpile/MyDocpile/blob/main/images/07_pdf_toolkit?raw=true)
+
+Document Management (called Office View)
+![Login](https://github.com/docpile/MyDocpile/blob/main/images/01_login.png?raw=true)
+
+Commander View - similar to Total Commander
+![Login](https://github.com/docpile/MyDocpile/blob/main/images/09_commander_view.png?raw=true)
+
+End-To-End File Encryption - Encrypted vaults
+![Login](https://github.com/docpile/MyDocpile/blob/main/images/10_e2e_encrypted_vaults.png?raw=true)
+
+
 Now let's come to the software:
 
-# MyDocpile - Advanced AJAX File Explorer
+## MyDocpile
+
+An Advanced AJAX File Explorer
 
 MyDocpile is a highly responsive, AJAX-only web file explorer that provides a native Windows-style layout directly in the browser. It features a rich set of file management tools, real-time media streaming, document previews, and an integrated SSH terminal.
 
@@ -121,6 +155,10 @@ The system expects several PHP variables to be defined. Most of them are automat
 
 ### 3. Integration Into Other Applications
 The login UI submitted here is just an excerpt of the login used in my much larger (and safer) real-life application login; however, it gives you an impression of the needs of the MyDocpile application itself and should be sufficiently secure for smaller implementations.  
+
+
+
+
 
 
 
