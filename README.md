@@ -23,7 +23,7 @@ Where security critical, I also intervened and even did some coding myself. The 
 
 ![Webmail UI](https://github.com/docpile/MyDocpile/blob/main/images/03_main_webmail_ui.png?raw=true)
 
-**Gallery Mode** - especially handy ion mobile devices
+**Gallery Mode** - especially handy on mobile devices
 
 ![Gallery Mode](https://github.com/docpile/MyDocpile/blob/main/images/04_gallery_mode.png?raw=true)
 
@@ -43,7 +43,7 @@ Optional: **OnlyOffice integration** - makes the cloud almost a desktop replacem
 
 ![Document Management](https://github.com/docpile/MyDocpile/blob/main/images/08_office_view_-_document_management.png?raw=true)
 
-**Commander View** - similar to Total Commander
+**Commander View** - Similar to Total Commander
 
 ![Commander View](https://github.com/docpile/MyDocpile/blob/main/images/09_commander_view.png?raw=true)
 
@@ -67,7 +67,7 @@ Now let's come to the software:
 
 ## MyDocpile
 
-MyDocpile is a highly responsive, AJAX-only web file explorer that provides a native Windows-style layout directly in the browser. It features a rich set of file management tools, real-time media streaming, document previews, and if wanted even an integrated SSH terminal.
+MyDocpile is a highly responsive, AJAX-only web file explorer and web based mail app that provides a native Windows-style layout directly in the browser. It features a rich set of file management tools, real-time media streaming, document previews, and if wanted even an integrated SSH terminal.
 
 The MyDocpile software is designed to have **the least depenencies possible**. So, no big MySQL database (in fact, as for the app itself, no db at all). Of course, this does not scale much. On the other hand, *it was never a design goal to write a second Nextcloud!* 
 
@@ -153,10 +153,10 @@ The MyDocpile software is designed to have **the least depenencies possible**. S
 
 ## ⚠️ Limitations
 
-* **Tightly Coupled Architecture:** The frontend CSS, JavaScript, and HTML are delivered entirely via inline PHP includes (`init.php`, `styles.php`). On the other hand, the MyDocpile itself does not use any big pictures (actually, it uses no pictures at all) and loads itself exactly once per session. The bytes delivered over the network are comparable or even less than Nextcloud (depending on the Nextcloud setup even dramatically less).
+* **Tightly Coupled Architecture:** The frontend CSS, JavaScript, and HTML are delivered entirely via inline PHP includes. On the other hand, the MyDocpile itself does not use any big pictures and loads itself exactly once per session. The bytes delivered over the network are comparable or even less than Nextcloud (depending on the Nextcloud setup even dramatically less).
 * **Resource Intensive Processing:** On-the-fly zip generation and recursive directory stat calculations can consume significant CPU and RAM on large directories, despite built-in timeout and memory limiters. Keep that in mind or edit the limits in the config if needed.
-* **Statefulness:** Relies heavily on PHP Sessions (`$_SESSION`). Does CSRF validation and role authorization. Cluster load-balancing: This requires sticky sessions if deployed across a cluster.
-* **External CDN Dependencies:** Relies on third-party CDNs (unpkg, cdn.sheetjs.com) for document previewers. These assets must be downloaded and hosted locally (see below under "Setup & Installation".
+* **Statefulness:** Relies heavily on PHP Sessions (`$_SESSION`). Does CSRF validation and role authorization. For cluster load-balancing: This requires sticky sessions if deployed across a cluster.
+* **External CDN Dependencies:** Relies on third-party CDNs for document previewers and webmail. These assets must be downloaded and hosted locally. (will be done automatically during setup)
 * **Zip File Limits:** Folder downloads are restricted by a predefined size limit (`$zip_warn_limit`) to prevent server memory exhaustion.
 
 ---
@@ -172,16 +172,16 @@ The MyDocpile software is designed to have **the least depenencies possible**. S
 * **Composer:** Is being autofilled within the installation directory of the main app during setup.
 
 ### 2. Configuration
-The system expects several PHP variables to be defined. Most of them are automatically set during installation. 
+The system expects several config.php variables to be defined. Most of them are automatically set up during installation. 
 
 ### 3. Integration Into Other Applications
 The login UI submitted here is just an excerpt of the login used in my much larger (and safer) real-life application login; however, it gives you an impression of the needs of the MyDocpile application itself and should be sufficiently secure for smaller implementations.  
 
 ### 2. Installation on Your Server
 
-Create a domain with an empty www-root on your webserver.
+1. Create a domain with an empty www-root on your webserver.
 
-Download the whole code into an empty directory:
+2. Download the whole code into an empty directory (or, download and umpack an release ZIP file):
 
 `git clone https://github.com/docpile/MyDocpile.git`
 
@@ -193,6 +193,9 @@ then execute the file install.sh
 
 Follow the on-screen instructions. 
 
+That's it.
+
+After your first login, do not forget to enter the `Options`, `Admin` tab to configure the clouds for your users as needed. Here, you can also rename the `cloudadmin` user.
 
 
 
