@@ -170,13 +170,13 @@ Create a domain with an empty www-root on your webserver.
 
 Download the whole code into an empty directory:
 
-**git clone https://github.com/docpile/MyDocpile.git**
+`**git clone https://github.com/docpile/MyDocpile.git**`
 
 then execute the file install.sh
 
-**cd ./MyDocpile**
+`**cd ./MyDocpile**`
 
-**bash ./install.sh**
+`**bash ./install.sh**`
 
 Follow the on-screen instructions. 
 
