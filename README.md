@@ -9,8 +9,6 @@ Nobody said the resulting code would be beautiful (in fact, in most places it's 
 
 Where security critical, I also intervened and even did some coding myself. The login handler here is just a simplified version of the one I use in reality (would be to complex in the setup to include all the stuff here). The code published here is not "bullet proof" - but likely more than sufficient for your "private NAS" at home.
 
-[Changelog](https://raw.githubusercontent.com/docpile/MyDocpile/refs/heads/main/cloud%20(not%20on%20www-root!)/cloud/versioninfo.txt)
-
 [Changelog](cloud%20(not%20on%20www-root!)/cloud/versioninfo.txt)
 
 [Skip screenshots](#mydocpile)
