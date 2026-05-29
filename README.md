@@ -185,7 +185,7 @@ The login UI submitted here is just an excerpt of the login used in my much larg
 
 3. Get PHP 8.4 running on that domain.
 
-4. Now download the whole code into an empty directory (or, download and umpack an release ZIP file):
+4. Now download the whole code into an empty directory (or, download and unpack an release ZIP file):
 
 `git clone https://github.com/docpile/MyDocpile.git`
 
