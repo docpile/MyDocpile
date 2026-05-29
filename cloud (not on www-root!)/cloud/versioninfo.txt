@@ -1,0 +1,1083 @@
+3.2.250
+	Improvement: config.dist.php recognition in modules.admim_ui.php
+	Improvement: Make edit log file optional
+	Fix: Admin UI save bug
+
+3.2.249
+	Fix: Several bugfixes as regards setup on new devices
+
+3.2.248
+	Fix: Webmail bugfixes
+	Fix: Webmail new mail counter wrong
+
+3.2.247
+	Fix: Webmail smartbox sometimes has problems to update
+	Improvement: Webmail update button should ignore the last uid and completely refresh (without deleting the mail body cache and unrelated folders)
+	Fix: Webmail to empty
+
+3.2.246
+	Fix: Webmail colors of the mailboxes too close to each other
+
+3.2.245
+	Fix: Webmail several bugfixes and smaller UI enhancements
+	Improvement: Webmail OAuth2 support
+	Fix: Webmail search does not work as expected
+
+3.2.244
+	Fix: Webmail save as PDF - not all necessary fields included
+
+3.2.243
+	Improvement: Webmail shift from slow PHP IMAP to webklex/php-imap
+
+3.1.242
+	Improvement: Webmail performance improvements
+
+3.1.241
+	Feature: Webmail: Tracking safe picture handling support
+	Fix: Webmail  newmail counter no always correct for smartbox
+	Improvement: Webmail: Resend mails in the sent folder
+	Security: Further rights levels, e.g. help button
+	Improvement: Webmail visible indicator for refresh after first loading
+	Fix: Webmail changed back to poll mails (from pushing mails)
+
+3.1.240
+	Fix: Webmail Bcc should show up in sent mail headers
+	Fix: Webmail: Deactivated accounts must not show up as choices in composer
+
+3.1.239
+	Fix: Webmail: Not all sent mails show up in the respective sent folder
+
+3.1.238
+	Improvement: Webmail: Reply-to warning too intrusive
+	Security: Webmail PGP local publishing bugs
+	Fix: Webmail password change should also change the mailbox account pwd
+
+3.1.237
+	Fix: Webmail DMARC &quot;not trusted&quot; for internal mails sent by the server itself
+
+3.1.236
+	Fix: Webmail settings bugfix
+
+3.1.235
+	Fix: Webmail several bugfixes
+
+3.1.234
+	Improvement: Webmail read receipt option
+	Security: Webmail anti-phishing, anti-BEC-fraud mechanisms
+	Security: Webmail transport security badge for incoming mails
+	Security: Webmail DMARC/DANE/BIMI flag for incoming mails
+
+3.1.233
+	Fix: Bugfix release for language translations
+
+3.1.232
+	Security: Webmail badges for trustworthiness of a mail
+
+3.1.231
+	Fix: Several bugfixes
+	Fix: Webmail save as PDF - dialog does not always close after file creation in cloud
+	Improvement: Webmail save as PDF - Add the option to delete the mail after saving
+
+3.1.230
+	Fix: Webmail save to pdf errors
+
+3.1.229
+	Fix: Webmail reply and forward always with the mail address the mail was received with
+	Improvement: Webmail new mail notification should also show some details on the mails received
+	Fix: Webmail background service abort error when switching to another cloud tab
+
+3.1.228
+	Fix: Webmail attachment pill: clarify  download options
+	Security: Webmail security enhancements
+	Fix: Webmail: Duplicate hamburger menu on small screens
+	Fix: Webmail Composer: Multiple files attachment upload fails
+	Fix: Webmail Composer drag and drop of files fails
+
+3.1.227
+	Improvement: Editor improvements: toolbar, search, status bar
+
+3.1.226
+	Fix: Webmail: FRA failure to automatically set ports
+	Fix: Webmail Thread view should recognize threads; update thread handling
+	Improvement: Webmail: Enlargen reading area by having smaller header
+	Improvement: Webmail: Make the mailbox tree hideable
+	Improvement: Webmail: SmartBox also visible for only one mailbox account
+	Improvement: Webmail: Change the star for a red flag next to the delete button
+	Feature: Password change options for (1) the cloud and (2) all local mail accounts
+
+3.1.225
+	Security: Webmail zero trust and performance improvements
+
+3.1.224
+	Fix: Loading time of the cloud after email is very long
+	Fix: Webmail: In the beginning, almost inresponsive
+
+3.1.223
+	Fix: Webmail: Several bugfixes
+	Security: Webmail: Security fixes for more zero-trust
+	Fix: Webmail fetching of the first message massively delayed
+	Feature: Webmail: Handling of physical aliases on the server
+
+3.1.222
+	Improvement: Webmail activate/deactivate mailbox accounts
+	Improvement: Webmail mobile devices enhancements
+
+3.1.221
+	Fix: Webmail EAS hoftix
+
+3.1.220
+	Feature: Webmail EAS support (beta)
+
+3.1.219
+	Fix: Webmail: Certain mails are not viewable
+	Fix: Webmail: Certain mails are not viewable
+	Fix: Webmail: Certain mails are not viewable
+	Fix: Webmail: Certain mails are not viewable
+	Fix: Webmail caching problems
+	Improvement: Webmail: Push notifications
+	Fix: Webmail: Certain mails are not viewable
+
+3.1.218
+	Security: Webmail server side security improvements
+	Feature: Webmail secure caching of mail headers fpr performance boost
+	Feature: Webmail prefetching next messages for performance
+	Improvement: Webmail DoS prevention
+
+3.1.217
+	Improvement: Webmail: Attachments as links &lt; 20MB optional, above mandatory
+
+3.1.216
+	Feature: Save mails and/or attachments to the cloud
+	Feature: Send links to the cloud via webmail
+	Fix: Webmail: Sometimes when switching away to another tab, an imap error occurs
+	Improvement: Webmail: Show Cc also if available in the mail header
+	Improvement: If mail tab exists, make it possible to share files directly via mail (or, WhatsApp)
+
+3.1.215
+	Fix: Webmail: drafts are not deleted from the drafts folder after resuming edit, thereby leaving orphans in the folder
+	Fix: Webmail: Certain messages cannot be opened
+
+3.1.214
+	Fix: Webmail Composer several bugs
+	Fix: Webmail autosave sends mail already
+
+3.1.213
+	Fix: When user opened a mail tab and switches to another cloud, the scrollbar in the details view is gone
+	Improvement: Webmail: PGP in the settings dialog only after the signatures and aliases
+	Fix: Webmail: Smartbox empty on mobile devices
+
+3.1.212
+	Improvement: Login improvements
+	Improvement: Help topics reordering
+
+3.1.211
+	Fix: Several Bugfixes
+
+3.1.210
+	Security: Multidomain and Mail-Only support added to login and cloud
+
+3.1.209
+	Fix: Webmail bugfixes
+
+3.1.208
+	Fix: Webmail: Raw text (e.g. cyphertext) gets &quot;&lt;pre&gt;&quot; added
+	Fix: Webmail PGP - Encryption on sending should be done during sending not before
+	Fix: Webmail: PGP encrypted mails cannot be opened
+	Improvement: Webmail FRA: Ask for addition or creation of a PGP key
+	Improvement: Help for Webmailer
+
+3.1.207
+	Feature: Webmail: Add PGP support
+	Security: Webmail: Auto-saving of PGP keys in contacts
+	Security: Webmail: New role: Read-only user. Cannot send mails and most of the UI is restricted
+
+3.1.206
+	Feature: Mail First Run Assistant implemented
+	Fix: Webmail: Serveral errors fixed
+
+3.1.205
+	Improvement: Webmail Unsubscribe Assistant
+	Improvement: Webmail Inline Image Pasting (Base64/CID)
+	Improvement: Webmail Optional Conversation / Thread View
+	Improvement: Webmail Flagging / Starring
+	Improvement: Webmail Advanced Search Operators
+	Improvement: Webmail Remote Content Blocker (Granular, saves settings)
+	Improvement: Webmail option to have a system popup when a new mail arrives
+	Fix: Webmail: Doesnt automatically add 127.0.0.1 and no enc on new account creation when fields are invisible
+	Improvement: Collected addresses list for outgoing email addresses
+
+3.1.204
+	Fix: First Run Assistent does not start (at least when the first cloud is mail)
+
+3.1.203
+	Improvement: General massive restructure of the CSS files
+
+3.1.202
+	Fix: unread is missing in multilanguage
+	Improvement: Webmail toolbar resize optimizations
+	Fix: Webmail: On deleting an unread mail, the unread mail counter is not changed
+
+3.1.201
+	Fix: Webmail: Label on every address pill showing the email address
+	Fix: Webmail: Save sent messages to sent items folder; save rejected mails as unread to the drafts folder
+
+3.1.200
+	Fix: Webmail move between mailboxes does not work
+	Fix: Webmail: Hamburger menu to show tree on mobile devices
+	Security: Webmail: Add rights management, and domain/path detection (e.g. &quot;mail.* or /mail means only mail)
+
+3.1.199
+	Improvement: Webmail: Short delete undo toast (if several items have been deleted in a row, several toasts)
+	Fix: Webmail: Mail deletion takes too long
+	Improvement: Webmail: Change the &quot;Loading...&quot; toast to something better
+	Improvement: Webmail: Mark several messages to e.g. delete
+	Improvement: Webmail: Attachments EITHER as preview or as download
+	Fix: Webmail: Downlading large (jpeg) file stalls connection
+
+3.1.198
+	Improvement: In the language script, use the LATEST occurence in case of a duplicate
+	Fix: Webmail accounts: Label &quot;z.B. Mein Geheimversteck&quot; - change to &quot;e.g. My Private Account&quot;
+
+3.1.197
+	Fix: Webmail accounts: &quot;Aliases (tab delimited)&quot; is wrong
+	Improvement: Webmail Composer UI renovation
+	Fix: Webmail mail viewer placeholder size too large; much unnecessary whitespace
+	Improvement: Main UI refinements
+	Fix: Webmail Contacts UI glitches
+
+3.1.196
+	Improvement: Different tab color for email tabs
+	Improvement: Admin Module: Email interface integration
+
+3.1.195
+	Improvement: Webmail Beta 1
+
+3.1.194
+	Feature: Webmail: Save as PDF and EML
+
+3.1.193
+	Improvement: Module loading improvements - only the needed modules get downloaded to the user
+
+3.1.192
+	Improvement: Webmail look and feel updates
+	Fix: Webmail mobile styles added
+	Fix: Webmail new mail in smartbox crashes
+
+3.1.191
+	Fix: Webmail attachment download leaves blank window
+
+3.1.190
+	Feature: Webmail Tab Beta 1
+
+3.0.189
+	Fix: Office View on tablet: PDF preview does not work
+
+3.0.188
+	Improvement: Changed login logo and logo color
+
+3.0.187
+	Improvement: Long filename handling: Have horizontal scrolling so that on esp. on mobile devices the full name is displayed
+
+3.0.186
+	Improvement: Index search searches full cloud, only non-index searches only subdir
+	Security: Several security hotfixes
+
+3.0.185
+	Improvement: Title rename
+
+3.0.184
+	Improvement: Renamed externally to MyDocpile due to trademark concerns
+
+3.0.183
+	Improvement: Hover var design changes
+	Fix: Color tags display in the breadcrumbs bar redesign
+	Fix: Minor display glitches
+
+3.0.182
+	Improvement: Color tags placement change
+
+3.0.181
+	Fix: Hotfix for Admin UI not displaying
+
+3.0.180
+	Security: Recheck search from index so that only paths within the scope of the user&#039;s cloud are given back
+
+3.0.179
+	Improvement: All HTML handling now done within the cloud itself
+	Improvement: Complete isolation of all javascript from the main HTML file to pseudo-JS files
+
+3.0.178
+	Fix: Keyboard navigation does not work  in details view (arrows, tab)
+	Improvement: Editor toolbars on mobile are running out of the screen
+	Fix: When Onlyoffice does not work, on the PWA you are stuck on a blank screen
+
+3.0.177
+	Update: Source files renamed and documented
+
+3.0.176
+	Fix: Diverse hotfixes
+
+3.0.175
+	Fix: Hotfix for session fingerprinting error (temp disabled until rewrite), and AJAX request collisions
+
+3.0.174
+	Fix: Hotfix release: AJAX authentication broken under certain circumstances leading to throwing user back to login
+
+3.0.173
+	Improvement: Share target on mobile devices
+	Fix: Stability fixes
+	Improvement: Share target on mobile devices
+
+3.0.172
+	Improvement: E2E better rights management
+	Fix: E2E: Copy/Move out of vault copied the encrypted files instead of encrypting first
+	Improvement: E2E: Change password option added
+
+3.0.171
+	New major version: Optional End-to-End Encryption and a state-of-the-art download technology
+
+2.7.170
+	Fix: New file generation cancel fires error
+	Fix: Loading animation broken - displayed before UI is complete
+	Improvement: Transfer about 80 percent of the js code to cacheable &quot;pseudo-file&quot;
+
+2.7.169
+	Improvement: Performance enhancements (Parallelization of startup code; styles stored statically)
+
+2.7.168
+	Improvement: Preview of font files
+	Improvement: Preview of kml/kmz files
+	Improvement: Preview of email files
+	Fix: Error after inline-renaming a file
+	Fix: Preview closing: Smoothen the selection move to the currently previewed item
+
+2.6.167
+	Improvement: Admin UI improvements (display admin role; cloud existance for user)
+	Improvement: File drag zone improvement - invisible by default for cleaner look
+
+2.6.166
+	Fix: Preview is behind the search box
+
+2.6.165
+	Fix: Hotfix for search toolbar
+
+2.6.164
+	Fix: Color tags enable sorting
+
+2.6.163
+	Improvement: Color tags more flexible and more tags if needed
+	Improvement: Settings dialog made a real window
+	Improvement: Toolbar should not show a scrollbar but indicators instead when too long for the window size
+	Fix: Settings dialog weird closing conditions -&gt; close button needed
+
+2.6.162
+	Improvement: Admin interface add some checks for cloud path existence/creation and whether in the open_base_dir
+	Improvement: Admin interface add tooltips for fields in user manager
+	Security: Add option for users to change their passwords (incl password checks)
+
+2.6.161
+	Feature: Admin panel
+
+2.6.160
+	Fix: Bugfixes for color tag search
+
+2.6.159
+	Improvement: Search dialog file preview should loop through the search results
+	Improvement: Multilanguage file edit bash job
+	Improvement: Search dialog refinements: Keep search when closing, filter for tags, index not used when search input is empty
+
+2.6.158
+	Improvement: Admin mode SFTP service cleanup and performance
+
+2.6.157
+	Improvement: Admin mode sftp - have it log in once per session
+
+2.6.156
+	Improvement: Command Palette refinements and new button in the breadcrumbs bar
+
+2.6.155
+	Fix: Logo dark mode glitch
+
+2.6.154
+	Fix: Back button on mobile devices reloads page instead of going back
+	Improvement: Further integrating new logo
+
+2.6.153
+	Improvement: Use MyCloud logo instead of MyCloud text in headers
+
+2.6.152
+	Fix: Help icon for document management changed
+
+2.6.151
+	Feature: Preview - support for epub files added
+	Fix: Help - small clarifications in En and De (device vs. device type)
+	Improvement: Sort help files in a more logical manner; fill the missing icons
+
+2.6.150
+	Feature: Optional index search
+
+2.5.149
+	Improvement: Help file additions
+
+2.5.148
+	Fix: Logout button dark mode visiblity
+
+2.5.147
+	Fix: Print - device detection unprecise -&gt; use myCloudGetCurrentDeviceKey() instead
+
+2.5.146
+	Fix: Print dialog on Samyung devices does not work
+
+2.5.145
+	Fix: Mobile printing does not work
+	Fix: Dark mode checkboxes not clearly seen (too dark)
+	Improvement: Share dialog dark mode
+
+2.5.144
+	Improvement: OnlyOffice now respects font size settings
+
+2.5.143
+	Fix: Properties dialog &quot;Connection refused&quot; error when clicking a tile
+	Fix: Error messages in dark mode displayed in black
+	Feature: Search - Goto button
+	Fix: Dark mode errors
+	Fix: Dark Mode: Alerts and small modals have black characters on black background
+
+2.5.142
+	Fix: Context menu position calculation wrong
+	Fix: OnlyOffice should respect dark mode
+	Feature: Add real template files ans make the &quot;template*.*&quot; detection international, e.g. German &quot;Vorlage*.*
+	Fix: Context menu glitches
+	Improvement: Finalizing dark mode
+
+2.5.141
+	Improvement: Template docx documents: At least date fields are now updated on new file generation
+
+2.5.140
+	Improvement: Improve template file name generation
+	Security: Hide recycle bin when having no rights for it
+	Fix: Search dialog title row not on top, items not selectable
+	Fix: Font scaling does not scale the column widths
+	Fix: In details view, the first item should not be automatically selected, just &quot;active&quot; (to be able move the cursor)
+
+2.5.139
+	Fix: Template names should START with &quot;template&quot; only and can be longer, eg. &quot;Template Lettersize.docx&quot;
+
+2.5.138
+	Security: Rights management refinements
+	Improvement: Print dialog refinements
+
+2.5.137
+	Improvement: Context menu grid fine tuning
+	Security: Rights management completely rewritten, now very granular and flexible
+
+2.4.136
+	Feature: Document Templates are respected. File name: &quot;template.*&quot;, e.g. &quot;template.docx&quot;
+
+2.4.135
+	Improvement: Stacking of Office files into a single PDF file
+	Feature: Print document context menu entry
+	Improvement: Duplicate files context menu
+
+2.4.134
+	Fix: Video preview does not work
+
+2.4.133
+	Security: MyCloud API restrictions to avoid DoS
+	Security: ClamAV integration
+
+2.4.132
+	Improvement: Thumbs also for video files
+	Improvement: Housekeeping adjustments
+
+2.4.131
+	Security: Several CSRF, path and file validation, SSRF, XSS vulnerabilities
+
+2.4.130
+	Fix: CSRF bugs
+	Fix: Office previews are somehow "crippled"
+	Security: Share.php server code integration into server.php
+
+2.4.129
+	Hotfix: Permissions for sharing reduced to modify
+2.4.128
+	Hotfix: Modify permissions sharing 
+2.4.127
+	Debug release
+2.4.126
+	Fix: PDF flatten too aggressive
+	Improvement: PDF Tools: stop using gs wherever possible
+	Fix: Context menu cut off at the bottom
+
+2.4.125
+	Improvement: PDF Form filling
+
+2.4.124
+	Fix: Several office view mode bugs
+
+2.4.123
+	Improvement: Make PDF toolkit available for all views
+	Improvement: PDF Toolkit - add more tools
+	Improvement: Office View PDF dialog advancements
+	Fix: Office View must be off in Gallery Mode
+
+2.4.122
+	Feature: Adding PDF workflow
+	Feature: Office View - introducing a content management system view
+
+2.3.121
+	Fix: Hotfix - Background colors damaged
+
+2.3.120
+	Fix: Preview filmstrip center
+	Fix: Preview Swipe-to-Dismiss for touch devices
+
+2.3.119
+	Fix: PDF support on mobile devices broken
+	Fix: In Preview, after immersive view start, touching does not bring back the buttons
+
+2.3.118
+	Fix: Gallery view several bugfixes
+	Fix: Preview several bugfixes
+	Improvement: Icon View interactive tooltips
+
+2.3.117
+	Fix: No last folder save on cached directories
+	Improvement: Multiple color tag assignments per item
+
+2.3.116
+	Fix: Add as application further refinements
+
+2.3.115
+	Improvement: Install as App refinements
+
+2.3.114
+	Fix: Clicking favorites for the first time sometimes takes a long time to open the menu
+	Improvement: If save folder is enabled, save the folder already on entering it
+	Fix: Admin Mode kicks out the user
+
+2.3.113
+	Improvement: Startup delay optimization for slow connection speeds (App only)
+	Improvement: Startup delay optimization for slow connection speeds (Login)
+	Feature: Editor button if cloud it not r/o
+	Improvement: System context menu available in Beta builds
+
+2.3.112
+	Fix: Editor improvements
+
+2.3.111
+	Improvement: Make css completely independent from the main app css
+
+2.3.110
+	Fix: BETA ONLY: Security token invalid in OnlyOffice
+	Improvement: OnlyOffice improvements
+
+2.3.109
+	Feature: Full featured Office solution
+
+2.2.108
+	Improvement: Add dropdown for easier navigation in tag menu
+
+2.2.107
+	Feature: Context menu refinements
+	Improvement: Loading screen refinements
+	Feature: Preview filmstrip toggle
+	Feature: Directory Sync / Rclone UI for commander UI with options
+	Feature: Picture preview EXIF / Metadata Viewer
+	Improvement: Mouse right click disable system context menu except in tabs
+	Improvement: New file creation
+
+2.1.106
+	Feature: Interactive Breadcrumbs
+	Feature: Color Tags / Labels
+	Improvement: Draggable dialog boxes
+	Feature: Spacebar "Quick Look"
+
+2.1.105
+	Feature: Color Tags / Labels
+	Security: Admin Mode log entry on terminal start
+
+2.1.104
+	Feature: Admin Mode copy/move rights of the source files or of the target folder checkbox
+	Fix: Commander Mode: Table headers not on top of the view
+	Fix: Admin Mode terminal implementation
+
+2.1.103
+	Fix: Symbol View tree icons not shown
+
+2.1.102
+	Improvement: Nicer color for linked folders
+
+2.1.101
+	Fix: Admin Mode ZIP files not opened
+	Fix: Admin Mode: Multiselect delete "Invalide nonce". Workaround: Delete one after the other
+	Fix: Login 2fa every time is too much
+	Fix: Help cannot be closed on mobile devices
+	Fix: Editor cannot be closed on mobile devices
+	Fix: Help title bar dysfunctional on mobile devices
+	Improvement: Smaller Logout / Close button
+
+2.1.100
+	Fix: Cursor jumps in details view
+
+2.1.99
+	Fix: Breadcrumb color set to dark in gallery only mode
+	Improvement: Admin Mode tabs in different coloring
+	Fix: Admin Mode binary files handling (no editor(
+	Improvement: Editor default font size enlarge to "let editorZoom = 16;"
+	Improvement: Editor line height enlarge: ".ace_editor { line-height: 1.35 !important; }"
+
+2.1.98
+	Security: Bypass allowing upload of certain critical files
+	Fix: Editor save does not refresh UI
+	Improvement: Admin Mode: Automatic check for SSH Login credentials
+	Security: 2fa mandatory for Admin Mode users
+	Improvement: Editor - Display of changed lines
+
+2.1.97
+	Improvement: Show breadcrumb line
+
+2.1.96
+	Improvement: Editor improvements
+	Fix: Toolbar flickering on cloud change
+	Fix: Admin Mode symlink handling enable
+	Fix: Admin Mode directory preloading does not work correctly
+
+2.1.95
+	Fix: Editor undo does not work
+
+2.1.94
+	Improvement: Editor several improvements
+	Improvement: Admin Mode more flexible timeout
+	Fix: "Beta" badge missing for Beta app
+
+2.1.93
+	Improvement: Expand the text editor to use the whole viewport
+	Fix: Search in read-only cloud displays .recycle-bin and contents
+	Fix: Admin Module: Expired session should fire login screen instead of "Session expired" message
+	Feature: Admin Mode rights and ownership management
+	Fix: Admin Module: During use of the cloud (e.g. while in the editor) do not expire the ssh session
+	Fix: Admin Module Login: No browser autosave and option to display password
+	Feature: Admin SSH Module
+
+2.0.92
+	New release mechanism (extra beta folder) introduced
+	Improvement: PDF viewer: Touch zoom enable
+	Improvement: Editor change to ACE editor, many more extensions supported now
+	
+2.0.91
+	Fix: Help: RTL languages not flipped
+	Improvement: Better PDF viewer
+
+2.0.90
+	Improvement: Help for Multi Rename Tool
+	Feature: Multilingual Help (AI generated translations)
+
+2.0.89
+	Fix: FRA Finetuning
+
+2.0.88
+	Fix: In gallery mode, when switching to multiselect, the current tile should be selected but isn't
+	Fix: Video in preview takes too long to preload
+	Feature: Admin should be able to prioritize open tickets
+	Feature: First Run Assistent
+	Improvement: In details and normal gallery view: Option whether Explorer or Nextcloud click behaviour
+	Fix: Multiselect hover does not hide when leaving a cloud
+	Fix: Not able to delete a ZIP file
+
+2.0.87
+	Fix: Hotfix for Gallery Mode
+
+2.0.86
+	Fix: New Gallery mode back tile does not work correctly
+
+2.0.85
+	Feature: Gallery mode (Icon view in dark mode without tree view and toolbar but with hover bar)
+
+2.0.84
+	Fix: In the text editor, enter opens the preview instead of a literal enter
+	Fix: Tree view toggle is green background. Remove
+	Fix: Use only relative file paths withing the application
+	Fix: Session is blocked during large file download
+	Fix: ZIP handling: Copy (extract) not possible, Favorites possible
+	Fix: In Help ticket input, arrows do not work
+	Update: Large file upload and download checks
+
+2.0.83
+	Fix: Help search does not work -> Search now is a fulltext index
+	Fix: Ticketing should not reset build numbers on major version change
+	Improvement: Login environment implemented as a PHP class
+	Improvement: Server side code implemented as a PHP class (reduced length by a half)
+
+1.7.82
+	Feature: General styling fixes
+
+1.7.81
+	Improvement: Hover bar design polish
+
+1.7.80
+	Fix: Ticket management writes wrong type assignments to changelog
+
+1.7.79
+	Imp: System wide, all major dialogs should have a similar title bar
+
+1.7.78
+	Fix: Hide Tree and Symbol buttons when in Commander view and "Hide disabled" is on
+	Fix: Also show changelog in help
+	Fix: Commander view: Search should start from current folder in active pane
+	Fix: Disable Tree View and Symbol View in commander mode
+	Fix: Download of folders does not work
+	Fix: The help language toggle empties the navigation pane
+
+1.7.77
+	Fix: When switching to a cloud without commander mode, the middle toolbar persists
+	Fix: Toolbar flickers when switching clouds
+	Fix: On commander view, doubleclicking (or pressing enter) on a zip does not "open" the zip but download it instead
+	Feature: Help update to reflect the new settings
+	Fix: Settings dialog should not resize when switching tabs
+	Fix: Start in commander view does not work
+	Fix: When opening the help while the options are open, options do not close
+	Fix: Help gets disabled after first selection change
+
+1.7.76
+	Security: Additional WAF layer right at the beginning
+	Settings dialog redone completely (it became too many options for a flat dialog)
+	Preview on doubleclick optional (defaulting to 'yes')
+	Ribbon bar on/off setting in options reactivated
+	Start in Commander Mode as a per-cloud plus per-devicetype setting
+	Favorites do no longer open automatically on mouseover (UI unification)
+	Favorites, Options and Help buttons edited to look and behave the same 
+	Preferences reset no longer deletes favorites
+	Several smaller bugfixes
+	
+1.7.75
+	Security: Optional bypass of WAF disabled
+	Fix: Upload of some MS Office documents failed due to too restrictive XXE protection
+
+1.7.74
+	Security: Low severity issue in connection with login redirecting (processing.php redirect bypass)
+	Fix: Changed the options icon to clarify it's not a ribbon
+
+1.7.73
+	Fix: Multi Rename RegEx replacements bugs and refinements
+
+1.7.72
+	New version number 1.6
+	Feature: Multi-Rename Tool
+	Feature: Help -> Support "desc" field (the description field) set as optional
+	Fix: Commander: After preview the selected item looses focus
+	Fix: Keyboard navigation in the normal view does not work any longer
+	Fix: In symbol view, the arrows do not work as expected
+
+1.6.71
+	Feature: Help system ticket UI polish
+	Fix: Commander view inline rename does not work
+	Fix: Commander view jump to favorites does not work
+	Fix: Commander view selection buttons do not work
+	Feature: Commander view middle toolbar to do actions source -> target
+
+1.6.70
+	Fix: Commander mode errors
+	Fix: Help sort order refinements
+
+1.6.69
+	New version number 1.6
+	"Norton Commander" mode added
+
+1.5.68
+	Fix: Decide if new build no. in support module
+
+1.5.67
+	Feature: Adding ticketing system for errors
+
+1.5.66
+	Hotfix: Context menu in tree view restored
+
+1.5.65
+	Several symbol view fixes and adjustments
+	"select all" now only selects selectable items in the current directory
+	Complete overhaul of the "screen refresh" after delete, move and so on for all views.
+	  -> No complete screen refresh anymore but simply "item deletion"
+
+1.5.64
+	In symbol view, picture thumbs are no longer cropped
+ 
+1.5.63
+	Fix: New Folder could not contain any non A-Z chars
+	Fix: Flickering when clicking through folders using the arrows in tree view
+	Fix: Wrong icon in symbol view for videos
+	Fix: Wrong language array variable for error dialogs led to "undefined" message titles
+	Copy/Move dialog enhancements: Keyboard usage possible now, opens in cur dir, etc.
+	Some recycler UI changes 
+	Removed ribbon bar toggle in settings menu - always on except in read-only 
+	Settings menu style refinements
+	Favorites list style refinements
+	Fix: pdf.js CSP errors hindering JS code after previewing a PDF until next page reload
+	Fix: None-passive touch event listeners warnings (turned out it was outside of this code)
+	
+1.5.62
+	Fix: Direct Download broken due to typos
+	Security: SQL Injection via Unsanitized Database Queries (Potential)
+	Security: Email Header Injection in 2FA
+	Security: Session Fixation via Token Prediction
+	Security: Path Traversal in File Operations
+	Security: Command Injection via Filename in Mail Envelope
+	Security: Insecure Direct Object Reference (IDOR) in Download Tokens
+	Security: XML External Entity (XXE) Attack via DOCX/XLSX Upload
+	Security: Race Condition in File Upload (TOCTOU)
+	Security: Brute Force Bypass via Subnet Spoofing (larger IPv6 subnet blocking)
+	Security: Missing Rate Limiting on 2FA Code Attempts
+	Security: Logout - Open Redirect via Referer Check
+	Security: Forcing silent user upgrade to Argon2id passwords on next login
+	
+1.5.61
+	Fix: Some multilingual UI strings where missing 
+	New: Icon ("Symbols") view. Settings will be saved for each folder 
+	     -> Can be changed on a per folder basis (subfolders inherit unless set otherwise)
+	Settings reset also resets the folder views
+	Fix: Scrollbar handling
+	Fix: Preview background not black 
+	
+1.5.60
+	Fix: Download in chunks rather than as whole file for performance reasons
+	
+1.5.59
+	Security: Input Validation for File Operations
+	Security: Temporary File Handling
+	Security: Directory Traversal in Zip Extraction
+	Security: Stronger CSRF Token Generation
+	Security: Several smaller fixes
+	Security: Possible XSS Vulnerability with System Modal Dialogs
+	Fix: Upload Race Condition
+	Fix: Memory Exhaustion DoS Protection 
+	Fix: Rename dialog was empty
+	Fix: Recycle bin drag and drop errors fixed 
+	Fix: Automatic language detection on 1st use for App & Help
+	Help: Contents only loaded of needed
+	
+1.5.58
+	Fix: Responsiveness in connection with ZIP handling
+	Better restore cursor position after UI refresh
+	Fix: Memory leak in PDF viewer
+	Fix: Uploading many files using drag and drop could freeze MyCloud UI
+	Fix: Context menu near the edges of the screen could be partially visible only
+	Slight color and styles adjustments
+	Scrollbar design
+	
+1.5.57
+	All code functions, styles, variables, constants, arrays... renamed 
+	  from cloudex... to myCloud... to once and for all mirror the app name 
+	Added Farsi AI translation for the help file which is RTL ready now
+	Every dialog should close with the Escape key (almost)
+	Most dialogs should default to an Enter key
+	Fix: Keep original modified dates when copying
+	Upload now checks for PHP max upload size setting before uploading
+	Security: Prevention of empty file var on download which could lead to vulnerability
+	Security: Prevent malicious audio/video files from XSS
+	Force close all context menus when redrawing the window
+	
+1.5.56
+	Some code cleanup; discrepancies and possible later bugs fixed 
+	Switched consistently from PHP $L to JS CLOUDEX_LANG array to circumvent errors 
+	  in languages that contain a "'" in words (e.g. French)
+	Added missing function (toast for the zip creation result 
+	  - was missing at least from v1.2.19 onwards...)
+	
+1.5.55
+	New: Optional display of the thumbnail image of jpeg and png files in list view
+	
+1.5.54
+	Fix: Styling for accent color was missing
+	Fix: No hover menu and other options on recycler itself
+	Fix: Recycle bin context menus and toolbar fixed
+	Fix: On mobiles, the context menu for the tree root entry never closed
+	Several Recycler improvements
+	Help: Added recycler
+	Minor gallery enhancements
+	
+1.5.53
+	New: Recycle bin (optional, can be switched off)
+	New: Creation of folders possible during copy/move
+	Fixed preview creation bugs
+	
+1.5.52
+	Fix: Typo hindered font size from being adjusted according to the settings
+	
+1.5.51
+	Background job now prefills the image preview thumbs and previews every hour
+	Downloads failed on some mobile browsers - was redirected to security check instead
+	Security - Logged in malicious users: Added upload extension blacklist
+	Security: Added zip slip (arbitrary file overwrite) protection in case malicious zip files 
+	  get uploaded
+	Security - Logged in malicious users: Path traversal via symbolic links protection shaped
+	Security - Logged in malicious users: Could DoS the server with long list requests
+	Security: Setting same-site policy from "none" to "Lax"
+	Security: Several other minor possible vulnerabilities fixed
+	
+1.5.50
+	Share names (aliases) possible, will be shown publicly
+	Shared folder name by all means no longer publicly displayed  
+	
+1.5.49
+	Critical: Thumbs and Preview cache sometimes accidentially invalidated by bug 
+	
+1.5.48
+	Fix: Some wrong Styles
+	
+1.5.47
+	Toolbar UI further color bugfixes
+	Select all/reverse/nothing menu added
+	Options dialog no longer opens on mouseover
+	Options dialog reshaped for general options
+	New default: Hide disabled buttons = on
+	Favorites menu introduced
+	Styles made (mostly) skinable
+	Preview scrolling bug fixed
+	Tons of Bugfixes
+	
+1.5.46 
+	Treeview divider position saved on exit per device
+	Toolbar UI style bugfixes
+	
+1.5.45 
+	Many Bugfixes
+	
+1.5.44 
+	New version number 1.5
+	Multilanguage support added
+	RTL language support added
+	Several languages added
+	New 1st use policy: Language of the browser. If not there, use English
+	Fix: Missing styles in options dialog restored (missed from 1.4.42)
+	
+1.4.43 
+	Removal of all possible backticks 
+	
+1.4.42 
+	Massive source code reorder and documentation 
+	
+1.4.41 
+	New: Picture sharing to Web Share API Level 2 within the preview  
+	Help updates
+	
+1.4.40 
+	Fix: Picture preview rotation fit to screen bug
+	
+1.4.39  
+	Help overhaul
+	Help for new users: not shown on every tab click
+	
+1.4.38 
+	New: Gallery only mode for clouds. No tree view. In r/o also no toolbar
+	Logic change: There is no "default" cloud anymore.  
+	  -> The first in the array will be the default, no matter the name
+	No sorting in the cloud names if multiple clouds exist. 
+	  -> Now taken from the array "as is"
+	Multi-Cloud State Management for JS allows for changing clouds without page reload
+	Resolved Path & Role Initialization updated
+	Share module: Several fixes, also "All shares" UI reshaping 
+	Fix: Missing functions in preview restored
+	
+1.4.37 
+	Icon and Preview caches restructured
+	
+1.4.36 
+	Minor Bugfixes
+	Code base cleaned (deleted old left-overs)
+	
+1.4.35 
+	New version number 1.4
+	Gallery view implemented 
+	Minor Bugfixes
+	
+1.3.35 
+	First start help implemented 
+	Help layout and contents improved
+	
+1.3.34 
+	Help integration 
+	Version info into separate module
+	
+1.3.33 
+	Keyboard integration, Part 2: Special keys, bugfixes
+	
+1.3.32 
+	Keyboard integration, Part 1: General keyboard navigation implemented
+	
+1.3.31
+	PDF preview fixes
+	Large PDF file check made configurable
+	Sidebar size will be saved and restored, device type dependent
+
+1.3.30 
+	Settings dialog fixes
+	Mouse and touch handling fixes
+	Picture preview reworked so that zooming and panning works
+	Other bugfixes
+	
+1.3.24 
+	Added fading effects on all the main window and main dialogs
+
+1.3.23 
+	Settings: Reshaped as a dropdown
+	Settings: Only available options are displayed (no ribbon options in R/O mode)
+	Preview, download and upload placed into a single ribbon.
+	Sharing addon: Complete overhaul to fit the current main app logic 
+	Sharing addon: Added full bilingual support for all Share UI elements.
+
+1.3.22 
+	Made checkbox in listview optional via options dialog
+	Made hover strip in listview optional via options dialog
+	New optional feature: Continue with last opened folder
+	Fix: Root folder contents did not show up on login
+	Ribbon bar fixes and optimization. Handle added.
+
+1.3.21 
+	Optimizing the scripts and styles by using a minifier (win: about 75% traffic reduction)
+	Ribbon bar fixes and optimization
+
+1.3.20 
+	New version number 1.3
+	Settings dialog and user based server-side storage of them added
+	Complete toolbar rework: Ribbons introduced
+	Dark mode bugfixes
+	Folder download as ZIP refined: Space restriction added
+
+1.2.19: 
+	New version number 1.2
+	Security checks before login massively enhanced, new jump to processing.php for that reason
+	Drop zone visibility enhanced
+	Drag and drop of files and folders enhanced, dragging into folders in list view possible now
+	Default "enter" key behaviour and cancel key ("Escape") defined for most popup dialogs
+	Download of folders as ZIP files possible now
+	Folder upload possible
+	
+1.1.17: Hotfix
+	Fix: cloudExLoadingPopup hindered click events to go through when hidden
+
+1.1.16:
+	Slider between tree view and list view was not movable on touch screens
+	Styles re-done to be shrinked in file size when being transmitted
+	Details view hover buttons enlarged
+	Preserving original file modification date on upload
+	Fix: Upload conflict dialog styling
+
+1.1.15: Hotfix
+	Fix: selecting items with the checkbox
+
+1.1.14:
+	Security: Bugfix in connection with wrong cloud keys briefly displayed 
+	  in the tree view during first open (have been of the same user)
+	Fix: Larger checkbox handler
+	On Multiselect, toolbar is now highlighted for the relevant actions
+	On Multiselect, the context menu and the hover bar is hidden now 
+	New version history modal
+
+1.1.13: New Version 1.1
+	Added Checkboxes for the rows
+	Added Hover menu for rows
+	Fix for tree view context menu (introduced by share.php)
+	Added audio and video preview
+	Version is shown 
+	Move handling / Tree view refresh
+	Bugfixes

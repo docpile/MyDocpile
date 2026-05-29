@@ -1,0 +1,1115 @@
+[
+  {
+    "id": "intro",
+    "icon": "start",
+    "title": "Erste Schritte",
+    "keywords": "start griasdi servus anfang basics einführung willkommen hallo",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "start",
+        "text": "Griaß Di!"
+      },
+      {
+        "type": "warn",
+        "text": "*WICHTIG: Bitte lies da des durch* – a wennst koa Anleitungen magst! 🧐"
+      },
+      {
+        "type": "h2",
+        "text": "Willkommen dahoam!"
+      },
+      {
+        "type": "p",
+        "text": "I bin [i]MyDocpile[/i], dei persönlicher *Datei-Knecht* <span style=\"font-size: 1.5em;\">🛎️🤵</span> im Browser. I gib da schnellen Zugriff auf dei Zeug. Wennst des liest, bist scho drin - sauber 😍. Des mach ma etz zerst."
+      },
+      {
+        "type": "p",
+        "text": "I ko ausschaun wia a Cloud – oder fast wia dei gwohnter Windows&trade; Explorer. Du entscheidest, wia i mi oziag!"
+      },
+      {
+        "type": "tip",
+        "text": "Nimm da d'Zeit und schau da mei [badge:Optionen] Menü o und richt mi so ei, wias da passt!"
+      },
+      {
+        "type": "p",
+        "text": "I hab meistns mehrere Wege für d'gleiche Sach. Da san meine *Hover-Menüs*, d'*Rechtsklick-Menüs* und d'*Toolbar*."
+      },
+      {
+        "type": "p",
+        "text": "Vui kannst a mit da Tastatur und mit Ziehen-und-Fallenlassen (Drag & Drop) macha. Wias da am liabsten is."
+      },
+      {
+        "type": "h2",
+        "text": "Schaug da d'Oberfläch o."
+      },
+      {
+        "type": "ul",
+        "items": [
+          "*[i]Ganz om[/i]*: Wennst mehrere Clouds hast, san da oben Reiter (Tabs).",
+          "*[i]Om[/i]* is d'*Toolbar* mit meine Werkzeug.",
+          "*[i]Links[/i]* is da *Baum* mit deine Ordner.",
+          "*[i]Rechts[/i]* is da *Inhalt* vom Ordner."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "👁️ Vorschau (Preview)"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Doppelklick auf a Datei.",
+          "Oder klick aufs \"Aug\" im Hover-Menü.",
+          "Oder Rechtsklick -> Vorschau."
+        ]
+      },
+      {
+        "type": "p",
+        "text": "Wenns a PDF, Word, Buidl oder Video is, mach is direkt auf. Ois andere ladi runter."
+      },
+      {
+        "type": "h2",
+        "text": "⬇️ Sachan runterladen"
+      },
+      {
+        "type": "p",
+        "text": "Beim *Chrome&trade; oder Edge&trade;*: Oafach 🖱️ aufn Desktop ziagn. [i]Geht leider ned mit Firefox&trade;.[/i]"
+      },
+      {
+        "type": "p",
+        "text": "Sonst: Nimm an \"Pfeil nach unten\" im Menü oder d'Toolbar."
+      },
+      {
+        "type": "h2",
+        "text": "📤 Sachan hochladen"
+      },
+      {
+        "type": "p",
+        "text": "Ganz einfach: Ziag a Datei vo dein Computer in den weißen Bereich unten in da Listn. Wenns blau leucht, lass los."
+      },
+      {
+        "type": "h2",
+        "text": "️🗑️ Papierkorb"
+      },
+      {
+        "type": "p",
+        "text": "Wos ausversehen glöscht? Koa Problem, wenn da Papierkorb an is. Nach siebn Dog leer i n aber aus."
+      }
+    ]
+  },
+  {
+    "id": "ui",
+    "icon": "ui",
+    "title": "D'Oberfläch",
+    "keywords": "bildschirm layout baum liste leiste reiter",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "ui",
+        "text": "Mei Oberfläch"
+      },
+      {
+        "type": "h2",
+        "text": "🗂️ Cloud Tabs (Ganz om)"
+      },
+      {
+        "type": "p",
+        "text": "Wennst mehr Clouds hast, kannst da umschalten."
+      },
+      {
+        "type": "h2",
+        "text": "🛠️ D'Toolbar"
+      },
+      {
+        "type": "p",
+        "text": "Da is dei Werkzeug. Es gibt zwoa Modi (siehe ⚙️ Einstellungen):"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "*Ribbon (Standard):* Gruppiert. Spart Platz.",
+          "*Klassisch:* Ois in oana Reih. Schnell, aber braucht an großn Bildschirm."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "🌳 Da Baum (Links)"
+      },
+      {
+        "type": "p",
+        "text": "Zeigt da d'Ordnerstruktur. Klick auf d'Pfeil [badge:▶] zum Aufklappn."
+      },
+      {
+        "type": "h2",
+        "text": "📃 D'Details (Rechts)"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "*Hover Bar:* Fahr mit da Maus über a Zeil. Da kommen kleine Buttons.",
+          {
+            "role": "write",
+            "text": "*Dropzone:* Da leere Platz drunter. Da kannst Sachan neiziagn."
+          },
+          "*Breadcrumbs:* Klick auf \"..\" zum a Ebene nauf geh."
+        ]
+      }
+    ]
+  },
+  {
+    "id": "mail_tab",
+    "icon": "email",
+    "title": "Des Webmail-Erlebnis",
+    "keywords": "mail email webmail posteingang schreim lesn sendn empfanga nachrichtn",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "email",
+        "text": "Des Webmail-Erlebnis"
+      },
+      {
+        "type": "p",
+        "text": "I bin ned nur dei Datei-Butler, i bin a dei persönlicher digitaler Kurier! ✉️ Mit meim integriertn Webmail-Modul bring i dei E-Mails direkt in dein Browser, damitst ned zwischn vaschiedene Apps wechsln muasst, um dei Arbat z'erledign."
+      },
+      {
+        "type": "h2",
+        "text": "🖥️ Des Drei-Spalten-Layout"
+      },
+      {
+        "type": "p",
+        "text": "I hob mei E-Mail-Oberflächn so organisiert, dassd den bestmöglichen Überblick host. Wennst den Mail-Tab aufmochst, teil i dein Buidlschirm in drei übersichtliche Bereiche:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "**Links (Da Baam):** Do zeig i da dei E-Mail-Konten und Ordner (Posteingang, Gesendet, Entwürfe usw.). Wennst mehrane Konten host, konnst as do ei- und ausklappn.",
+          "**Mittn (De Listn):** I zeig da olle Nachrichtn fia den ausgwähldn Ordner. Du konnst as sortiern, noch unglesne Nachrichtn filtern oda mei Diskussionsfaden-Osicht eischaltn.",
+          "**Rechts (Da Lesebereich):** Klick auf a E-Mail in da Mittn, und i moch's da direkt do auf. Koane nervigen Popups nötig!"
+        ]
+      },
+      {
+        "type": "tip",
+        "text": "*Handy-Tipp:* Wennst auf deim Smartphone bist, versteck i natürlich de Bereiche, deast grod ned brauchst, damitst gnua Plotz zum Lesn host. Du konnst den [badge:Zruck]-Button nutzn, um zwischn Ordnerlistn, Nachrichtenlistn und Leseansicht hin und her z'rutschen."
+      },
+      {
+        "type": "h2",
+        "text": "✍️ Nachrichtn vafassn"
+      },
+      {
+        "type": "p",
+        "text": "Wennst a E-Mail schreim wuist, klick aufn [badge:Neiche E-Mail]-Button in da Symbolleistn. I fahr da an Rich-Text-Editor auf."
+      },
+      {
+        "type": "grid",
+        "cards": [
+          {
+            "title": "Smarte Adressierung",
+            "text": "Fang oafach o, an Nam z'tippn. I such in deim Adressbuch und schlog da automatisch den richtign Kontakt voa."
+          },
+          {
+            "title": "Rich Text & Inline-Buidl",
+            "text": "Moch dei E-Mails schee. I gib da an volln Editor, woast Text fett mocha, Listn erstelln und sogar Buidl direkt in den Text eifügn konnst."
+          },
+          {
+            "title": "Anhänge",
+            "text": "Muasst a Datei mitschicka? Klick auf [badge:Dateien ohänga] oda ziag de Dateien oafach vo deim Rechner direkt in mei Editor-Fenster (Drag & Drop)."
+          },
+          {
+            "title": "Entwurfsschutz",
+            "text": "Lass da Zeit beim Schreim. I speicher dein Fortschritt automatisch im Hintergrund im 'Entwürfe'-Ordner, damit nix valoan geht."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "usage_guide",
+    "icon": "holeinone",
+    "title": "Geräte & Speed",
+    "keywords": "handy tablet internet langsam schnell wlan touch",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "holeinone",
+        "text": "Hol des Beste raus"
+      },
+      {
+        "type": "p",
+        "text": "I pass mi o, egal ob Handy oder 4K-Monitor."
+      },
+      {
+        "type": "h2",
+        "text": "📱 Handy & Tablet"
+      },
+      {
+        "type": "grid",
+        "cards": [
+          {
+            "title": "Kästchen",
+            "text": "Aufm Touchscreen is treffn schwar. Schalt d'[badge:Markierungskästchen] ei."
+          },
+          {
+            "title": "Platz sparen",
+            "text": "Bildschirm z'kloa? Schalt an [badge:Baum] aus."
+          }
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "🐌 Lahmes Internet?"
+      },
+      {
+        "type": "table",
+        "headers": [
+          "Option",
+          "Empfehlung"
+        ],
+        "rows": [
+          {
+            "c1": "Listen-Vorschaubilder",
+            "c2": "❌ **Aus**. Spart Daten."
+          },
+          {
+            "c1": "Klick für Vorschau",
+            "c2": "❌ **Aus**. Lad Buidl nur beim Doppelklick."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "basic",
+    "icon": "controls",
+    "title": "Bedienung",
+    "keywords": "maus tastatur klick tasten touch",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "basic",
+        "text": "Bedienung"
+      },
+      {
+        "type": "h2",
+        "text": "🖱️ Maus (PC)"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "*Klick:* Auswähln.",
+          "*Doppelklick:* Aufmacha.",
+          {
+            "role": "write",
+            "text": "*Rechtsklick:* Kontextmenü (Umbenenna, Löschen...)."
+          },
+          "*Rahmen ziagn:* Klick ins Leere und ziag d'Maus."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "⌨️ Tastatur"
+      },
+      {
+        "type": "grid",
+        "cards": [
+          {
+            "title": "Navigiern",
+            "text": "[key:↑] [key:↓] Wähln<br>[key:Enter] Auf<br>[key:Backspace] Nauf"
+          },
+          {
+            "role": "write",
+            "title": "Action",
+            "text": "[key:F2] Umbenenna<br>[key:Entf] Löschen"
+          },
+          {
+            "role": "write",
+            "title": "Ois wähln",
+            "text": "[key:Strg]+[key:A]"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "commander",
+    "icon": "view",
+    "title": "Commander",
+    "keywords": "commander zwei fenster spalten kopieren verschieben",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "view",
+        "text": "Commander-Ansicht"
+      },
+      {
+        "type": "warn",
+        "text": "Geht nur wennst **Schreibrechte** hast."
+      },
+      {
+        "type": "p",
+        "text": "I teil den Bildschirm. Markier links, klick in d'Mitten."
+      },
+      {
+        "type": "grid",
+        "cards": [
+          {
+            "title": "Kopieren & Verschieben",
+            "text": "Schiebt des Zeug sofort auf d'andere Seitn."
+          },
+          {
+            "title": "Zip & Rüber",
+            "text": "Packt ois zam und schiebts rüber."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "office_mode",
+    "icon": "office",
+    "title": "Dokumentn-Vawoitung",
+    "keywords": "office modus drei spaltn teilt vorschau pdf zsammführn teiln formular ausfuin drahn repariern",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "office",
+        "text": "Dokumentn-Vawoitung"
+      },
+      {
+        "type": "p",
+        "text": "Muasst a Hauffa Dokumente auf d'Schneij bearbeitn? Schalt mi in den *Office-Modus* um (des Kastl, des wia a geteilta Bildschirm in da Leistn ausschaut). I verwandel mi dann in a professionelles Dokumentnmanagementsystem mit drei Spaltn."
+      },
+      {
+        "type": "h2",
+        "text": "Des Drei-Spaltn-Layout"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "**Links:** Dei Ordnerbaam.",
+          "**Mittn:** Dei Dateilistn.",
+          "**Rechts:** A riesiga, dauerhafter Vorschaubereich."
+        ]
+      },
+      {
+        "type": "p",
+        "text": "Wennst di durch de Dateien in da Mittn klickst, zoag i de sofort auf da rechtn Seitn o. Koa lästigs Pop-Up, koa Doppelklicken. Du konnst sogoa den Teiler umeziang, damits da as Vorschaufenster genau so broad machst wiasd as brauchst."
+      },
+      {
+        "type": "h2",
+        "text": "🧰 Da PDF-Werkzeigkastn"
+      },
+      {
+        "type": "p",
+        "text": "Wennst in dem Modus a PDF-Datei in da Vorschau anschaust, zoag i da untn am Bildschirmrand an gscheidn Werkzeigkastn. I ko do schwere Sachan erledign, de normalerweis deire Software brauchan:"
+      },
+      {
+        "type": "grid",
+        "cards": [
+          {
+            "title": "Stapeln & Zsammführn",
+            "text": "Wähl oafach mehrere PDFs (oda Office-Dokumente!) aus, mach an Rechtsklick und sog 'PDFs stapeln'. Du konnst de per Drag-and-Drop genau sortiern, wiasd ses wuist, und i zimmer de zu oana oanzign Datei zsamm."
+          },
+          {
+            "title": "Entstapeln / Teiln",
+            "text": "Host a riesigs PDF? Klick auf 'Entstapeln', und i sprengs auseinander und speicher jede Seite als extra PDF-Datei."
+          },
+          {
+            "title": "Formulare ausfuin",
+            "text": "Wennst a PDF aufmachst, wo Formularfelder drin san, klick auf 'Formular ausfuin'. I bastel a saubere Vollbildansicht, wo'st de Datn neitippn konnst, und i brenn de Antworten na direkt in a neies PDF eini."
+          },
+          {
+            "title": "Rausziang & Repariern",
+            "text": "Brauchst den Text oda de Buidl aus am PDF? Dofür hob i Knöpf. Und i hob sogoa an 'Repariern'-Knopf, falls a PDF hi is und si ziert, richtig aufz'gäh."
+          }
+        ]
+      },
+      {
+        "type": "warn",
+        "text": "De Office-Ansicht is für gresserne Bildschirme ausglegt. Wennst de aufm Handy hernimmst, werd's echt unbändig eng!"
+      }
+    ]
+  },
+  {
+    "id": "online_office",
+    "icon": "desktop",
+    "title": "Online-Büro",
+    "keywords": "onlyoffice word excel powerpoint dokument bearbeitn druckn vorlag docx xlsx",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "desktop",
+        "text": "Online-Büro"
+      },
+      {
+        "type": "p",
+        "text": "Host gwisst, dass i dei komplette Office-Suite sei ko? Wenn meine Admins de optionale *Online Office*-Integration eigschalt ham, konst Word&trade;-, Excel&trade;- und PowerPoint&trade;-Dokumente direkt do im Browser erstäin, bearbeitn und zammad nutzn. Brauchst gar koa lokale Software mehr!"
+      },
+      {
+        "type": "h2",
+        "text": "📝 Dokumente bearbeiten"
+      },
+      {
+        "type": "p",
+        "text": "Es kannt ned oafacher sei:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Suach a Dokument, des i untastütz (z. B. a `.docx` oda `.xlsx`-Datei).",
+          "Moch einfach an *Doppeklick* drauf, oda wähl's aus und klick aufn [badge:Bearbeiten]-Knopf in da Leistn.",
+          "I mach dann an gscheidn Office-Editor direkt über meina Dateilistn auf. Oabat an deim Dokument genau so, wiasd es gwohnt bist!"
+        ]
+      },
+      {
+        "type": "warn",
+        "text": "I speicher dei Arbat automatisch und ständig mit, währends'd tippst. Wennst fertig bist, klick einfach aufn [badge:Schließen]-Knopf rechts obm im Editor, damits'd zruck zua Dateilistn kimmst."
+      },
+      {
+        "type": "h2",
+        "text": "✨ Magische Vorlagn"
+      },
+      {
+        "type": "p",
+        "text": "I hob an bsondan Trick für Vorlagn. Wennst auf a Datei doppeklickst, de i ois Vorlag daspäh – entweder an da Endung (wia `.dotx` oda `.xltx`) oda wenn da Nam mit Wortn wia 'Template' oda 'Vorlage' ofangt –, dann mach i ned des Original auf. Stattdessn:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Moch i da sofort a nagelneue Kopie vo dera Datei.",
+          "Frog i di nach am neien Nam (standardmäßig is des Datum und de Uhrzeit vo heit drin).",
+          "Mach i nahtlos *de neie Kopie* im Editor auf, sodass dei Original-Vorlag unberührt und sicher bleibt!"
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "🖨️ Drucken aus da Cloud"
+      },
+      {
+        "type": "p",
+        "text": "Brauchst wos aufm Papier? Wähl a Office-Dokument oda a PDF aus und klick in da Leistn aufn [badge:Drucken]-Knopf. Wos dann bassiert, hängt vo deim Gerät ab:"
+      },
+      {
+        "type": "grid",
+        "cards": [
+          {
+            "title": "Am Desktop / PC",
+            "text": "I wandel des Dokument im Hintergrund staad in a druckfertigs Format um und ruf in Druckdialog vo deim Browser auf. Gschmeidig und schnei."
+          },
+          {
+            "title": "Aufm Handy",
+            "text": "Mobile Browser san beim Druckn im Hintergrund a bissl stur. I bereit de Datei vor und zeig da an 'Fertig'-Buidlschirm. Tipp auf 'Öffnen / Drucken', damit de Datei sicher ans Teiln-Menü oda den PDF-Viewer vo deim Handy übergebn werd, vo wo aus du sie an dein WLAN-Drucker schicka konst."
+          }
+        ]
+      },
+      {
+        "type": "tip",
+        "text": "*Pro-Tipp:* Du konnsti a *mehrere* Dokumente auf oamoi auswähln und auf Drucken klickn. I füg de alle sauber zu oana riesign PDF-Datei zamm und schicks als oanzign Druckauftrag an dein Drucker!"
+      }
+    ]
+  },
+  {
+    "id": "text_editor",
+    "icon": "edit",
+    "title": "Code- & Text-Editor",
+    "keywords": "text code bearbeitn skript txt html php css syntax speichern",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "edit",
+        "text": "Code- & Text-Editor"
+      },
+      {
+        "type": "p",
+        "text": "Für de Bastler, Entwickler und Notiznschreiba! Wennst a Textdatei (`.txt`, `.md`, `.csv`) oda a Code-Skript (`.php`, `.html`, `.css`, `.js`) aufmachst, start i mein eibautn professionelln Text-Editor."
+      },
+      {
+        "type": "h2",
+        "text": "🛠️ Editor-Funktiona"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "*Syntax-Hervorhebung:* I färb dein Code automatisch passend zum Dateityp ein, damit mas gscheid lesn ko. Übers Dropdown obm konnst de Sprach a per Hand ändern.",
+          "*Entwurfsschutz:* Koa Panik, falls dei Browser afgibt oda du den Tab aus Versehns zuamachst! I speicher ungspeicherte Entwürfe lokal in deim Browser. Wennst de Datei as nächste Moi aufmachst, frog i di, obst dein Entwurf wiedaherstelln wuist.",
+          "*Tabs:* Du konnst mehrere Textdateien gleichzeitig aufmacha. I behalt se schee sortiert in Tabs ganz obm im Editor."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "🎛️ De Editor-Werkzeigleistn"
+      },
+      {
+        "type": "p",
+        "text": "Schau da beim Bearbeitn moi de obere Leistn o. De is bockevoll mit gscheide Werkzeig:"
+      },
+      {
+        "type": "table",
+        "headers": [
+          "Werkzeig",
+          "Wos es duat"
+        ],
+        "rows": [
+          {
+            "c1": "[badge:Zeilnumbruch]",
+            "c2": "Zwingt lange Textzeiln zum Umbruch auf de nächste Zeiln, damits'd ned hin und her scrolln muasst."
+          },
+          {
+            "c1": "[badge:Geteilte Ansicht]",
+            "c2": "Macht a Ansicht nebanand auf, wo de gspeicherte Originalversion vo da Datei neba deim aktuelln Gschriebstn steht."
+          },
+          {
+            "c1": "[badge:Minimap]",
+            "c2": "Zeigt a winzige Übersicht vo da komplettn Codestruktur am rechtn Rand. Super, um durch mordsmäßige Dateien z'sausa."
+          },
+          {
+            "c1": "[badge:Suacha (Strg+F)]",
+            "c2": "Macht de Suachn- & Ersetzn-Leistn auf. Unverzichtbar, um Variablennama z'ändern oda imma wiederkehrende Tippfehler auszumerzen."
+          }
+        ]
+      },
+      {
+        "type": "tip",
+        "text": "*Farbwähler-Magie:* Wenn i in deina Datei an HEX-Farbcode dawisch (wia `#0078d4`), klick eahm moi o! Da poppt a visueller Farbwähler auf, do konnst de Farbe mit de Aung ändern, ohne z'tippn."
+      },
+      {
+        "type": "warn",
+        "text": "Vergiss ned as Speichern! Klick aufs Disketten-Symbol oda drück [key:Strg]+[key:S] (oda [key:Cmd]+[key:S] aufm Mac). I zeig da a rote \"Ungspeicherter Entwurf aktiv\"-Warnung in da Statusleistn, wennst no wos offn host."
+      }
+    ]
+  },
+  {
+    "id": "settings",
+    "icon": "settings",
+    "title": "Einstellungen",
+    "keywords": "optionen einstellungen config dunkel schrift",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "settings",
+        "text": "Einstellungen"
+      },
+      {
+        "type": "p",
+        "text": "Klick auf *Einstellungen*. Sag ma, wia i mi vahoitn soll."
+      },
+      {
+        "type": "table",
+        "headers": [
+          "Option",
+          "Geht extra für"
+        ],
+        "rows": [
+          {
+            "c1": "*Letzten Ordner merken*",
+            "c2": "Nur Global"
+          },
+          {
+            "c1": "*Papierkorb*",
+            "c2": "Nur Global"
+          },
+          {
+            "c1": "*Baum beim Start*",
+            "c2": "[desktop] / [tablet] / [phone]"
+          },
+          {
+            "c1": "*Start im Commander*",
+            "c2": "[desktop] / [tablet] / [phone]"
+          },
+          {
+            "c1": "*Dunkler Modus*",
+            "c2": "Lokal"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "view",
+    "icon": "view",
+    "title": "Vorschau",
+    "keywords": "vorschau bild video musik pdf",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "view",
+        "text": "Vorschau"
+      },
+      {
+        "type": "p",
+        "text": "PDF, Buidl, MP3, MP4. Doppelklick drauf."
+      },
+      {
+        "type": "h2",
+        "text": "Warnung bei fetten Dateien"
+      },
+      {
+        "type": "p",
+        "text": "Wenn a Datei riesig is, warn i di erst."
+      }
+    ]
+  },
+  {
+    "id": "search",
+    "icon": "search",
+    "title": "Suche",
+    "keywords": "suche finden search",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "search",
+        "text": "Suche"
+      },
+      {
+        "type": "h2",
+        "text": "1. Schnellsuche"
+      },
+      {
+        "type": "p",
+        "text": "Tipp einfach d'ersten Buchstbn. I spring hi."
+      },
+      {
+        "type": "h2",
+        "text": "2. Globale Suche 🔍"
+      },
+      {
+        "type": "p",
+        "text": "Da such i in alle Unterordner."
+      }
+    ]
+  },
+  {
+    "id": "favorites",
+    "icon": "star",
+    "title": "Favoriten",
+    "keywords": "favoriten stern speichern schnellzugriff",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "star",
+        "text": "Favoriten"
+      },
+      {
+        "type": "p",
+        "text": "Wichtige Ordner? Merk i ma für di."
+      },
+      {
+        "type": "grid",
+        "cards": [
+          {
+            "title": "Dazua doa",
+            "text": "Ordner markiern und aufn Stern klickn. Dann 'Hinzufügen'."
+          },
+          {
+            "title": "Umbenenna",
+            "text": "Klick aufn Stift [badge:✏️] für an kurzn Namen."
+          },
+          {
+            "title": "Weg damit",
+            "text": "Nimm an Mülleimer [badge:🗑️]."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "vaults",
+    "icon": "lock",
+    "title": "Sichane Tresore (Vaschlisslung)",
+    "keywords": "vaschlisslung tresor sperrn sicha passwort privatsphäre schützn e2e entschlissln",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "lock",
+        "text": "Sichane Tresore (Vaschlisslung)"
+      },
+      {
+        "type": "p",
+        "text": "Hosd du ganz geheime Datein? I ko de mid End-to-End-Vaschlisslung (E2E) obsuat sicha aufhem. Stej da an digitaln Safe voa, fia den nua du den Schlüssl hosd. Wenn du an Ordnar in an Tresor vawandlst, vaschlissl i dei Datein so stoak, dass wiakle neamand sunst – ned amoi de Server-Administratoren, Hacker oda i sejba – de lesn ko. Da Schlüssl valässt nia dein Computa."
+      },
+      {
+        "type": "warn",
+        "text": "*KRITISCH:* Wei i dei Passwort ned kenn, ko i's a ned fia di zrucksetzn. Wennst dei Passwort valiasd, bleibm dei Datein fia imma gsperrt und san unwidabringlich furt. Bittschön schreib's da auf und heb's unglaublich sicha auf!"
+      },
+      {
+        "type": "h2",
+        "text": "🏗️ 1. So machsd an Tresor"
+      },
+      {
+        "type": "p",
+        "text": "An normaln Ordnar in an sichan Tresor z'vawandln is afoch, braucht oba a wengal Gduit vo dia:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Find z'eascht den Ordnar, denst schützn mechst.",
+          "Klick mid da rechtn Maustastn aufn Ordnar und wäi [badge:Vaschlissln / Entspean].",
+          "I wead di bittn, a stoaks Passwort festz'legn. Denk da wos Guads aus!",
+          "*Wichtig:* Wenn si scho Datein in dem Ordnar befindn, fang i jetz o, de noch und noch z'vaschlissln. *Bittschön schliaß den Browser-Tab ned, bis i da sog, dass i feadig bin!* Wennst de Seitn schliaßd, während i arbat, kanntn Datein hi wern."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "🔓 2. Dein Tresor aufmacha und nutzn"
+      },
+      {
+        "type": "p",
+        "text": "Du dakenntsd dein Tresor an dem kloan Schloss-Symbol. So arbatn ma domid:"
+      },
+      {
+        "type": "grid",
+        "cards": [
+          {
+            "title": "Den Tresor betretn",
+            "text": "Klick oda doppelklick afoch aufn gsperrtn Ordnar. I wead noch deim Passwort frong. Soboid du's eimgibst, entspear i den Tresor im Arbatsspeicha vo deim Browser."
+          },
+          {
+            "title": "Datein hochlon",
+            "text": "Soboid du im entsperrtn Tresor bisd, konnst neie Datein ganz normal neiziang. I wead de automatisch im Hintagrund vaschlissln, *bevoa* se an den Server gschickt wean."
+          },
+          {
+            "title": "Datein obalon",
+            "text": "Wennst a Datei aus deim Tresor obalodst, entschlissl i se automatisch und sofoat fia di. Se kimmt ois völlig normale, lesbare Datei auf deim Computa o."
+          },
+          {
+            "title": "Wida sperrn",
+            "text": "Wennst feadig bisd, konnst mid da rechtn Maustastn aufn Ordnar klickn und [badge:Tresor sperrn] wäin. Oda no afocha: Schliaß afoch dein Browser-Tab. I vagiss dei Passwort automatisch, soboid du gehst, und sperr den Tresor sofoat."
+          }
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "❌ 3. Den Tresor entfeana (Entschlissln)"
+      },
+      {
+        "type": "p",
+        "text": "Wennst entscheidst, dass du de zusätzliche Sichaheit nimma brauchsd, konnst den Tresor wida in an normaln, unvaschlissltn Ordnar vawandln."
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Klick z'eascht aufn Tresor und entspear eam mid deim Passwort.",
+          "Klick dann mid da rechtn Maustastn aufn Ordnar und wäi nomoi [badge:Vaschlissln / Entspean].",
+          "I wead di frong, ob du den Ordnar entschlissln mechst. Bestätige des.",
+          "I wead jetz oi dei Datein suagfältig wida in den Normalzuastand decodiern. *A do: Schliaß den Browser ned, während i des dua!*"
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "📝 Online Office & Vaschlisslung (Wichtiga Hiweis)"
+      },
+      {
+        "type": "p",
+        "text": "I biet a tolle Funktion, mid dera du Word-, Excel- oda PowerPoint-Dokumente direkt im Browser midm *Online Office* bearbatn konnst. Du konnst de Funktion sogoa fia Datein in deim Tresor nutzn, oba es gibt a wichtigs technischs Detail, des du kenne muassd:"
+      },
+      {
+        "type": "p",
+        "text": "Damid da Online-Office-Editor des Dokument lesn und di drin tippn lossn ko, muass i de Datei kurzzeidig an den Server schickn und duat *unvaschlisslt* speichan, während du aktiv dro arbatsd. Wennst den Editor schliaßd, vaschlissl i se wida sicha."
+      },
+      {
+        "type": "tip",
+        "text": "*Wos des fia di hoaßt:* Wenn dei Dokument ganz normale Arbat enthoid, is de Nutzung vom Online Office völlig in Ordnung und gscheid praktisch. Wenn des Dokument oba absolut streng geheime Datn enthoid (wia Bankpasswörta oda streng vatrauliche medizinische Untalagn), soitasd des Online Office ned nutzn. Fia de ultimative Sichaheit lodst de Datei afoch oba, bearbatsd se lokal auf deim eigna Computa und lodst se dann wida hoch."
+      },
+      {
+        "type": "h2",
+        "text": "👁️ Vorschauen & Eischränkungen"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "*Sichane Vorschauen:* Du konnst inahoib vo am entsperrtn Tresor sicha auf Buida, Videos und PDFs klickn, um se da ozschaun. I entschlissl de direkt aufm Buidlschiarm vo deim Computa, sodoss dei Datn völlig privat bleibm.",
+          "*Office-Ansicht deaktiviert:* Mei eaweitarte *Office-Ansicht* (des spezielle Layout mid drei Spoitn fia vui Dokumentnvawaltung) ko ned mid Tresorn vawendt wean. De Art und Weis, wia Datein in deara speziellen Ansicht ghandhabt wean, is z'komplex, um se mid strengen Sichaheitsregln z'kombiniern."
+        ]
+      }
+    ]
+  },
+  {
+    "id": "mail_setup",
+    "icon": "settings",
+    "title": "Mail-Setup & Kontakte",
+    "keywords": "setup config assistent imap smtp adressbuch kontakte alias signatur",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "settings",
+        "text": "Mail-Setup & Kontakte"
+      },
+      {
+        "type": "p",
+        "text": "Bevoar i dei Nachrichtn hoin ko, muass i wissn, wo dei digitois Postfach wohnt. Koa Sorge, i moch des Eirichtn total oafach fia di!"
+      },
+      {
+        "type": "h2",
+        "text": "⚙️ Da Eirichtungsassistent"
+      },
+      {
+        "type": "p",
+        "text": "Wennst zum easchtn Moi a Konto hizufügst, führ i di duach mein Postfach-Eirichtungsassistentn. Des is a ganz logischa Schritt-fia-Schritt-Prozess:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "*Basis-Infos:* Verrat ma dein Nam und dei E-Mail-Adress.",
+          "*Login:* Gib ma den Benutzernam und des Passwort, des dei Obieta valangt.",
+          "*Server-Details:* I muass dei IMAP- (Eingang) und SMTP- (Ausgang) Serveradressn und Ports wissn.",
+          "*Aliase:* Nutzt du andere Adressn (wia 'info@'), de im sejbn Posteingang landn? Sogs ma, dann loss i di a vo denen E-Mails veschicka!",
+          "*Signaturn:* Entwirf a scheene Signatur, und i hängs automatisch ans Ende vo oin deine ausgehendn E-Mails."
+        ]
+      },
+      {
+        "type": "tip",
+        "text": "*Mehra Konten:* Du konnst so vui E-Mail-Konten hizufügn, wiasd wuist. I sortier de schee im Ordnerbaam eih, damitst ois vo am Ort aus vawaltn konnst."
+      },
+      {
+        "type": "h2",
+        "text": "📇 Dei Adressbuch"
+      },
+      {
+        "type": "p",
+        "text": "I hoid dei Kontakte gern perfekt organisiert. Du konnst jedazeit drauf zuagreifa, indemst in da Mail-Symbolleistn auf [badge:Kontakte] klickst."
+      },
+      {
+        "type": "grid",
+        "cards": [
+          {
+            "title": "Auto-Sammln",
+            "text": "Wennst de Auto-Sammln-Option eigschaltn losst, merk i ma stumm jede E-Mail-Adress, an deast a Nachricht schickst, damitstas nia wieda eitippn muasst."
+          },
+          {
+            "title": "Kontakte importiern",
+            "text": "Kummst vo am andern Obieta? Du konnst a CSV-Datei hochlodn, und i importier olle deine oidn Kontakte automatisch."
+          },
+          {
+            "title": "Kontakt-Details",
+            "text": "Du konnst jedn Kontakt bearbeitn, um mehra E-Mail-Adressn, Telefonnumman, eana Firma hinzuzfügn und sogar spezielle Sicherheitsschlüssl an eana Profil z'hänga."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "mail_security",
+    "icon": "lock",
+    "title": "Mail-Sicherheit (PGP)",
+    "keywords": "sicherheit pgp vaschlüsselung e2e schlüssl öffentlich privat passphrase sicher privatsphäre",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "lock",
+        "text": "Mail-Sicherheit (PGP)"
+      },
+      {
+        "type": "p",
+        "text": "I nimm dei Privatsphäre sehr ernst. Normale E-Mails san wia Postkartn – jeda, da se im Internet in de Finga griagt, ko se theoretisch lesn. I wui da an vasiegeltn Umschlag gem. Mit da PGP Ende-zu-Ende-Vaschlüsselung ko i dei Nachrichtn so diaf vakryptn, dass se wirklich nur da gmeinte Empfänger lesn ko."
+      },
+      {
+        "type": "h2",
+        "text": "🔑 Dei Schlüssl generiern"
+      },
+      {
+        "type": "p",
+        "text": "Um oz'fanga, brauchst a Schlüsslpaar. Des ko i direkt im Postfach-Eirichtungsassistentn fia di generiern oda spada in deine E-Mail-Eistellunga."
+      },
+      {
+        "type": "ul",
+        "items": [
+          "*Öffentlicha Schlüssl:* Des is wia dei digitois Vorhängeschloss. Des teilst mit da Woid, damit Leit Nachrichtn absperrn kenna, de nur fia di bstimmt san.",
+          "*Privater Schlüssl:* Der bleibt bei mia, gschützt duach a Passphrase, deast du auswählst. Den nutz i, um de Nachrichtn aufz'sperrn, de de Leit an di schickn."
+        ]
+      },
+      {
+        "type": "warn",
+        "text": "*WICHTIG:* I vaschlüssl dein privatn Schlüssl mit deina Passphrase, bevoar eam speicher. I KENN dei Passphrase NED. Wennstas vagisst, ko i dei vaschlüsseltn E-Mails ned widaherstelln. Bitte pass guad drauf auf!"
+      },
+      {
+        "type": "h2",
+        "text": "✉️ Vaschlüsselte Mails sendn"
+      },
+      {
+        "type": "p",
+        "text": "I vasuch, des Sendn vo sichere Mails so reibungslos wia möglich z'mocha. Wennst a Nachricht vafasst und auf [badge:Sendn] klickst:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "I schau in deim Adressbuch noch, obsd effentliche Schlüssl fia olle Empfänger gspeichert host.",
+          "Wenn i se lokal ned find, frog i im Hintergrund bei globaln Schlüsslvazeichnissn (wia keys.openpgp.org) noch, obs is fia di findn ko.",
+          "Wenn i Schlüssl fia olle find, halt i kurz in und frog di: \"Sichere Zuastellung is vafügbar. Mogst de E-Mail vaschlüsseln?\"",
+          "Wennst jo sogst, vakrypt i de Nachricht und de Anhänge direkt in deim Browser, no bevoar se as Netzwerk berrührn."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "🔓 Vaschlüsselte Mails lesn"
+      },
+      {
+        "type": "p",
+        "text": "Wenn da jemand a PGP-vaschlüsselte E-Mail schickt, siegst a Banner iba da Nachricht. Weis sicher obgsperrt is, ko is da ned automatisch vorlesn."
+      },
+      {
+        "type": "p",
+        "text": "I wea di nett bittn, dei Passphrase eiz'gebn. Soboid ma as grüne Licht gibst, nutz i dein privatn Schlüssl, um de Nachricht sofort auf deim Buidlschirm z'entschlüsseln. Da unvaschlüsselte Text werd nia an Server gschickt; er bleibt streng zwischn dir und deim Browser."
+      }
+    ]
+  },
+  {
+    "id": "prop",
+    "icon": "prop",
+    "title": "Eigenschaften",
+    "keywords": "eigenschaften größe speicherplatz",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "prop",
+        "text": "Eigenschaften"
+      },
+      {
+        "type": "p",
+        "text": "Rechtsklick -> *Eigenschaften*. I rechne d'echte Größe aus."
+      },
+      {
+        "type": "h2",
+        "text": "🗺️ Treemap"
+      },
+      {
+        "type": "p",
+        "text": "Unten siehst a Grafik. Große Kachel = Vui Platz verbraucht."
+      }
+    ]
+  },
+  {
+    "id": "multi_rename",
+    "icon": "edit",
+    "title": "Massen-Umbenennen",
+    "keywords": "umbenenna haufenweise rename batch",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "edit",
+        "text": "Massen-Umbenennen"
+      },
+      {
+        "type": "p",
+        "text": "Wennst vui Dateien auf oamoi umbenenna wuidst: Drück [key:F2] wennst mehrere markiert hast."
+      },
+      {
+        "type": "h2",
+        "text": "Baustoana"
+      },
+      {
+        "type": "table",
+        "headers": [
+          "Kürzel",
+          "Ergebnis"
+        ],
+        "rows": [
+          {
+            "c1": "*[N]*",
+            "c2": "Oida Nam."
+          },
+          {
+            "c1": "*[E]*",
+            "c2": "Endung."
+          },
+          {
+            "c1": "*[C]*",
+            "c2": "Zähler."
+          },
+          {
+            "c1": "*[YMD]*",
+            "c2": "Datum."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "accessibility",
+    "icon": "view",
+    "title": "Barrierefreiheit & Komfort",
+    "keywords": "zugang dark mode schriftgröße groußa text kontrast sehhilfe",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "view",
+        "text": "Barrierefreiheit & Komfort"
+      },
+      {
+        "type": "p",
+        "text": "I glaub fest dro, dass Software si an *Di* obassn muass und ned umkeahrt. I hab einige Werkzeig eibaut, um dir dei tägliche Arbat augenschonenda zum macha und die Bedienung z'erleichtern."
+      },
+      {
+        "type": "h2",
+        "text": "🌙 Dark Mode"
+      },
+      {
+        "type": "p",
+        "text": "Auf d'Nacht auf an grelln weißn Bildschirm z'starrn is a Krampf. In meim [badge:Optionen]-Menü konnst den *Dark Mode* eischaltn."
+      },
+      {
+        "type": "ul",
+        "items": [
+          "I färb mei komplette Oberflächn sofort in satte, augenfreundliche Grau- und Schwarztöne ei.",
+          "Des güt nur ganz lokal für dein aktualln Browser – des hoaßt, Du konnst den Dark Mode aufm Laptop dahoam eischaltn, aba den grelln Light Mode im Büro-PC lassn."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "🔎 Dynamische Schriftgrößn-Obassung"
+      },
+      {
+        "type": "p",
+        "text": "Is da Text z'kloa zum gscheid lesn? Oda host vielleicht an riesign 4K-Monitor und ois schaut wia Zwergerl aus?"
+      },
+      {
+        "type": "p",
+        "text": "In de Einstellungan findst an **Schriftgröße-Schieberegler**. Wennst den ziagst, moch i ned nur den Text gresser – i obass a de Höhe von de Zeiln, de Größn von de Symbole und den Bloz zwischn de Menüs o. I biet da 6 Stufn, damits genau basst."
+      },
+      {
+        "type": "h2",
+        "text": "🖱️ Hilfn für d'Bedienung"
+      },
+      {
+        "type": "grid",
+        "cards": [
+          {
+            "title": "Oa-Klick-Modus",
+            "text": "Wenn as Doppelklicken a Plag is, schalt den 'Oa-Klick-Modus' in de Einstellungan ei. I verhoit mi na eher wia a Webseite: Wennst drüberfahrst, unterstreich is, und mit oam Klick mach is auf."
+          },
+          {
+            "title": "Bleibade Kontrollkasterl",
+            "text": "Mehrere Dateien mit gedrückter 'Strg'-Taste zum Auswähln ko a Gfrett sei. Schalt 'Kontrollkästchen' ei, na blend i dauerhaft a klickbares Kasterl neba jeda Datei ei. Do geht's Auswähln ganz ohne Stress."
+          }
+        ]
+      },
+      {
+        "type": "tip",
+        "text": "*Tipp:* Du konnst mi a bittn, deaktivierte Knöpf in da Leistn komplett auszublendn (über de Eistellung 'Deaktivierte ausblenden'). Des macht ois vui übersichtlicher, wennst es gern minimalistisch mogst."
+      }
+    ]
+  },
+  {
+    "id": "actions",
+    "icon": "pro",
+    "title": "Aktionen",
+    "role": "write",
+    "keywords": "konflikt überschreiben zip kopieren",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "pro",
+        "text": "Aktionen & Konflikte"
+      },
+      {
+        "type": "p",
+        "text": "Wenn da Nam scho existiert:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "*Überschreiben:* Oids weg, Neis hi.",
+          "*Beide behalten:* I nenns um (z.B. \"Buidl (1).jpg\")."
+        ]
+      }
+    ]
+  }
+]

@@ -1,0 +1,44 @@
+<?php 
+if (basename($_SERVER['PHP_SELF']) == basename(__FILE__)) { 
+	header("Location: https://".$_SERVER['HTTP_HOST']); 
+	header("Connection: close");
+	die();}
+if(!defined('IPS_Token')) { 
+	header("Location: https://".$_SERVER['HTTP_HOST']); 
+	header("Connection: close");
+	die();}
+
+	require_once $work_dir.'/vendor/autoload.php';
+	use GeoIp2\Database\Reader;
+
+if (!isPrivateIp($_SERVER['REMOTE_ADDR'])) {
+	$citydb = new Reader($work_dir.'/geoip/GeoLite2-City.mmdb');
+	$asndb = new Reader($work_dir.'/geoip/GeoLite2-ASN.mmdb');
+	$cityrecord = @$citydb->city(get_real_ip_address());
+	$asnrecord = @$asndb->asn(get_real_ip_address());
+	if (@isset($cityrecord->country->isoCode) && @isset($asnrecord->autonomousSystemNumber)) {
+		$geoip_data['country_code'] = $cityrecord->country->isoCode;
+		$geoip_data['city'] = $cityrecord->city->name;
+		$geoip_data['region'] = $cityrecord->mostSpecificSubdivision->name;
+		$geoip_data['organization'] = "AS".$asnrecord->autonomousSystemNumber." ".$asnrecord->autonomousSystemOrganization;
+	}
+		$geoip_data['admin_allowed'] = False;
+		foreach ($whitelist_admin_countries as $value) { 
+			if (strtoupper($value) == strtoupper($geoip_data['country_code'])) $geoip_data['admin_allowed'] = True;
+		}
+	
+	$citydb = null;
+	$asndb = null;
+}
+
+
+// called: 
+//    function_exists('geoip_check_admin_status') && geoip_check_admin_status();
+function geoip_check_admin_status() {
+    global $geoip_data, $log_file;
+	if ($geoip_data['admin_allowed'] == False) {
+		WriteLogLine($log_file, "error", "GeoIPErr: ❌ Unauthorized access: Wrong country");
+		header("Location: processing.php?blocked=true");
+		exit();
+	}
+}

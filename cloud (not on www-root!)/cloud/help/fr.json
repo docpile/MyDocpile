@@ -1,0 +1,1344 @@
+[
+  {
+    "id": "intro",
+    "icon": "start",
+    "title": "Premiers Pas",
+    "keywords": "debut bienvenue intro salut mydocpile bases commencer",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "start",
+        "text": "Premiers Pas"
+      },
+      {
+        "type": "warn",
+        "text": "*IMPORTANT : S'il te plaît, lis cette page attentivement* – même si tu n'aimes pas les instructions ! 🧐"
+      },
+      {
+        "type": "h2",
+        "text": "Bienvenue !"
+      },
+      {
+        "type": "p",
+        "text": "Je suis [i]MyDocpile[/i], ton *majordome de fichiers* personnel <span style=\"font-size: 1.5em;\">🛎️🤵</span> dans le navigateur. Je te donne un accès rapide à tes fichiers. Voici ce que je suggère que nous fassions en premier."
+      },
+      {
+        "type": "p",
+        "text": "Je peux ressembler à un Cloud – ou presque à ton Explorateur Windows&trade; familier. C'est à toi de décider comment je m'habille pour travailler !"
+      },
+      {
+        "type": "tip",
+        "text": "Prends le temps de regarder mon menu [badge:Options] et configure-moi exactement comme tu le souhaites !"
+      },
+      {
+        "type": "p",
+        "text": "J'offre généralement plusieurs façons de faire la même chose. Il y a mes *menus de survol*, les *menus contextuels*, et la *barre d'outils*. Ne manque pas de voir mon aide sur [i]\"L'Interface\"[/i] !"
+      },
+      {
+        "type": "p",
+        "text": "Tu peux aussi me demander de faire beaucoup de choses avec le clavier et par glisser-déposer. La façon dont tu veux interagir avec moi dépend entièrement de toi. Plus d'infos dans [i]\"Contrôles & Sélection\"[/i]."
+      },
+      {
+        "type": "tip",
+        "text": "Si tu remarques des erreurs ou si tu veux une fonctionnalité spécifique, utilise le bouton Support ci-dessus !"
+      },
+      {
+        "type": "h2",
+        "text": "Familiarise-toi d'abord avec mon Interface."
+      },
+      {
+        "type": "ul",
+        "items": [
+          "*[i]Tout en haut[/i]*, si tu as accès à plusieurs clouds, je garde tes différents clouds prêts dans des *onglets*.",
+          "*[i]En haut[/i]* se trouve la *Barre d'outils*.",
+          "*[i]À gauche[/i]* je te montre la structure de tes dossiers (l'\"Arbre\"). J'appelle cela la *Vue Arborescente*.",
+          "*[i]À droite[/i]* je présente le contenu du dossier actuel. J'appelle cela la *Vue Détails*."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "👁️ Comment puis-je prévisualiser les fichiers ?"
+      },
+      {
+        "type": "p",
+        "text": "Si je peux créer un aperçu pour ce type de fichier :"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Double-clique simplement sur n'importe quel fichier.",
+          "Ou clique sur l'\"œil\" dans mon menu de survol.",
+          "Tu peux aussi utiliser le menu contextuel (clic droit)",
+          "ou le bouton \"Aperçu\" dans la barre d'outils."
+        ]
+      },
+      {
+        "type": "p",
+        "text": "Si c'est un PDF, un document Word, une image ou une vidéo, je l'ouvrirai directement dans [i]MyDocpile[/i]. Je téléchargerai automatiquement tous les autres fichiers sur ton appareil."
+      },
+      {
+        "type": "h2",
+        "text": "⬇️ Comment puis-je télécharger des fichiers ?"
+      },
+      {
+        "type": "p",
+        "text": "Avec *Chrome&trade; ou Edge&trade; :* C'est le plus simple. Tu peux simplement 🖱️ glisser-déposer le fichier sur ton ordinateur. [i]Désolé, cela ne fonctionne pas avec Firefox&trade; ou Safari&trade;.[/i]"
+      },
+      {
+        "type": "p",
+        "text": "Sinon, pour *fichiers ou dossiers individuels :* Utilise..."
+      },
+      {
+        "type": "ul",
+        "items": [
+          "l'entrée \"Télécharger\" (flèche vers le bas) dans mon *menu de survol*,",
+          "la *barre d'outils* [badge:Télécharger], ou",
+          "le *menu contextuel* (clic droit) [badge:Télécharger]."
+        ]
+      },
+      {
+        "type": "warn",
+        "text": "*[i]Important :[/i]* Avec plusieurs fichiers sélectionnés, s'il te plaît [i]n'utilise pas[/i] le menu de survol. Il ne télécharge [i]que[/i] le fichier de la ligne survolée."
+      },
+      {
+        "type": "tip",
+        "text": "*Astuce :* Je télécharge toujours les dossiers compressés en ZIP."
+      },
+      {
+        "type": "h2",
+        "text": "📤 Téléverser quelque chose (Upload)"
+      },
+      {
+        "type": "p",
+        "text": "C'est très simple :"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "D'abord, navigue vers le dossier de destination.",
+          "Glisse simplement un fichier ou un dossier de ton ordinateur vers la zone blanche en bas de ma liste.",
+          "Je ferai briller la zone en bleu quand tu glisseras quelque chose dessus.",
+          "Lâche, et je commencerai le téléversement immédiatement."
+        ]
+      },
+      {
+        "type": "warn",
+        "text": "Bien sûr, je ne peux faire cela que s'il y a des permissions d'écriture ✍🏻. 😉"
+      },
+      {
+        "type": "h2",
+        "text": "📁 Créer un Dossier"
+      },
+      {
+        "type": "p",
+        "text": "Rien de plus simple : Clique sur [badge:Nouveau Dossier] dans la barre d'outils. Dis-moi le nom et appuie sur [key:Entrée]."
+      },
+      {
+        "type": "h2",
+        "text": "️🗑️ Corbeille"
+      },
+      {
+        "type": "p",
+        "text": "Tu as supprimé quelque chose par accident ? Pas de problème - tant que tu as activé ma corbeille."
+      },
+      {
+        "type": "warn",
+        "text": "Je supprimerai le contenu de ta corbeille après sept jours."
+      }
+    ]
+  },
+  {
+    "id": "ui",
+    "icon": "ui",
+    "title": "L'Interface",
+    "keywords": "ecran mise en page barre laterale arbre liste survol barre fil d'ariane nuage onglets",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "ui",
+        "text": "Mon Interface Utilisateur"
+      },
+      {
+        "type": "h2",
+        "text": "🗂️ Onglets Cloud (Tout en haut)"
+      },
+      {
+        "type": "p",
+        "text": "Si j'ai accès à plusieurs clouds, je te montrerai des onglets ici. Clique pour changer d'environnement instantanément."
+      },
+      {
+        "type": "h2",
+        "text": "🛠️ La Barre d'outils"
+      },
+      {
+        "type": "p",
+        "text": "C'est ici que je garde tes outils. J'ai deux modes (voir ⚙️ Réglages) :"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "*Ruban (Défaut) :* Je groupe les boutons. [i]Avantage : Moderne et économise de l'espace.[/i] Survole pour développer.",
+          "*Classique :* Tous les boutons sur une ligne. [i]Avantage : Accès plus rapide en 1 clic, mais mieux sur grands écrans.[/i]"
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "🌳 La Vue Arborescente (Gauche)"
+      },
+      {
+        "type": "p",
+        "text": "Montre la structure de tes dossiers. Clique sur les flèches [badge:▶] pour développer. Glisse le séparateur pour me redimensionner."
+      },
+      {
+        "type": "h2",
+        "text": "📃 La Vue Détails (Droite)"
+      },
+      {
+        "type": "p",
+        "text": "Où vivent tes fichiers. Fonctionnalités clés :"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "*Barre de Survol :* Bouge la souris sur une ligne. Si activé, je montre des options rapides à droite.",
+          {
+            "role": "write",
+            "text": "*Zone de Dépôt :* L'espace vide sous la liste. Glisse des fichiers ici pour uploader."
+          },
+          "*Fil d'Ariane :* Clique sur \"..\" pour remonter d'un dossier."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "🕹️ Comment me contrôler ?"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "*Barre de Survol :* Bouge la souris sur une ligne.",
+          "*Menu Contextuel :* Clic droit sur un fichier ou dossier.",
+          "*Barre d'outils :* J'offre la plupart des options ici. Mais utilise le menu contextuel pour les extras comme Propriétés ou ZIP !"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "mail_tab",
+    "icon": "email",
+    "title": "L'Expérience Webmail",
+    "keywords": "mail email webmail boite reception ecrire lire envoyer recevoir messages",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "email",
+        "text": "L'Expérience Webmail"
+      },
+      {
+        "type": "p",
+        "text": "Je ne suis pas juste ton majordome de fichiers ; je suis aussi ton coursier numérique personnel ! ✉️ Avec mon module Webmail intégré, j'amène tes e-mails directement dans ton navigateur pour que tu n'aies pas à jongler entre différentes applications pour travailler."
+      },
+      {
+        "type": "h2",
+        "text": "🖥️ La disposition en trois panneaux"
+      },
+      {
+        "type": "p",
+        "text": "J'ai organisé mon interface e-mail pour te donner la meilleure vue d'ensemble possible. Quand tu ouvres l'onglet Mail, je divise ton écran en trois sections bien rangées :"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "**À gauche (L'Arbre) :** Ici, je te montre tes comptes e-mail et tes dossiers (Boîte de réception, Envoyés, Brouillons, etc.). Si tu as plusieurs comptes, tu peux les réduire et les étendre ici.",
+          "**Au milieu (La Liste) :** J'affiche tous tes messages pour le dossier sélectionné. Tu peux les trier, les filtrer pour ne voir que les non-lus, ou activer ma vue en fil de discussion.",
+          "**À droite (Le Panneau de lecture) :** Clique sur n'importe quel e-mail au milieu, et je l'ouvrirai pour toi juste ici. Pas besoin de fenêtres pop-up agaçantes !"
+        ]
+      },
+      {
+        "type": "tip",
+        "text": "*Astuce Mobile :* Si tu es sur ton smartphone, je cacherai naturellement les panneaux dont tu n'as pas besoin sur le moment pour que tu aies assez de place pour lire. Tu peux utiliser le bouton [badge:Retour] pour glisser entre la liste des dossiers, la liste des messages et la vue de lecture."
+      },
+      {
+        "type": "h2",
+        "text": "✍️ Rédiger des messages"
+      },
+      {
+        "type": "p",
+        "text": "Quand tu veux écrire un e-mail, clique sur le bouton [badge:Nouveau message] dans la barre d'outils. Je déploierai un éditeur de texte enrichi pour toi."
+      },
+      {
+        "type": "grid",
+        "cards": [
+          {
+            "title": "Adressage intelligent",
+            "text": "Commence juste à taper un nom. Je chercherai dans ton Carnet d'adresses et te suggérerai automatiquement le bon contact."
+          },
+          {
+            "title": "Texte enrichi et Images intégrées",
+            "text": "Rends tes e-mails superbes. Je te donne un éditeur complet où tu peux mettre du texte en gras, créer des listes, et même coller des images directement dans le texte."
+          },
+          {
+            "title": "Pièces jointes",
+            "text": "Besoin d'envoyer un fichier ? Clique sur [badge:Joindre des fichiers] ou glisse et dépose simplement des fichiers de ton ordinateur directement dans ma fenêtre d'édition."
+          },
+          {
+            "title": "Protection des brouillons",
+            "text": "Prends ton temps pour écrire. Je sauvegarde automatiquement ta progression en arrière-plan dans ton dossier 'Brouillons' pour que rien ne se perde."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "usage_guide",
+    "icon": "holeinone",
+    "title": "Appareils & Vitesse",
+    "keywords": "bureau tablette telephone mobile internet vitesse connexion rapide lent dsl wifi 4k tactile optimisation",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "holeinone",
+        "text": "Tirer le meilleur de moi"
+      },
+      {
+        "type": "p",
+        "text": "Je suis un caméléon ! Je m'adapte, que tu sois sur un énorme écran 4K ou sur ton téléphone."
+      },
+      {
+        "type": "h2",
+        "text": "📱 Mobile & Tablette"
+      },
+      {
+        "type": "grid",
+        "cards": [
+          {
+            "title": "Cases à cocher",
+            "text": "Viser sur tactile est dur. Active [badge:Cases à cocher]. Cela te permet de sélectionner sans ouvrir accidentellement."
+          },
+          {
+            "title": "Gagner de la place",
+            "text": "Petit écran ? Désactive la [badge:Vue Arborescente]."
+          }
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "🖥️ Bureau & Souris"
+      },
+      {
+        "type": "p",
+        "text": "Active le [badge:Menu de Survol] pour une vitesse maximale."
+      },
+      {
+        "type": "h2",
+        "text": "🐌 Internet lent ?"
+      },
+      {
+        "type": "table",
+        "headers": [
+          "Option",
+          "Recommandation"
+        ],
+        "rows": [
+          {
+            "c1": "Miniatures de liste",
+            "c2": "❌ **Off**. Économise les données."
+          },
+          {
+            "c1": "Cliquer pour Aperçu",
+            "c2": "❌ **Off**. Charge les images seulement sur double-clic."
+          },
+          {
+            "c1": "Alerte gros fichiers",
+            "c2": "✅ **On**. Je te préviens avant d'ouvrir un PDF de 50Mo."
+          }
+        ]
+      },
+      {
+        "type": "tip",
+        "text": "*Astuce Pro :* Tu peux sauvegarder ces réglages individuellement pour chaque appareil."
+      }
+    ]
+  },
+  {
+    "id": "basic",
+    "icon": "controls",
+    "title": "Contrôles & Sélection",
+    "keywords": "souris clavier tactile selection clic glisser marquee entree methodes",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "basic",
+        "text": "Contrôles & Sélection"
+      },
+      {
+        "type": "h2",
+        "text": "🖱️ Souris (Bureau)"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "*Clic :* Je sélectionne un fichier.",
+          "*Double Clic :* J'ouvre le dossier ou montre un aperçu.",
+          {
+            "role": "write",
+            "text": "*Clic Droit :* J'ouvre le Menu Contextuel (Renommer, Supprimer, Zip, Propriétés)."
+          },
+          {
+            "role": "read",
+            "text": "*Clic Droit :* J'ouvre le Menu Contextuel."
+          },
+          "*Cadre de sélection :* Clique dans l'espace vide et glisse pour sélectionner plusieurs fichiers.",
+          "*Sélection multiple :* Maintiens [key:Shift] ou [key:Ctrl] en cliquant."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "⌨️ Clavier (Raccourcis)"
+      },
+      {
+        "type": "grid",
+        "cards": [
+          {
+            "title": "Navigation",
+            "text": "[key:↑] [key:↓] Sélectionner<br>[key:Entrée] Ouvrir<br>[key:Retour] Monter"
+          },
+          {
+            "role": "write",
+            "title": "Action",
+            "text": "[key:F2] Renommer<br>[key:Suppr] Supprimer<br>[key:Ctrl]+[key:R] Actualiser"
+          },
+          {
+            "role": "write",
+            "title": "Sélection",
+            "text": "[key:Ctrl]+[key:A] Tout sélectionner"
+          }
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "📱 Tactile (Mobile)"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "*Tap :* Sélectionner.",
+          "*Double Tap :* Ouvrir.",
+          "*Appui Long :* Menu."
+        ]
+      }
+    ]
+  },
+  {
+    "id": "commander",
+    "icon": "view",
+    "title": "Vue Commander",
+    "keywords": "commander double panneau diviser vue copier deplacer deux fenetres",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "view",
+        "text": "Vue Commander"
+      },
+      {
+        "type": "warn",
+        "text": "Disponible seulement si tu as des **droits d'écriture**."
+      },
+      {
+        "type": "p",
+        "text": "Je divise l'écran en deux. Sélectionne d'un côté et clique au centre :"
+      },
+      {
+        "type": "grid",
+        "cards": [
+          {
+            "title": "Copier & Déplacer",
+            "text": "Pousse les fichiers vers le dossier ouvert de l'*autre* côté."
+          },
+          {
+            "title": "Zip & Pousser",
+            "text": "Emballe ta sélection et pousse l'archive de l'autre côté."
+          }
+        ]
+      },
+      {
+        "type": "table",
+        "headers": [
+          "Touche",
+          "Action"
+        ],
+        "rows": [
+          {
+            "c1": "[key:Tab]",
+            "c2": "Change le focus entre les fenêtres."
+          },
+          {
+            "c1": "[key:F5]",
+            "c2": "Rafraîchit seulement le côté actuel."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "office_mode",
+    "icon": "office",
+    "title": "Gestion de documents",
+    "keywords": "mode office trois panneaux fractionné aperçu pdf fusionner diviser formulaire remplir faire pivoter réparer",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "office",
+        "text": "Gestion de documents"
+      },
+      {
+        "type": "p",
+        "text": "Besoin de traiter beaucoup de documents rapidement ? Passe-moi en *Mode Office* (le bouton qui ressemble à un écran partagé dans la barre d'outils). Je me transformerai en un système professionnel de gestion de documents à trois panneaux."
+      },
+      {
+        "type": "h2",
+        "text": "La disposition à trois panneaux"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "**À gauche :** Ton arborescence de dossiers.",
+          "**Au milieu :** Ta liste de fichiers.",
+          "**À droite :** Un immense panneau d'aperçu persistant."
+        ]
+      },
+      {
+        "type": "p",
+        "text": "Au fur et à mesure que tu cliques sur les fichiers au milieu, je les affiche instantanément sur la droite. Pas de pop-up, pas de double-clic. Tu peux même faire glisser le séparateur pour rendre le panneau d'aperçu aussi large que nécessaire."
+      },
+      {
+        "type": "h2",
+        "text": "🧰 La boîte à outils PDF"
+      },
+      {
+        "type": "p",
+        "text": "Quand tu prévisualises un PDF dans ce mode, je révèle une puissante boîte à outils flottante en bas de l'écran. Je peux accomplir des tâches lourdes qui nécessitent habituellement des logiciels coûteux :"
+      },
+      {
+        "type": "grid",
+        "cards": [
+          {
+            "title": "Empiler & Fusionner",
+            "text": "Sélectionne plusieurs PDF (ou documents Office !), fais un clic droit et choisis 'Empiler les PDF'. Tu peux les glisser-déposer dans l'ordre parfait, et je les relierai en un seul fichier."
+          },
+          {
+            "title": "Dépiler / Diviser",
+            "text": "Tu as un PDF massif ? Clique sur le bouton 'Dépiler', et je le ferai éclater, enregistrant chaque page individuellement en tant que son propre fichier PDF."
+          },
+          {
+            "title": "Remplir des formulaires",
+            "text": "Si tu ouvres un PDF avec des champs de formulaire à remplir, clique sur 'Remplir le formulaire'. Je générerai une interface propre en plein écran où tu pourras taper les données, puis j'intégrerai directement tes réponses dans un nouveau PDF."
+          },
+          {
+            "title": "Extraire & Réparer",
+            "text": "Besoin du texte ou des images d'un PDF ? J'ai des boutons pour ça. J'ai même un bouton 'Réparer' si un PDF est corrompu et refuse de s'ouvrir correctement."
+          }
+        ]
+      },
+      {
+        "type": "warn",
+        "text": "La vue Office est conçue pour les grands écrans. Si tu essaies de l'utiliser sur un téléphone, les choses seront incroyablement à l'étroit !"
+      }
+    ]
+  },
+  {
+    "id": "online_office",
+    "icon": "desktop",
+    "title": "Bureautique en ligne",
+    "keywords": "onlyoffice word excel powerpoint document éditer imprimer modèle docx xlsx",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "desktop",
+        "text": "Bureautique en ligne"
+      },
+      {
+        "type": "p",
+        "text": "Savais-tu que je pouvais être ta suite bureautique complète ? Si mes administrateurs ont activé l'intégration optionnelle *Online Office*, tu peux créer, modifier et collaborer sur des documents Word&trade;, Excel&trade; et PowerPoint&trade; directement ici dans ton navigateur. Aucun logiciel local n'est requis !"
+      },
+      {
+        "type": "h2",
+        "text": "📝 Éditer des documents"
+      },
+      {
+        "type": "p",
+        "text": "Ça ne pourrait pas être plus simple :"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Trouve un document pris en charge (comme un fichier `.docx` ou `.xlsx`).",
+          "Fais simplement un *double-clic* dessus, ou sélectionne-le et clique sur le bouton [badge:Éditer] dans la barre d'outils.",
+          "J'ouvrirai un éditeur bureautique complet juste au-dessus de ma liste de fichiers. Travaille sur ton document exactement comme tu en as l'habitude !"
+        ]
+      },
+      {
+        "type": "warn",
+        "text": "Je sauvegarde ton travail automatiquement et en continu pendant que tu tapes. Quand tu as terminé, clique simplement sur le bouton [badge:Fermer] dans le coin supérieur droit de l'éditeur pour retourner à la liste des fichiers."
+      },
+      {
+        "type": "h2",
+        "text": "✨ Modèles magiques"
+      },
+      {
+        "type": "p",
+        "text": "J'ai un tour spécial pour gérer les modèles. Si tu double-cliques sur un fichier que je reconnais comme un modèle — soit par son extension (comme `.dotx` ou `.xltx`), soit si son nom commence par des mots-clés comme 'Template' ou 'Modèle' — je n'ouvrirai pas le fichier original. À la place :"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Je créerai instantanément une toute nouvelle copie du fichier pour toi.",
+          "Je te demanderai un nouveau nom (par défaut la date et l'heure d'aujourd'hui).",
+          "J'ouvrirai de manière fluide *cette nouvelle copie* dans l'éditeur, laissant ton modèle original intact et en sécurité !"
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "🖨️ Imprimer depuis le Cloud"
+      },
+      {
+        "type": "p",
+        "text": "Besoin d'une version papier ? Sélectionne un document Office ou un PDF et clique sur le bouton [badge:Imprimer] de la barre d'outils. Ce qui se passe ensuite dépend de ton appareil :"
+      },
+      {
+        "type": "grid",
+        "cards": [
+          {
+            "title": "Sur un Bureau / PC",
+            "text": "Je convertirai silencieusement le document dans un format prêt à imprimer en arrière-plan et déclencherai la boîte de dialogue d'impression native de ton navigateur. Fluide et rapide."
+          },
+          {
+            "title": "Sur un Appareil Mobile",
+            "text": "Les navigateurs mobiles sont un peu plus stricts concernant l'impression en arrière-plan. Je préparerai le fichier et te montrerai un écran 'Prêt'. Appuie sur 'Ouvrir / Imprimer' pour transmettre en toute sécurité le fichier au menu de partage de ton téléphone ou à ton lecteur PDF, d'où tu pourras l'envoyer à ton imprimante sans fil."
+          }
+        ]
+      },
+      {
+        "type": "tip",
+        "text": "*Conseil de pro :* Tu peux sélectionner *plusieurs* documents à la fois et cliquer sur Imprimer. Je les assemblerai tous proprement en un seul fichier PDF géant et l'enverrai à ton imprimante en un seul travail d'impression !"
+      }
+    ]
+  },
+  {
+    "id": "text_editor",
+    "icon": "edit",
+    "title": "Éditeur de code et de texte",
+    "keywords": "texte code éditer script txt html php css syntaxe enregistrer",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "edit",
+        "text": "Éditeur de code et de texte"
+      },
+      {
+        "type": "p",
+        "text": "Pour les bricoleurs, les développeurs et les preneurs de notes ! Si tu ouvres un fichier texte (`.txt`, `.md`, `.csv`) ou un script de code (`.php`, `.html`, `.css`, `.js`), je lancerai mon éditeur de texte professionnel intégré."
+      },
+      {
+        "type": "h2",
+        "text": "🛠️ Fonctionnalités de l'éditeur"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "*Coloration syntaxique :* Je colore automatiquement ton code en fonction du type de fichier pour le rendre lisible. Tu peux changer la langue manuellement via le menu déroulant en haut.",
+          "*Protection des brouillons :* Si ton navigateur plante ou si tu fermes l'onglet par accident, pas de panique ! Je sauvegarde les brouillons non enregistrés localement dans ton navigateur. La prochaine fois que tu ouvriras ce fichier, je te demanderai si tu veux restaurer ton brouillon.",
+          "*Onglets :* Tu peux ouvrir plusieurs fichiers texte en même temps. Je les garde bien organisés dans des onglets en haut de l'éditeur."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "🎛️ La barre d'outils de l'éditeur"
+      },
+      {
+        "type": "p",
+        "text": "Regarde la barre supérieure pendant l'édition. Je l'ai remplie d'outils pratiques :"
+      },
+      {
+        "type": "table",
+        "headers": [
+          "Outil",
+          "Ce qu'il fait"
+        ],
+        "rows": [
+          {
+            "c1": "[badge:Retour à la ligne]",
+            "c2": "Force les longues lignes de texte à revenir à la ligne suivante pour t'éviter de faire défiler horizontalement."
+          },
+          {
+            "c1": "[badge:Vue fractionnée]",
+            "c2": "Ouvre une vue côte à côte affichant la version originale enregistrée du fichier à côté de tes modifications actuelles."
+          },
+          {
+            "c1": "[badge:Minimap]",
+            "c2": "Affiche un minuscule aperçu de toute la structure de ton code sur le bord droit, te permettant de faire défiler instantanément des fichiers massifs."
+          },
+          {
+            "c1": "[badge:Rechercher (Ctrl+F)]",
+            "c2": "Ouvre la barre Rechercher & Remplacer. Indispensable pour changer les noms de variables ou corriger des fautes de frappe répétitives."
+          }
+        ]
+      },
+      {
+        "type": "tip",
+        "text": "*Magie du sélecteur de couleurs :* Si je détecte un code couleur HEX dans ton fichier (comme `#0078d4`), essaie de cliquer dessus ! Je ferai apparaître un sélecteur de couleurs visuel, te permettant de changer la couleur visuellement sans taper."
+      },
+      {
+        "type": "warn",
+        "text": "N'oublie pas de sauvegarder ton travail ! Clique sur l'icône de disquette ou appuie sur [key:Ctrl]+[key:S] (ou [key:Cmd]+[key:S] sur Mac). J'afficherai un avertissement rouge \"Brouillon non sauvegardé actif\" dans la barre d'état si tu as des modifications en attente."
+      }
+    ]
+  },
+  {
+    "id": "settings",
+    "icon": "settings",
+    "title": "Dialogue : Réglages",
+    "keywords": "options config sombre arbre police reglages global local",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "settings",
+        "text": "Dialogue : Réglages"
+      },
+      {
+        "type": "p",
+        "text": "Clique sur *Réglages* dans la barre d'outils. Dis-moi comment me comporter."
+      },
+      {
+        "type": "table",
+        "headers": [
+          "Option",
+          "Modifiable pour"
+        ],
+        "rows": [
+          {
+            "c1": "*Se souvenir du dernier dossier*",
+            "c2": "Global uniquement"
+          },
+          {
+            "c1": "*Activer Corbeille*",
+            "c2": "Global uniquement"
+          },
+          {
+            "c1": "*Arbre ouvert au démarrage*",
+            "c2": "[desktop] / [tablet] / [phone]"
+          },
+          {
+            "c1": "*Démarrer en Commander*",
+            "c2": "[desktop] / [tablet] / [phone]"
+          },
+          {
+            "c1": "*Taille des Symboles*",
+            "c2": "[desktop] / [tablet] / [phone]"
+          },
+          {
+            "c1": "*Mode Sombre*",
+            "c2": "Navigateur Local"
+          },
+          {
+            "c1": "*Afficher Cases à cocher*",
+            "c2": "[desktop] / [tablet] / [phone]"
+          },
+          {
+            "c1": "*Menu de Survol*",
+            "c2": "[desktop] / [tablet] / [phone]"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "view",
+    "icon": "view",
+    "title": "Aperçu & Média",
+    "keywords": "visionneuse apercu zoom rotation pdf image video suivant precedent",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "view",
+        "text": "Aperçu & Média"
+      },
+      {
+        "type": "p",
+        "text": "Je supporte PDF, Images, MP3, MP4, Texte. Double-clique sur un fichier."
+      },
+      {
+        "type": "h2",
+        "text": "📄 PDF ou Documents"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "*Zoom :* Boutons +/-.",
+          "*Ajuster :* Largeur ou Page entière."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "🖼️ Images"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "*Navigation :* Flèches clavier ou écran.",
+          "*Zoom :* Roulette souris.",
+          "*Outils :* Pivoter et Retourner."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "🎬 Audio & Vidéo"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Lecteur standard."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "Alerte Gros Fichier"
+      },
+      {
+        "type": "p",
+        "text": "Si un fichier est très gros, je te préviens d'abord."
+      }
+    ]
+  },
+  {
+    "id": "search",
+    "icon": "search",
+    "title": "Dialogue : Recherche",
+    "keywords": "chercher trouver filtre date taille requete dialogue type",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "search",
+        "text": "Recherche"
+      },
+      {
+        "type": "h2",
+        "text": "1. Recherche Rapide"
+      },
+      {
+        "type": "p",
+        "text": "Tape juste les premières lettres d'un fichier. Je saute dessus instantanément."
+      },
+      {
+        "type": "h2",
+        "text": "2. Recherche Globale 🔍"
+      },
+      {
+        "type": "p",
+        "text": "Dans ce dialogue, je scanne *récursivement*. Filtres :"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "*Nom :* Partie du nom.",
+          "*Date :* \"Dernières 24h\", \"Semaine dernière\" ou \"Perso\".",
+          "*Taille :* \"Petit\", \"Énorme\" ou \"Perso\"."
+        ]
+      }
+    ]
+  },
+  {
+    "id": "favorites",
+    "icon": "star",
+    "title": "Favoris & Marque-pages",
+    "keywords": "favoris marque-pages etoile sauvegarder acces rapide lien raccourci",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "star",
+        "text": "Favoris & Marque-pages"
+      },
+      {
+        "type": "p",
+        "text": "Tu as des dossiers que tu utilises tout le temps ? Je peux les retenir pour toi."
+      },
+      {
+        "type": "grid",
+        "cards": [
+          {
+            "title": "Ajouter",
+            "text": "Sélectionne un dossier et clique sur l'Étoile. Puis 'Ajouter'."
+          },
+          {
+            "title": "Renommer",
+            "text": "Clique sur le crayon [badge:✏️] dans le menu pour donner un nom court."
+          },
+          {
+            "title": "Nettoyer",
+            "text": "Utilise la poubelle [badge:🗑️] pour oublier le favori."
+          },
+          {
+            "title": "Accès Rapide",
+            "text": "Un clic dans le menu Étoile t'y emmène immédiatement."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "vaults",
+    "icon": "lock",
+    "title": "Coffres-forts sécurisés (Chiffrement)",
+    "keywords": "chiffrement coffre-fort verrouiller sécurisé mot de passe confidentialité protéger e2e déchiffrer",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "lock",
+        "text": "Coffres-forts sécurisés (Chiffrement)"
+      },
+      {
+        "type": "p",
+        "text": "As-tu des fichiers très sensibles ? Je peux les garder en toute sécurité grâce au chiffrement de bout en bout (E2E). Imagine un coffre-fort numérique dont tu es le seul à posséder la clé. Lorsque tu transformes un dossier en coffre-fort, je brouille tes fichiers si fort que littéralement personne d'autre — pas même les administrateurs du serveur, les pirates ou moi-même — ne peut les lire. La clé ne quitte jamais ton ordinateur."
+      },
+      {
+        "type": "warn",
+        "text": "*CRITIQUE :* Comme je ne connais pas ton mot de passe, je ne peux pas le réinitialiser pour toi. Si tu perds ton mot de passe, tes fichiers resteront verrouillés pour toujours et seront définitivement perdus. S'il te plaît, note-le et garde-le en lieu sûr !"
+      },
+      {
+        "type": "h2",
+        "text": "🏗️ 1. Comment créer un coffre-fort"
+      },
+      {
+        "type": "p",
+        "text": "Transformer un dossier normal en coffre-fort sécurisé est facile, mais demande un peu de patience de ta part :"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "D'abord, trouve le dossier que tu souhaites protéger.",
+          "Fais un clic droit sur le dossier et choisis [badge:Chiffrer / Déverrouiller].",
+          "Je te demanderai de définir un mot de passe fort. Trouves-en un bon !",
+          "*Important :* S'il y a déjà des fichiers dans ce dossier, je vais maintenant commencer à les chiffrer un par un. *S'il te plaît, ne ferme pas l'onglet du navigateur tant que je ne t'ai pas dit que j'ai terminé !* Si tu fermes la page pendant que je travaille, des fichiers pourraient être corrompus."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "🔓 2. Ouvrir et utiliser ton coffre-fort"
+      },
+      {
+        "type": "p",
+        "text": "Tu reconnaîtras ton coffre-fort au petit icône de cadenas. Voici comment nous travaillons avec :"
+      },
+      {
+        "type": "grid",
+        "cards": [
+          {
+            "title": "Entrer dans le coffre",
+            "text": "Il suffit de cliquer ou double-cliquer sur le dossier verrouillé. Je te demanderai ton mot de passe. Une fois saisi, je déverrouillerai le coffre-fort dans la mémoire de ton navigateur."
+          },
+          {
+            "title": "Téléverser des fichiers",
+            "text": "Une fois à l'intérieur du coffre déverrouillé, tu peux y glisser-déposer de nouveaux fichiers, comme d'habitude. Je les brouillerai et les chiffrerai automatiquement en arrière-plan *avant* de les envoyer au serveur."
+          },
+          {
+            "title": "Télécharger des fichiers",
+            "text": "Lorsque tu télécharges un fichier depuis ton coffre-fort, je le déchiffre automatiquement pour toi à la volée. Il arrivera sur ton ordinateur comme un fichier normal et lisible."
+          },
+          {
+            "title": "Le reverrouiller",
+            "text": "Lorsque tu as terminé, tu peux faire un clic droit sur le dossier et choisir [badge:Verrouiller le coffre-fort]. Ou, encore plus simple : ferme simplement l'onglet de ton navigateur. J'oublie automatiquement ton mot de passe au moment où tu pars, verrouillant le coffre instantanément."
+          }
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "❌ 3. Supprimer le coffre-fort (Déchiffrement)"
+      },
+      {
+        "type": "p",
+        "text": "Si tu décides que tu n'as plus besoin de la sécurité supplémentaire, tu peux retransformer le coffre-fort en un dossier normal et non chiffré."
+      },
+      {
+        "type": "ul",
+        "items": [
+          "D'abord, clique sur le coffre-fort et déverrouille-le avec ton mot de passe.",
+          "Ensuite, fais un clic droit sur le dossier et sélectionne [badge:Chiffrer / Déverrouiller] à nouveau.",
+          "Je te demanderai si tu souhaites déchiffrer le dossier. Confirme ceci.",
+          "Je vais maintenant décoder soigneusement tous tes fichiers pour qu'ils redeviennent normaux. *Encore une fois, ne ferme pas le navigateur pendant que je fais ça !*"
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "📝 Online Office & Chiffrement (Note importante)"
+      },
+      {
+        "type": "p",
+        "text": "Je propose une super fonctionnalité où tu peux éditer des documents Word, Excel ou PowerPoint directement dans ton navigateur en utilisant *Online Office*. Tu peux utiliser cette fonctionnalité même pour les fichiers à l'intérieur de ton coffre-fort, mais il y a un détail technique important que tu dois savoir :"
+      },
+      {
+        "type": "p",
+        "text": "Pour permettre à l'éditeur Online Office de lire et de te laisser taper dans le document, je dois envoyer brièvement le fichier au serveur et l'y stocker *non chiffré* temporairement pendant que tu y travailles activement. Lorsque tu fermes l'éditeur, je le chiffre à nouveau en toute sécurité."
+      },
+      {
+        "type": "tip",
+        "text": "*Ce que cela signifie pour toi :* Si ton document contient du travail standard, l'utilisation d'Online Office est parfaitement acceptable et très pratique. Cependant, si le document contient des données absolument top-secrètes (comme des mots de passe bancaires ou des dossiers médicaux strictement confidentiels), tu ne devrais pas utiliser Online Office. Pour une sécurité absolue, télécharge simplement le fichier, édite-le localement sur ton propre ordinateur, puis téléverse-le à nouveau."
+      },
+      {
+        "type": "h2",
+        "text": "👁️ Aperçus & Restrictions"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "*Aperçus sécurisés :* Tu peux cliquer en toute sécurité sur des images, des vidéos et des PDF à l'intérieur d'un coffre déverrouillé pour les prévisualiser. Je les déchiffre directement sur l'écran de ton ordinateur, pour que tes données restent complètement privées.",
+          "*Vue Office désactivée :* Ma *Vue Office* avancée (la disposition spéciale avec trois colonnes pour le tri intensif de documents) ne peut pas être utilisée avec les coffres-forts. La façon dont les fichiers sont gérés dans cette vue spécifique est trop complexe pour être mélangée à des règles de sécurité strictes."
+        ]
+      }
+    ]
+  },
+  {
+    "id": "mail_setup",
+    "icon": "settings",
+    "title": "Configuration E-mail & Contacts",
+    "keywords": "configuration assistant imap smtp carnet adresses contacts alias signature",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "settings",
+        "text": "Configuration E-mail & Contacts"
+      },
+      {
+        "type": "p",
+        "text": "Avant de pouvoir récupérer tes messages, j'ai besoin de savoir où habite ta boîte mail numérique. Ne t'inquiète pas, je rends cette configuration incroyablement simple !"
+      },
+      {
+        "type": "h2",
+        "text": "⚙️ L'Assistant de Configuration"
+      },
+      {
+        "type": "p",
+        "text": "Lorsque tu ajoutes un compte pour la première fois, je te guiderai à travers mon Assistant de Configuration de Boîte Mail. C'est un processus logique étape par étape :"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "*Infos de base :* Dis-moi ton nom et ton adresse e-mail.",
+          "*Connexion :* Donne-moi le nom d'utilisateur et le mot de passe requis par ton fournisseur.",
+          "*Détails du serveur :* J'ai besoin de connaître les adresses et les ports de tes serveurs IMAP (entrant) et SMTP (sortant).",
+          "*Alias :* Utilises-tu d'autres adresses (comme 'info@') qui atterrissent dans la même boîte de réception ? Dis-le-moi, et je te permettrai d'envoyer des e-mails depuis celles-ci aussi !",
+          "*Signatures :* Conçois une belle signature, et je l'ajouterai automatiquement à la fin de tous tes e-mails sortants."
+        ]
+      },
+      {
+        "type": "tip",
+        "text": "*Comptes multiples :* Tu peux ajouter autant de comptes e-mail que tu le souhaites. Je les organiserai proprement dans l'arbre des dossiers pour que tu puisses tout gérer depuis un seul endroit."
+      },
+      {
+        "type": "h2",
+        "text": "📇 Ton Carnet d'Adresses"
+      },
+      {
+        "type": "p",
+        "text": "J'aime garder tes contacts parfaitement organisés. Tu peux y accéder à tout moment en cliquant sur [badge:Contacts] dans la barre d'outils e-mail."
+      },
+      {
+        "type": "grid",
+        "cards": [
+          {
+            "title": "Collecte automatique",
+            "text": "Si tu laisses l'option de collecte automatique activée, je me souviendrai silencieusement de chaque adresse e-mail à laquelle tu envoies un message, pour que tu n'aies jamais à la retaper."
+          },
+          {
+            "title": "Importation de contacts",
+            "text": "Tu viens d'un autre fournisseur ? Tu peux télécharger un fichier CSV, et j'importerai tous tes anciens contacts automatiquement."
+          },
+          {
+            "title": "Détails du contact",
+            "text": "Tu peux modifier n'importe quel contact pour ajouter plusieurs adresses e-mail, numéros de téléphone, leur entreprise, et même attacher des clés de sécurité spécifiques à leur profil."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "mail_security",
+    "icon": "lock",
+    "title": "Sécurité E-mail (PGP)",
+    "keywords": "securite pgp chiffrement e2e cles publique privee phrase secrete sur confidentialite",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "lock",
+        "text": "Sécurité E-mail (PGP)"
+      },
+      {
+        "type": "p",
+        "text": "Je prends ta vie privée très au sérieux. Les e-mails normaux sont comme des cartes postales—quiconque les manipule sur internet peut théoriquement les lire. Je veux te donner une enveloppe scellée. En utilisant le chiffrement de bout en bout PGP, je peux brouiller tes messages si profondément que seul ton destinataire prévu peut les lire."
+      },
+      {
+        "type": "h2",
+        "text": "🔑 Générer tes clés"
+      },
+      {
+        "type": "p",
+        "text": "Pour commencer, tu as besoin d'une Paire de Clés. Je peux la générer pour toi directement dans l'Assistant de Configuration de Boîte Mail ou plus tard dans tes Paramètres E-mail."
+      },
+      {
+        "type": "ul",
+        "items": [
+          "*Clé Publique :* C'est comme ton cadenas numérique. Tu la partages avec le monde pour que les gens puissent verrouiller des messages qui te sont uniquement destinés.",
+          "*Clé Privée :* Celle-ci reste avec moi, protégée par une phrase secrète que tu choisis. Je l'utilise pour déverrouiller les messages que les gens t'envoient."
+        ]
+      },
+      {
+        "type": "warn",
+        "text": "*CRITIQUE :* Je chiffre ta Clé Privée avec ta phrase secrète avant de la sauvegarder. Je NE connais PAS ta phrase secrète. Si tu l'oublies, je ne peux pas récupérer tes e-mails chiffrés. S'il te plaît, garde-la en sécurité !"
+      },
+      {
+        "type": "h2",
+        "text": "✉️ Envoyer un e-mail chiffré"
+      },
+      {
+        "type": "p",
+        "text": "J'essaie de rendre l'envoi de courrier sécurisé aussi fluide que possible. Quand tu rédiges un message et appuies sur [badge:Envoyer] :"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Je vérifie ton Carnet d'Adresses pour voir si tu as sauvegardé les Clés Publiques de tous les destinataires.",
+          "Si je ne les trouve pas localement, j'interrogerai les annuaires de clés globaux (comme keys.openpgp.org) en arrière-plan pour voir si je peux les trouver pour toi.",
+          "Si je trouve des clés pour tout le monde, je ferai une pause et te demanderai : \"La livraison sécurisée est disponible. Veux-tu chiffrer cet e-mail ?\"",
+          "Si tu dis oui, je brouille le message et les pièces jointes directement dans ton navigateur avant même qu'ils ne touchent le réseau."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "🔓 Lire un e-mail chiffré"
+      },
+      {
+        "type": "p",
+        "text": "Quand quelqu'un t'envoie un e-mail chiffré PGP, tu verras une bannière au-dessus du message. Parce qu'il est solidement verrouillé, je ne peux pas le lire pour toi automatiquement."
+      },
+      {
+        "type": "p",
+        "text": "Je te demanderai gentiment d'entrer ta phrase secrète. Une fois que tu m'auras donné le feu vert, j'utiliserai ta Clé Privée pour déchiffrer le message instantanément sur ton écran. Le texte non chiffré n'est jamais envoyé au serveur ; il reste strictement entre toi et ton navigateur."
+      }
+    ]
+  },
+  {
+    "id": "prop",
+    "icon": "prop",
+    "title": "Dialogue : Propriétés",
+    "keywords": "proprietes taille treemap info stats tuiles dialogue",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "prop",
+        "text": "Dialogue : Propriétés"
+      },
+      {
+        "type": "p",
+        "text": "Clic droit -> *Propriétés*. Je calcule la taille réelle (récursif)."
+      },
+      {
+        "type": "h2",
+        "text": "🗺️ Le Treemap (Carte de Stockage)"
+      },
+      {
+        "type": "p",
+        "text": "La zone du bas montre une carte graphique. Aide à comprendre ce qui mange ton espace."
+      },
+      {
+        "type": "treemap",
+        "l1": "Mon Dossier Vidéo",
+        "l2": "Factures",
+        "l3": "Fichiers"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Chaque rectangle est un sous-dossier.",
+          "La taille correspond à l'usage disque.",
+          "*Explorer :* Clique sur un rectangle pour plonger dedans.",
+          "*Retour :* Utilise la flèche [badge:⤴️]."
+        ]
+      }
+    ]
+  },
+  {
+    "id": "multi_rename",
+    "icon": "edit",
+    "title": "Renommage par lot",
+    "keywords": "renommer lot multi motif regex compteur date",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "edit",
+        "text": "Renommage par lot"
+      },
+      {
+        "type": "p",
+        "text": "Si tu veux nettoyer beaucoup de fichiers à la fois, je suis là. Appuie sur [key:F2] avec plusieurs fichiers sélectionnés."
+      },
+      {
+        "type": "h2",
+        "text": "Les Blocs (Placeholders)"
+      },
+      {
+        "type": "table",
+        "headers": [
+          "Code",
+          "Résultat"
+        ],
+        "rows": [
+          {
+            "c1": "*[N]*",
+            "c2": "L'*ancien nom*."
+          },
+          {
+            "c1": "*[E]*",
+            "c2": "L'*extension*."
+          },
+          {
+            "c1": "*[C]*",
+            "c2": "Un *Compteur*."
+          },
+          {
+            "c1": "*[YMD]*",
+            "c2": "La *date de modif*."
+          },
+          {
+            "c1": "*[tYMD]*",
+            "c2": "La date d'*aujourd'hui*."
+          }
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "Exemples"
+      },
+      {
+        "type": "grid",
+        "cards": [
+          {
+            "title": "1. Trier Photos",
+            "text": "Motif : `[YMD] - [N]`"
+          },
+          {
+            "title": "2. Numérotation",
+            "text": "Motif : `Img_[C]`"
+          },
+          {
+            "title": "3. Corriger Date",
+            "text": "Bouton [badge:📅 Corriger Date]."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "accessibility",
+    "icon": "view",
+    "title": "Accessibilité et confort",
+    "keywords": "accès mode sombre police taille grand texte contraste aide visuelle",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "view",
+        "text": "Accessibilité et confort"
+      },
+      {
+        "type": "p",
+        "text": "Je crois fermement que les logiciels doivent s'adapter à *toi*, et non l'inverse. J'ai plusieurs outils intégrés pour rendre ton travail quotidien plus doux pour les yeux et plus simple à naviguer."
+      },
+      {
+        "type": "h2",
+        "text": "🌙 Mode Sombre"
+      },
+      {
+        "type": "p",
+        "text": "Fixer un écran blanc éclatant tard le soir n'est pas amusant. Dans mon menu [badge:Options], tu peux activer le *Mode Sombre*."
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Je basculerai instantanément toute mon interface vers des gris et des noirs profonds, agréables pour les yeux.",
+          "Ceci est entièrement local à ton navigateur actuel — ce qui signifie que tu peux avoir le Mode Sombre sur ton PC portable à la maison, mais garder le Mode Clair sur ton PC de bureau lumineux."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "🔎 Dimensionnement dynamique de la police"
+      },
+      {
+        "type": "p",
+        "text": "Le texte est-il trop petit pour être lu confortablement ? Ou as-tu peut-être un énorme moniteur 4K et tout semble minuscule ?"
+      },
+      {
+        "type": "p",
+        "text": "Dans les Paramètres, tu trouveras un **curseur de Taille de Police**. Lorsque tu le fais glisser, je ne me contente pas de grossir le texte — j'augmente proportionnellement la hauteur des lignes, la taille des icônes et l'espacement des menus. Je propose 6 niveaux de taille distincts pour que tu puisses trouver ton ajustement parfait."
+      },
+      {
+        "type": "h2",
+        "text": "🖱️ Aides à l'interaction"
+      },
+      {
+        "type": "grid",
+        "cards": [
+          {
+            "title": "Mode Simple Clic",
+            "text": "Si le double-clic est difficile ou fatigant, active le 'Mode Simple Clic' dans les Paramètres. Je me comporterai davantage comme une page web : le survol souligne un fichier, et un simple clic l'ouvre."
+          },
+          {
+            "title": "Cases à cocher persistantes",
+            "text": "Sélectionner plusieurs fichiers en maintenant la touche 'Ctrl' peut être délicat. Active les 'Cases à cocher' pour afficher en permanence une case cliquable à côté de chaque fichier, rendant la sélection facile et sans erreur."
+          }
+        ]
+      },
+      {
+        "type": "tip",
+        "text": "*Conseil :* Tu peux aussi me demander de cacher complètement les boutons désactivés dans la barre d'outils (via le paramètre 'Cacher les désactivés'). Cela réduit considérablement l'encombrement visuel si tu préfères une interface minimaliste."
+      }
+    ]
+  },
+  {
+    "id": "actions",
+    "icon": "pro",
+    "title": "Actions & Conflits",
+    "role": "write",
+    "keywords": "conflit ecraser garder les deux zip unzip copier deplacer",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "pro",
+        "text": "Actions & Conflits"
+      },
+      {
+        "type": "h2",
+        "text": "⚔️ Le Dialogue de Conflit"
+      },
+      {
+        "type": "p",
+        "text": "Si tu uploades ou déplaces et que le nom existe déjà :"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "*Écraser :* Je supprime l'ancien et garde le nouveau.",
+          "*Garder les deux :* Je renomme le nouveau (ex: \"Photo (1).jpg\").",
+          "*Passer :* J'annule l'action."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "📦 Zip vs. Télécharger"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "*Bouton \"Télécharger\" :* Je zippe et télécharge sur ton PC.",
+          "*Menu \"Copier vers Zip\" :* Je crée un zip [i]sur le serveur[/i]."
+        ]
+      }
+    ]
+  }
+]

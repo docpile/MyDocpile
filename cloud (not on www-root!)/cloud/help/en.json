@@ -1,0 +1,1571 @@
+[
+  {
+    "id": "intro",
+    "icon": "start",
+    "title": "First Steps",
+    "keywords": "start welcome intro hello mydocpile basics begin",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "start",
+        "text": "First Steps"
+      },
+      {
+        "type": "warn",
+        "text": "*IMPORTANT: Please read this page carefully* – even if you don't usually like these kinds of instructions and find them boring! 🧐"
+      },
+      {
+        "type": "h2",
+        "text": "Welcome!"
+      },
+      {
+        "type": "p",
+        "text": "I am [i]MyDocpile[/i], your personal *file butler* <span style=\"font-size: 1.5em;\">🛎️🤵</span> in the browser. I give you fast access to your files. Since you are reading this, you are already logged in - awesome 😍. Now, here is what I suggest we do first."
+      },
+      {
+        "type": "p",
+        "text": "I can look like a cloud to you – or almost like your familiar Windows&trade; Explorer. It's completely up to you how I dress for work!"
+      },
+      {
+        "type": "tip",
+        "text": "Be sure to take the time to, right after reading this, look at my [badge:Options] menu and configure me exactly the way you personally want!"
+      },
+      {
+        "type": "p",
+        "text": "I usually offer several ways to do the same thing. There are my *hover menus*, the *context menus*, and the *toolbar*, do not miss for that to see my help item [i]\"The Interface\"[/i]!"
+      },
+      {
+        "type": "p",
+        "text": "You can also ask me to do quite a lot with the keyboard and by dragging and dropping. How you personally want to interact with me is entirely up to you. More on that you will find in the help item [i]\"Controls & Selection\"[/i]."
+      },
+      {
+        "type": "tip",
+        "text": "If you notice any errors or want a specific feature, be sure to use the Support button above! It is there so that I can help you!"
+      },
+      {
+        "type": "h2",
+        "text": "Familiarize Yourself first with my Interface."
+      },
+      {
+        "type": "ul",
+        "items": [
+          "*[i]At the very top[/i]*, depending on whether you have multiple clouds in access, I keep your different clouds ready in *tabs*.",
+          "*[i]At the top[/i]* is the *Toolbar* with all my tools for you.",
+          "*[i]On the left[/i]* I show you your folder structure (the \"Tree\"). I call this the *Tree View*.",
+          "*[i]On the right[/i]* I present the content of the current folder. I call that the *Details View*"
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "👁️How can I Preview Files for you? "
+      },
+      {
+        "type": "p",
+        "text": "If I can create a preview for this particular file type:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Simply Double-click any file in the details view.",
+          "Or click on the \"eye\" in my hover menu of the particular line.",
+          "You can also use the context menu (right mouse click)",
+          "or the \"Preview\" button in the toolbar."
+        ]
+      },
+      {
+        "type": "p",
+        "text": "*You see: I know many ways to reach the same goal.* 😉"
+      },
+      {
+        "type": "p",
+        "text": "If it is a PDF, Word-Document, an image or video, I will open it directly inside [i]MyDocpile[/i]. I will automatically download all other files to your device. You can then open them locally."
+      },
+      {
+        "type": "tip",
+        "text": "*Tip:* You don't need to close the preview (dismiss me) to view the next file. Simply use the arrows at the edge of the screen to navigate."
+      },
+      {
+        "type": "h2",
+        "text": "⬇️ How can I Download Files for you?"
+      },
+      {
+        "type": "p",
+        "text": "With the *Chrome&trade; or Edge&trade; browser:* If you are using these browsers, it's the easiest. You can simply 🖱️ drag and drop the file onto your computer. Just drag the file from your MyDocpile to your desktop while holding down the mouse button. [i]Sorry to say this does not work with Firefox&trade; or Safari&trade;.[/i]"
+      },
+      {
+        "type": "p",
+        "text": "Otherwise, for *individual files or folders:* Use either... ,"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "the \"Download\" (downward arrow) entry in my *hover menu* of that row,",
+          "the *toolbar* [badge:Download], or",
+          "or the *context menu* (right mouse-click) [badge:Download]."
+        ]
+      },
+      {
+        "type": "p",
+        "text": "If you want to download *multiple files or folders*, select them first."
+      },
+      {
+        "type": "warn",
+        "text": "*[i]Important:[/i]* With several files/folders selected,  please [i]do not[/i] use the hover menu. The reason is, the hover menu by design [i]only[/i] downloads the file in the row of the hover."
+      },
+      {
+        "type": "tip",
+        "text": "*Tip:* I always download folders packed as ZIP files. This is technically unavoidable. If a folder is too large for me to compress as a ZIP file, I will notify you during the download."
+      },
+      {
+        "type": "h2",
+        "text": "📤 Upload Something"
+      },
+      {
+        "type": "p",
+        "text": "That is pretty simple:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "First, let's navigate me to the folder where the files to be uploaded will later be located.",
+          "Simply drag a file or a folder from your computer (or even several of them) into the white area on the bottom of my file list. ",
+          "I will make the area glow blue when you drag a file or folder onto it. ",
+          "Drop the file/folder(s), and I will start the upload immediately."
+        ]
+      },
+      {
+        "type": "p",
+        "text": "Alternatively, you can also ask me via the [badge:Upload] toolbar button to upload the file(s) to the current directory in the conventional way."
+      },
+      {
+        "type": "warn",
+        "text": "Of course I can only perform this if there are write permissions ✍🏻 on the respective cloud. 😉"
+      },
+      {
+        "type": "h2",
+        "text": "📁 Create Folder"
+      },
+      {
+        "type": "p",
+        "text": "Nothing could be simpler: Click [badge:New Folder] in the top toolbar. Tell me the name and press [key:Enter]. Now I have created space for new projects."
+      },
+      {
+        "type": "warn",
+        "text": "Of course also this I can only perform this if there are write permissions ✍🏻 on the respective cloud. 😉"
+      },
+      {
+        "type": "h2",
+        "text": "️🗑️ Recycle Bin"
+      },
+      {
+        "type": "p",
+        "text": "Pressed the delete key one time too often? If you accidentally deleted something, no problem - as long as you have my recycle bin enabled."
+      },
+      {
+        "type": "warn",
+        "text": "I will delete the contents of your trash after seven tabs."
+      }
+    ]
+  },
+  {
+    "id": "ui",
+    "icon": "ui",
+    "title": "The Interface",
+    "keywords": "screen layout sidebar tree list hover bar crumb cloud tabs",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "ui",
+        "text": "My User Interface"
+      },
+      {
+        "type": "h2",
+        "text": "🗂️ Cloud Tabs (Top Edge, only in case we have several clouds)"
+      },
+      {
+        "type": "p",
+        "text": "If i have access to multiple clouds (e.g., Work & Private), I will show you tabs here. Click a tab to ask me to switch storage environments instantly. I remember your location in each cloud separately."
+      },
+      {
+        "type": "h2",
+        "text": "🛠️ The Toolbar"
+      },
+      {
+        "type": "p",
+        "text": "This is where I keep your tools. I have two modes for you (see ⚙️ Settings):"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "*Ribbon (Default):* I group the buttons (View, Edit, Actions). [i]Benefit: Makes me look modern and saves space on small screens.[/i] Hover to make me expand them.",
+          "*Classic:* I place all the buttons in a single row. Quite long... at least when you have modify rights... [i]Benefit: Faster 1-click access - but best only on large monitors.[/i]"
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "🌳 The Tree View (Left) "
+      },
+      {
+        "type": "p",
+        "text": "The tree shows your folder structure. Click [badge:▶] arrows to ask me to expand folders without changing your current view. Drag the divider to resize me. I do this almost exactly like the Windows Explorer."
+      },
+      {
+        "type": "h2",
+        "text": "📃 The Details View (Right) "
+      },
+      {
+        "type": "p",
+        "text": "Where your files live. Key features I offer you there:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "*Hover Bar:* Move the mouse over a line. When enabled, I show a small floating bar with quick access options (e.g., preview, download) on the right. Saves you mouse clicks!",
+          {
+            "role": "write",
+            "text": "*Dropzone:* The empty space below the list. Drag files here for me to upload."
+          },
+          "*Breadcrumbs:* Click \"..\" in the list to ask me to go up a folder. Useful, for example, when navigating with the keyboard, or also on mobile devices when you have just switched off my tree view."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "🕹️ How can you control me?"
+      },
+      {
+        "type": "p",
+        "text": "You can control me using the following menus:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "*Hover Bar:* As described previously, move the mouse over a line. If enabled, I will serve you a small floating bar with quick access options.[br]",
+          "*Context Menu:* Right-click on a file or folder. I will respond to this in both the tree view (i.e., in the left part of the window) and the details view (i.e., on the right).[br]",
+          "*Toolbar:* I offer most options on the toolbar too. However, in some situations there may be more options - e.g. the \"Properties\" dialog or the ZIP functions - which I only keep in the context menu. Therefore please always use the context menu too!"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "mail_tab",
+    "icon": "email",
+    "title": "The Webmail Experience",
+    "keywords": "mail email webmail inbox compose read send receive messages",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "email",
+        "text": "The Webmail Experience"
+      },
+      {
+        "type": "p",
+        "text": "I am not just your file butler; I am also your personal digital courier! ✉️ With my built-in Webmail module, I bring your emails directly to your browser so you don't have to switch between different apps to get your work done."
+      },
+      {
+        "type": "h2",
+        "text": "🖥️ The Three-Pane Layout"
+      },
+      {
+        "type": "p",
+        "text": "I have organized my email interface to give you the best overview possible. When you open the Mail Tab, I split your screen into three neat sections:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "**Left (The Tree):** Here I show your email accounts and folders (Inbox, Sent, Drafts, etc.). If you have multiple accounts, you can collapse and expand them here.",
+          "**Middle (The List):** I display all your messages for the selected folder. You can sort them, filter them for unread messages, or switch on my conversation thread view.",
+          "**Right (The Reading Pane):** Click on any email in the middle, and I will open it for you right here. No annoying popups needed!"
+        ]
+      },
+      {
+        "type": "tip",
+        "text": "*Mobile Tip:* If you are on your smartphone, I will naturally hide the panes you don't need at the moment so you have enough space to read. You can use the [badge:Back] button to slide between the folder list, message list, and reading view."
+      },
+      {
+        "type": "h2",
+        "text": "✍️ Composing Messages"
+      },
+      {
+        "type": "p",
+        "text": "When you want to write an email, click the [badge:New mail] button in the toolbar. I will slide open a rich text composer for you."
+      },
+      {
+        "type": "grid",
+        "cards": [
+          {
+            "title": "Smart Addressing",
+            "text": "Just start typing a name. I will search through your Address Book and automatically suggest the right contact for you."
+          },
+          {
+            "title": "Rich Text & Inline Images",
+            "text": "Make your emails look great. I give you a full editor where you can bold text, create lists, and even paste images directly into the text."
+          },
+          {
+            "title": "Attachments",
+            "text": "Need to send a file? Click [badge:Attach Files] or simply drag and drop files from your computer straight into my composer window."
+          },
+          {
+            "title": "Draft Protection",
+            "text": "Take your time writing. I automatically save your progress in the background to your 'Drafts' folder so nothing gets lost."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "usage_guide",
+    "icon": "holeinone",
+    "title": "Devices & Speed",
+    "keywords": "desktop tablet phone mobile internet speed connection fast slow dsl wifi 4k touch optimization",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "holeinone",
+        "text": "Getting the Best Out of Me"
+      },
+      {
+        "type": "p",
+        "text": "I am a chameleon! I adapt, whether you're at a huge 4K monitor or typing on your phone on the train. But with the right settings, you make your life easier."
+      },
+      {
+        "type": "h2",
+        "text": "📱 Mobile & Tablet (On the Go)"
+      },
+      {
+        "type": "grid",
+        "cards": [
+          {
+            "title": "Checkboxes",
+            "text": "Hitting targets on touchscreens is hard. Turn on [badge:Checkboxes] in options. This lets you select files safely without accidentally opening them."
+          },
+          {
+            "title": "Save Space",
+            "text": "Screen too small? Turn off [badge:Tree View]. You can still navigate via folder icons or the 'Back' button."
+          }
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "🖥️ Desktop & Mouse (Office)"
+      },
+      {
+        "type": "p",
+        "text": "Here you can really speed up! Turn on the [badge:Hover Menu]. When you mouse over a file, a bar pops up immediately allowing you to copy, rename, or preview - much faster than right-clicking!"
+      },
+      {
+        "type": "h2",
+        "text": "🐌 Slow Internet?"
+      },
+      {
+        "type": "p",
+        "text": "Are you on village Wi-Fi or running low on data? I can be frugal:"
+      },
+      {
+        "type": "table",
+        "headers": [
+          "Option",
+          "Recommendation"
+        ],
+        "rows": [
+          {
+            "c1": "List Thumbnails",
+            "c2": "❌ **Off**. Saves hundreds of small image loads."
+          },
+          {
+            "c1": "Click to Preview",
+            "c2": "❌ **Off**. Only load images if you really want to see them (via double-click or menu)."
+          },
+          {
+            "c1": "Warn on large files",
+            "c2": "✅ **On**. I warn you before you accidentally open a 50MB PDF."
+          }
+        ]
+      },
+      {
+        "type": "tip",
+        "text": "*Pro Tip:* You can save these settings individually for each device type. Set your phone to 'Frugal' and your PC to 'Show All'. I'll remember that for you!"
+      }
+    ]
+  },
+  {
+    "id": "basic",
+    "icon": "controls",
+    "title": "Controls & Selection",
+    "keywords": "mouse keyboard touch selection click drag marquee input methods",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "basic",
+        "text": "Controls & Selection"
+      },
+      {
+        "type": "h2",
+        "text": "🖱️ Mouse (Desktop)"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "*Click:* I select a file.",
+          "*Double Click:* I open the folder or show you a file preview.",
+          {
+            "role": "write",
+            "text": "*Right Click:* I open the Context Menu (Rename, Delete, Zip, Properties)."
+          },
+          {
+            "role": "read",
+            "text": "*Right Click:* I open the Context Menu (e.g. for Preview, Download)."
+          },
+          "*Drag Box (Marquee):* Click empty space and drag so I can select multiple files for you.",
+          "*Multiple selection:* You can also select multiple files/folders, e.g., if you want me to download them together. To do this, click on the files/folders while holding down the [key:Shift] or [key:Ctrl] key, just like in Windows Explorer."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "⌨️ Keyboard (Shortcuts)"
+      },
+      {
+        "type": "p",
+        "text": "You can operate me almost entirely without a mouse. Here are all the shortcuts I listen to:"
+      },
+      {
+        "type": "grid",
+        "cards": [
+          {
+            "title": "Navigation",
+            "text": "[key:↑] [key:↓] Select<br>[key:PgUp] [key:PgDn] Scroll<br>[key:Enter] Open<br>[key:Backspace] Go Up<br>[key:Home] / [key:End] Jump Lists"
+          },
+          {
+            "role": "write",
+            "title": "Action",
+            "text": "[key:F2] Rename<br>[key:Del] Delete<br>[key:Ctrl]+[key:R] Refresh"
+          },
+          {
+            "role": "write",
+            "title": "Select",
+            "text": "[key:Shift]+[key:↓]/[key:↑] Select multiple<br>[key:Ctrl]+[key:C]/[key:X]/[key:V] Copy/Cut/Paste[br][key:Ctrl]+[key:A] Select All"
+          }
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "📱 Touch (Tablet / Mobile)"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "*Tap:* I select.",
+          "*Double Tap:* I open.",
+          "*Long Press:* I open the Menu."
+        ]
+      },
+      {
+        "type": "tip",
+        "text": "*Tip:* On a phone, allow me to use \"Checkboxes\" in the Settings. This makes selecting files on small screens much easier for us."
+      }
+    ]
+  },
+  {
+    "id": "commander",
+    "icon": "view",
+    "title": "Commander View",
+    "keywords": "commander dual pane split view copy move two windows",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "view",
+        "text": "Commander View"
+      },
+      {
+        "type": "warn",
+        "text": "This view is only available if you have **write permissions** in this cloud. I hide it in 'Read-Only' mode because it's designed for moving and organizing."
+      },
+      {
+        "type": "p",
+        "text": "Do you know the old Norton Commander or Total Commander? I can do that too! I split the screen in half so you can move files from A to B in a flash."
+      },
+      {
+        "type": "h2",
+        "text": "The Power is in the Middle"
+      },
+      {
+        "type": "p",
+        "text": "Between the two windows, you see a bar with buttons. Select files on one side and then click in the middle:"
+      },
+      {
+        "type": "grid",
+        "cards": [
+          {
+            "title": "Copy & Move",
+            "text": "Pushes the selected files immediately into the folder open on the *other* side. No drag & drop needed (but possible)!"
+          },
+          {
+            "title": "Zip & Push",
+            "text": "The button with the zipper packs your selection and pushes the finished archive directly to the other side."
+          }
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "Keyboard Shortcuts"
+      },
+      {
+        "type": "table",
+        "headers": [
+          "Key",
+          "Action"
+        ],
+        "rows": [
+          {
+            "c1": "[key:Tab]",
+            "c2": "Switches focus between the left and right window."
+          },
+          {
+            "c1": "[key:F5]",
+            "c2": "Refreshes only the side you are currently on."
+          },
+          {
+            "c1": "[key:Enter]",
+            "c2": "Opens the folder. If you are on [..], I go up one level."
+          }
+        ]
+      },
+      {
+        "type": "tip",
+        "text": "*Tip:* You can grab the bar in the middle with your mouse and move it to make the left or right window wider."
+      }
+    ]
+  },
+  {
+    "id": "office_mode",
+    "icon": "office",
+    "title": "Document Management",
+    "keywords": "office mode three pane split preview pdf merge split form fill rotate repair",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "office",
+        "text": "Document Management"
+      },
+      {
+        "type": "p",
+        "text": "Need to process a lot of documents quickly? Switch me into *Office View* (the button that looks like a split screen in the toolbar). I will transform into a professional three-pane Document Management System."
+      },
+      {
+        "type": "h2",
+        "text": "The Three-Pane Layout"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "**Left:** Your folder tree.",
+          "**Middle:** Your file list.",
+          "**Right:** A massive, persistent preview pane."
+        ]
+      },
+      {
+        "type": "p",
+        "text": "As you click through files in the middle, I instantly display them on the right. No popups, no double-clicking. You can even drag the divider to make the preview pane as wide as you need."
+      },
+      {
+        "type": "h2",
+        "text": "🧰 The PDF Toolkit"
+      },
+      {
+        "type": "p",
+        "text": "When you preview a PDF in this mode, I reveal a powerful floating toolkit at the bottom of the screen. I can do heavy lifting that usually requires expensive software:"
+      },
+      {
+        "type": "grid",
+        "cards": [
+          {
+            "title": "Stack & Merge",
+            "text": "Select multiple PDFs (or Office docs!), right-click, and choose 'Stack PDFs'. You can drag-and-drop them into the perfect order, and I'll bind them into a single file."
+          },
+          {
+            "title": "Unstack / Split",
+            "text": "Got a massive PDF? Click the 'Unstack' button, and I will burst it apart, saving every single page as its own individual PDF file."
+          },
+          {
+            "title": "Fill Forms",
+            "text": "If you open a PDF with fillable form fields, click 'Fill Form'. I will generate a clean, full-screen interface where you can type in the data, then bake your answers directly into a new PDF."
+          },
+          {
+            "title": "Extract & Repair",
+            "text": "Need the text or images out of a PDF? I have buttons for that. I even have a 'Repair' button if a PDF is corrupted and refuses to open properly."
+          }
+        ]
+      },
+      {
+        "type": "warn",
+        "text": "Office View is designed for larger screens. If you try to use it on a phone, things will get incredibly cramped!"
+      }
+    ]
+  },
+  {
+    "id": "online_office",
+    "icon": "desktop",
+    "title": "Online Office",
+    "keywords": "onlyoffice word excel powerpoint document edit print template docx xlsx",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "desktop",
+        "text": "Online Office"
+      },
+      {
+        "type": "p",
+        "text": "Did you know I can be your complete office suite? If my administrators have enabled the optional *Online Office* integration, you can create, edit, and collaborate on Word&trade;, Excel&trade;, and PowerPoint&trade; documents right here in your browser. No local software required!"
+      },
+      {
+        "type": "h2",
+        "text": "📝 Editing Documents"
+      },
+      {
+        "type": "p",
+        "text": "It couldn't be easier:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Find a supported document (like a `.docx` or `.xlsx` file).",
+          "Simply *double-click* it, or select it and hit the [badge:Edit] button in the toolbar.",
+          "I will open a fully-featured office editor right over my file list. Work on your document just like you're used to!"
+        ]
+      },
+      {
+        "type": "warn",
+        "text": "I save your work automatically and continuously while you type. When you are done, simply click the [badge:Close] button in the top right corner of the editor to return to the file list."
+      },
+      {
+        "type": "h2",
+        "text": "✨ Magic Templates"
+      },
+      {
+        "type": "p",
+        "text": "I have a special trick for handling templates. If you double-click a file that I recognize as a template—either by its extension (like `.dotx` or `.xltx`) or if its name starts with keywords like 'Template' or 'Vorlage'—I won't open the original file. Instead:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "I will instantly create a brand new copy of the file for you.",
+          "I will ask you for a new name (defaulting to today's date and time).",
+          "I will seamlessly open *that new copy* in the editor, leaving your original template pristine and safe!"
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "🖨️ Printing from the Cloud"
+      },
+      {
+        "type": "p",
+        "text": "Need a hard copy? Select an Office document or PDF and click the [badge:Print] button in the toolbar. What happens next depends on your device type:"
+      },
+      {
+        "type": "grid",
+        "cards": [
+          {
+            "title": "On a Desktop / PC",
+            "text": "I will silently convert the document into a print-ready format in the background and trigger your browser's native print dialog. Smooth and fast."
+          },
+          {
+            "title": "On a Mobile Device",
+            "text": "Mobile browsers are a bit stricter about background printing. I will prepare the file and show you a 'Ready' screen. Tap 'Open / Print' to securely pass the file to your phone's sharing menu or PDF viewer, where you can send it to your wireless printer."
+          }
+        ]
+      },
+      {
+        "type": "tip",
+        "text": "*Pro Tip:* You can select *multiple* documents at once and hit Print. I will neatly stitch them all together into one giant PDF and send it to your printer in a single job!"
+      }
+    ]
+  },
+  {
+    "id": "text_editor",
+    "icon": "edit",
+    "title": "Code & Text Editor",
+    "keywords": "text code edit script txt html php css syntax save",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "edit",
+        "text": "Code & Text Editor"
+      },
+      {
+        "type": "p",
+        "text": "For the tinkerers, developers, and note-takers! If you open a text file (`.txt`, `.md`, `.csv`) or a code script (`.php`, `.html`, `.css`, `.js`), I will launch my built-in professional text editor."
+      },
+      {
+        "type": "h2",
+        "text": "🛠️ Editor Features"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "*Syntax Highlighting:* I automatically colorize your code based on the file type to make it readable. You can manually change the language using the dropdown at the top.",
+          "*Draft Protection:* If your browser crashes or you accidentally close the tab, don't panic! I save unsaved drafts locally in your browser. The next time you open that file, I will ask if you want to restore your draft.",
+          "*Tabs:* You can open multiple text files at once. I keep them neatly organized in tabs at the top of the editor."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "🎛️ The Editor Toolbar"
+      },
+      {
+        "type": "p",
+        "text": "Look at the top bar while editing. I've packed it with handy tools:"
+      },
+      {
+        "type": "table",
+        "headers": [
+          "Tool",
+          "What it does"
+        ],
+        "rows": [
+          {
+            "c1": "[badge:Word Wrap]",
+            "c2": "Forces long lines of text to wrap to the next line so you don't have to scroll horizontally."
+          },
+          {
+            "c1": "[badge:Split View]",
+            "c2": "Opens a side-by-side view showing the original, saved version of the file next to your current edits."
+          },
+          {
+            "c1": "[badge:Minimap]",
+            "c2": "Shows a tiny overview of your entire code structure on the right edge, letting you scroll through massive files instantly."
+          },
+          {
+            "c1": "[badge:Search (Ctrl+F)]",
+            "c2": "Opens the Find & Replace bar. Essential for changing variable names or fixing repetitive typos."
+          }
+        ]
+      },
+      {
+        "type": "tip",
+        "text": "*Color Picker Magic:* If I detect a HEX color code in your file (like `#0078d4`), try clicking on it! I will pop up a visual color picker, allowing you to change the color visually without typing."
+      },
+      {
+        "type": "warn",
+        "text": "Remember to save your work! Click the floppy disk icon or press [key:Ctrl]+[key:S] (or [key:Cmd]+[key:S] on Mac). I'll show a red \"Unsaved Draft Active\" warning in the status bar if you have pending changes."
+      }
+    ]
+  },
+  {
+    "id": "settings",
+    "icon": "settings",
+    "title": "Dialog: Settings",
+    "keywords": "options config dark tree font settings global local",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "settings",
+        "text": "Dialog: Settings"
+      },
+      {
+        "type": "p",
+        "text": "Click *Settings* in the toolbar (or the gear icon). Tell me how I should behave here."
+      },
+      {
+        "type": "h2",
+        "text": "Device Profiles"
+      },
+      {
+        "type": "p",
+        "text": "Tabs at top (Desktop/Tablet/Phone) allow per-device-type config. I automatically detect your device. Changes apply only to that profile (e.g. you can ask me to hide the tree on your phone, but leave it on for the PC)."
+      },
+      {
+        "type": "h2",
+        "text": "Options Detailed"
+      },
+      {
+        "type": "table",
+        "headers": [
+          "Option",
+          "Individually changeable for"
+        ],
+        "rows": [
+          {
+            "c1": "*Remember last folder*",
+            "c2": "Global only"
+          },
+          {
+            "isSub": true,
+            "c1": "[i]Benefit:[/i] I will resume exactly where you left off on next login. Seamless workflow.",
+            "c2": ""
+          },
+          {
+            "c1": "*Enable Recycle Bin*",
+            "c2": "Global only"
+          },
+          {
+            "isSub": true,
+            "c1": "[i]Benefit:[/i] I create a .recycle_bin folder. If you delete something, it goes there first for safety. If off, gone is gone.",
+            "c2": ""
+          },
+          {
+            "c1": "*Tree open on start*",
+            "c2": "[desktop] / [tablet] / [phone]"
+          },
+          {
+            "isSub": true,
+            "c1": "[i]Benefit:[/i] Shows/hides my Tree View. Turn off on small screens so I have more space.",
+            "c2": ""
+          },
+          {
+            "c1": "*Start in Commander*",
+            "c2": "[desktop] / [tablet] / [phone]"
+          },
+          {
+            "isSub": true,
+            "c1": "[i]Benefit:[/i] I start immediately in two-panel mode for this cloud when you open me.",
+            "c2": ""
+          },
+          {
+            "c1": "*Symbol Size*",
+            "c2": "[desktop] / [tablet] / [phone]"
+          },
+          {
+            "isSub": true,
+            "c1": "[i]Benefit:[/i] How big should I draw the tiles in Symbol View? (Small to XL).",
+            "c2": ""
+          },
+          {
+            "c1": "*Dark Mode*",
+            "c2": "This Browser (Local)"
+          },
+          {
+            "isSub": true,
+            "c1": "[i]Benefit:[/i] I switch to dark colors. Eye-friendly at night. Saves battery on OLED. 😎",
+            "c2": ""
+          },
+          {
+            "c1": "*Hide disabled*",
+            "c2": "[desktop] / [tablet] / [phone]"
+          },
+          {
+            "isSub": true,
+            "c1": "[i]Benefit:[/i] I hide unusable buttons completely instead of graying them out. Makes my interface cleaner.",
+            "c2": ""
+          },
+          {
+            "c1": "*Stacked Toolbar*",
+            "c2": "[desktop] / [tablet] / [phone]"
+          },
+          {
+            "isSub": true,
+            "c1": "[i]Benefit:[/i] On = I am compact (Ribbon). Off = Direct Access (Flat).",
+            "c2": ""
+          },
+          {
+            "c1": "*Click to Preview*",
+            "c2": "[desktop] / [tablet] / [phone]"
+          },
+          {
+            "isSub": true,
+            "c1": "[i]Benefit:[/i] A single click opens the preview image. If off, click only selects (double-click opens).",
+            "c2": ""
+          },
+          {
+            "c1": "*List Thumbnails*",
+            "c2": "[desktop] / [tablet] / [phone]"
+          },
+          {
+            "isSub": true,
+            "c1": "[i]Benefit:[/i] I show mini-images even in the detailed list. Looks good, but loads more data.",
+            "c2": ""
+          },
+          {
+            "c1": "*Warn for large previews*",
+            "c2": "[desktop] / [tablet] / [phone]"
+          },
+          {
+            "isSub": true,
+            "c1": "[i]Benefit:[/i] I ask before loading large files in the preview. Saves mobile data.",
+            "c2": ""
+          },
+          {
+            "c1": "*Checkboxes*",
+            "c2": "[desktop] / [tablet] / [phone]"
+          },
+          {
+            "isSub": true,
+            "c1": "[i]Benefit:[/i] I show boxes before files. Essential for touch selection.",
+            "c2": ""
+          },
+          {
+            "c1": "*Hover Menu*",
+            "c2": "[desktop] / [tablet] / [phone]"
+          },
+          {
+            "isSub": true,
+            "c1": "[i]Benefit:[/i] My floating action pill. Fast on PC, maybe distracting on Touch.",
+            "c2": ""
+          }
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "Font Size 🔎"
+      },
+      {
+        "type": "p",
+        "text": "Use the slider at the bottom to tell me to increase text size and row height. Great for 4K screens or if you just prefer things bigger."
+      },
+      {
+        "type": "tip",
+        "text": "*Tip:* You can define the font size differently depending on the device type, for example, tell me to be larger on a mobile phone than on a desktop."
+      }
+    ]
+  },
+  {
+    "id": "view",
+    "icon": "view",
+    "title": "Preview & Media",
+    "keywords": "viewer preview zoom pan rotate pdf image video next prev",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "view",
+        "text": "Preview & Media"
+      },
+      {
+        "type": "p",
+        "text": "I support PDF, Images, MP3, MP4, Text. Double-click a file in the list, and I'll show it to you."
+      },
+      {
+        "type": "tip",
+        "text": "*Browse between files:* [br]No need to close the preview. You can either use the arrow keys on the keyboard [key:←] [key:→] or the arrows near to the the bottom of the screen."
+      },
+      {
+        "type": "h2",
+        "text": "📄 PDF or Word&trade; Documents "
+      },
+      {
+        "type": "ul",
+        "items": [
+          "*Zoom:* I offer you +/- buttons bottom right. (PDF only)",
+          "*Fit:* Buttons for \"Fit Width\" or \"Whole Page\"."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "🖼️ Images (Photos) "
+      },
+      {
+        "type": "ul",
+        "items": [
+          "*Navigation:* No need to close me. Use arrow keys [key:←] [key:→] or screen arrows for the next image.",
+          "*Zoom:* Mouse wheel or buttons.",
+          "*Pan:* Click and drag the image (when I'm zoomed in).",
+          "*Tools:* Rotate and Flip buttons at the bottom.",
+          "*HD Button:* I load a fast preview by default. Click HD (top right) to ask me to load the raw original file."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "🎬 Audio & Video"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Standard player with Play/Pause, Volume, and Timeline."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "Large File Warning"
+      },
+      {
+        "type": "p",
+        "text": "If a file is larger, I warn you first. You can choose: \"Preview Anyway\" or \"Direct Download\"."
+      },
+      {
+        "type": "tip",
+        "text": "*Tip:* You can disable this warning in Settings (see option \"Warn for large previews\")."
+      }
+    ]
+  },
+  {
+    "id": "search",
+    "icon": "search",
+    "title": "Dialog: Search",
+    "keywords": "search find filter date size query dialog type seek",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "search",
+        "text": "Search"
+      },
+      {
+        "type": "h2",
+        "text": "1. Quick Seek (Type-to-Seek)"
+      },
+      {
+        "type": "p",
+        "text": "*Location:* Directly in the file list."
+      },
+      {
+        "type": "p",
+        "text": "No need for formalities! Just type the first letters of a file on your keyboard. I will jump instantly to the first match in the current folder. Perfect for us to navigate long lists quickly."
+      },
+      {
+        "type": "h2",
+        "text": "2. Global Search (Dialog) 🔍"
+      },
+      {
+        "type": "p",
+        "text": "*Location:* Button [badge:Search] ."
+      },
+      {
+        "type": "p",
+        "text": "In this dialog, I scan *recursively* through all subfolders of your current folder. You can combine filters for me:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "*Name:* Give me part of filename. Empty = I find All (matching filters).",
+          "*Date:* \"Last 24h\", \"Last Week\" or \"Custom\" (Select date range).",
+          "*Size:* \"Small\", \"Huge\" or \"Custom\" (Give me exact Min/Max MB)."
+        ]
+      },
+      {
+        "type": "tip",
+        "text": "*Tip:* I show you the results as a list. You can double-click a result directly in the search window to ask me to open it."
+      }
+    ]
+  },
+  {
+    "id": "favorites",
+    "icon": "star",
+    "title": "Favorites & Bookmarks",
+    "keywords": "favorites bookmarks star save quick access link shortcut",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "star",
+        "text": "Favorites & Bookmarks"
+      },
+      {
+        "type": "p",
+        "text": "Do you have folders you need constantly? I can remember them for you so you don't have to click through the whole tree every time."
+      },
+      {
+        "type": "h2",
+        "text": "How it works"
+      },
+      {
+        "type": "p",
+        "text": "At the top of the toolbar, you see a button with a star icon [badge:⭐ Favorites]. That is your control center."
+      },
+      {
+        "type": "grid",
+        "cards": [
+          {
+            "title": "Add",
+            "text": "Select a folder (or file) and click the Star button. Then press 'Add'. Remembered!"
+          },
+          {
+            "title": "Rename (Alias)",
+            "text": "Is the path `/var/www/html/projects/2024` too long? Click the pencil [badge:✏️] in the menu and just call it 'Projects'. This only changes the name in the menu, not the real folder!"
+          },
+          {
+            "title": "Clean up",
+            "text": "Use the arrows [badge:⬆️] [badge:⬇️] to push important things to the top. With the trash can [badge:🗑️], I forget the favorite again."
+          },
+          {
+            "title": "Quick Access",
+            "text": "A click on the entry in the Star menu takes you there immediately. No matter where you are."
+          }
+        ]
+      },
+      {
+        "type": "tip",
+        "text": "*Tip:* You can also right-click a folder and choose 'Toggle Favorite'. That's even faster."
+      }
+    ]
+  },
+  {
+    "id": "vaults",
+    "icon": "lock",
+    "title": "Secure Vaults (Encryption)",
+    "keywords": "encryption vault lock secure password privacy protect safe e2e decrypt",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "lock",
+        "text": "Secure Vaults (Encryption)"
+      },
+      {
+        "type": "p",
+        "text": "Do you have highly sensitive files? I can keep them absolutely safe with End-to-End Encryption (E2E). Imagine a digital safe where only you hold the key. When you turn a folder into a Vault, I scramble your files so tightly that literally no one else—not even the server administrators, hackers, or myself—can read them. The key never leaves your computer."
+      },
+      {
+        "type": "warn",
+        "text": "*CRITICAL:* Because I do not know your password, I cannot reset it for you. If you lose your password, your files will remain locked forever and are permanently lost. Please write it down and keep it incredibly safe!"
+      },
+      {
+        "type": "h2",
+        "text": "🏗️ 1. How to create a Vault"
+      },
+      {
+        "type": "p",
+        "text": "Turning a normal folder into a safe vault is easy, but requires a little patience from you:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "First, find the folder you want to protect.",
+          "Right-click the folder and choose [badge:Encrypt / Unlock].",
+          "I will ask you to set a strong password. Think of a good one!",
+          "*Important:* If there are already files in that folder, I will now start encrypting them one by one. *Please do not close the browser tab until I tell you I am finished!* If you close the page while I am working, files might get corrupted."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "🔓 2. Opening and Using your Vault"
+      },
+      {
+        "type": "p",
+        "text": "You will recognize your vault by the little lock icon. Here is how we work with it:"
+      },
+      {
+        "type": "grid",
+        "cards": [
+          {
+            "title": "Entering the Vault",
+            "text": "Just click or double-click the locked folder. I will ask for your password. Once you type it in, I will unlock the vault in your browser's memory."
+          },
+          {
+            "title": "Uploading Files",
+            "text": "Once inside the unlocked vault, you can drag and drop new files in, just like normal. I will automatically scramble and encrypt them in the background *before* sending them to the server."
+          },
+          {
+            "title": "Downloading Files",
+            "text": "When you download a file from your vault, I automatically decrypt it for you on the fly. It will arrive on your computer as a perfectly normal, readable file."
+          },
+          {
+            "title": "Locking it again",
+            "text": "When you are done, you can right-click the folder and choose [badge:Lock Vault]. Or, even simpler: just close your browser tab. I automatically forget your password the moment you leave, locking the vault instantly."
+          }
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "❌ 3. Removing the Vault (Decrypting)"
+      },
+      {
+        "type": "p",
+        "text": "If you decide you don't need the extra security anymore, you can turn the vault back into a normal, unencrypted folder."
+      },
+      {
+        "type": "ul",
+        "items": [
+          "First, click the vault and unlock it with your password.",
+          "Next, right-click the folder and select [badge:Encrypt / Unlock] again.",
+          "I will ask if you want to decrypt the folder. Confirm this.",
+          "I will now carefully decode all your files back to normal. *Again, do not close the browser while I am doing this!*"
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "📝 Online Office & Encryption (Important Note)"
+      },
+      {
+        "type": "p",
+        "text": "I offer a great feature where you can edit Word, Excel, or PowerPoint documents directly in your browser using the *Online Office*. You can use this feature even for files inside your vault, but there is an important technical detail you need to know:"
+      },
+      {
+        "type": "p",
+        "text": "To allow the Online Office editor to read and let you type in the document, I have to briefly send the file to the server and store it there *unencrypted* while you are actively working on it. When you close the editor, I encrypt it securely again."
+      },
+      {
+        "type": "tip",
+        "text": "*What this means for you:* If your document contains standard work, using the Online Office is perfectly fine and very convenient. However, if the document contains absolute top-secret data (like bank passwords or strictly confidential medical records), you should not use the Online Office. For ultimate security, simply download the file, edit it locally on your own computer, and upload it again."
+      },
+      {
+        "type": "h2",
+        "text": "👁️ Previews & Restrictions"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "*Safe Previews:* You can safely click on images, videos, and PDFs inside an unlocked vault to preview them. I decrypt these directly on your computer's screen, so your data stays completely private.",
+          "*Office View Disabled:* My advanced *Office View* (the special layout with three columns for heavy document sorting) cannot be used with vaults. The way files are handled in that specific view is too complex to mix with strict security rules."
+        ]
+      }
+    ]
+  },
+  {
+    "id": "mail_setup",
+    "icon": "settings",
+    "title": "Mail Setup & Contacts",
+    "keywords": "setup config assistant imap smtp address book contacts alias signature",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "settings",
+        "text": "Mail Setup & Contacts"
+      },
+      {
+        "type": "p",
+        "text": "Before I can fetch your messages, I need to know where your digital mailbox lives. Don't worry, I make this setup incredibly painless!"
+      },
+      {
+        "type": "h2",
+        "text": "⚙️ The Setup Assistant"
+      },
+      {
+        "type": "p",
+        "text": "When you add an account for the first time, I will guide you through my Mailbox Setup Assistant. It is a logical, step-by-step process:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "*Basic Info:* Tell me your name and email address.",
+          "*Login:* Give me the username and password required by your provider.",
+          "*Server Details:* I need to know your IMAP (incoming) and SMTP (outgoing) server addresses and ports.",
+          "*Aliases:* Do you use other addresses (like 'info@') that land in the same inbox? Tell me, and I will let you send emails from them too!",
+          "*Signatures:* Design a nice signature, and I will automatically append it to the bottom of all your outgoing emails."
+        ]
+      },
+      {
+        "type": "tip",
+        "text": "*Multiple Accounts:* You can add as many email accounts as you like. I will organize them nicely in the folder tree so you can manage everything from one place."
+      },
+      {
+        "type": "h2",
+        "text": "📇 Your Address Book"
+      },
+      {
+        "type": "p",
+        "text": "I like to keep your contacts perfectly organized. You can access them anytime by clicking [badge:Contacts] in the mail toolbar."
+      },
+      {
+        "type": "grid",
+        "cards": [
+          {
+            "title": "Auto-Collection",
+            "text": "If you leave the auto-collect option enabled, I will silently remember every email address you send a message to, so you never have to type it out again."
+          },
+          {
+            "title": "Importing Contacts",
+            "text": "Coming from another provider? You can upload a CSV file, and I will import all your old contacts automatically."
+          },
+          {
+            "title": "Contact Details",
+            "text": "You can edit any contact to add multiple email addresses, phone numbers, their company, and even attach specific security keys to their profile."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "mail_security",
+    "icon": "lock",
+    "title": "Mail Security (PGP)",
+    "keywords": "security pgp encryption e2e keys public private passphase secure privacy",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "lock",
+        "text": "Mail Security (PGP)"
+      },
+      {
+        "type": "p",
+        "text": "I take your privacy very seriously. Normal emails are like postcards—anyone handling them on the internet can theoretically read them. I want to give you a sealed envelope. Using PGP End-to-End Encryption, I can scramble your messages so deeply that only your intended recipient can read them."
+      },
+      {
+        "type": "h2",
+        "text": "🔑 Generating Your Keys"
+      },
+      {
+        "type": "p",
+        "text": "To get started, you need a Key Pair. I can generate this for you directly in the Mailbox Setup Assistant or later in your Email Settings."
+      },
+      {
+        "type": "ul",
+        "items": [
+          "*Public Key:* This is like your digital padlock. You share this with the world so people can lock messages meant only for you.",
+          "*Private Key:* This stays with me, protected by a passphrase you choose. I use this to unlock the messages people send you."
+        ]
+      },
+      {
+        "type": "warn",
+        "text": "*CRITICAL:* I encrypt your Private Key with your passphrase before saving it. I DO NOT know your passphrase. If you forget it, I cannot recover your encrypted emails. Please keep it safe!"
+      },
+      {
+        "type": "h2",
+        "text": "✉️ Sending Encrypted Mail"
+      },
+      {
+        "type": "p",
+        "text": "I try to make sending secure mail as seamless as possible. When you compose a message and hit [badge:Send]:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "I check your Address Book to see if you have saved Public Keys for all recipients.",
+          "If I don't find them locally, I will query global key directories (like keys.openpgp.org) in the background to see if I can find them for you.",
+          "If I find keys for everyone, I will pause and ask you: \"Secure delivery is available. Do you want to encrypt this email?\"",
+          "If you say yes, I scramble the message and attachments right in your browser before they ever touch the network."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "🔓 Reading Encrypted Mail"
+      },
+      {
+        "type": "p",
+        "text": "When someone sends you a PGP encrypted email, you will see a banner above the message. Because it is securely locked, I cannot read it for you automatically."
+      },
+      {
+        "type": "p",
+        "text": "I will gently prompt you to enter your passphrase. Once you give me the green light, I will use your Private Key to decrypt the message instantly on your screen. The unencrypted text is never sent to the server; it remains strictly between you and your browser."
+      }
+    ]
+  },
+  {
+    "id": "prop",
+    "icon": "prop",
+    "title": "Dialog: Properties",
+    "keywords": "properties size treemap info stats tiles dialog",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "prop",
+        "text": "Dialog: Properties"
+      },
+      {
+        "type": "p",
+        "text": "Right-click a folder -> *Properties*. [br]I will calculate the real size for you, including all subfolders (recursive)."
+      },
+      {
+        "type": "h2",
+        "text": "🗺️ The Treemap (Storage Map)"
+      },
+      {
+        "type": "p",
+        "text": "The bottom area displays a graphical map of storage usage I drew for you. This helps you understand what is eating your disk space."
+      },
+      {
+        "type": "treemap",
+        "l1": "My Video Folder",
+        "l2": "Invoices",
+        "l3": "Files"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Each rectangle (tile) represents a subfolder and/or the total file size in this very folder.",
+          "The size of the rectangle corresponds to disk usage. *Big Tile = Uses a lot of space.*",
+          "*Drill-Down:* Click a rectangle to \"dive in\" with me and see details.",
+          "*Back:* Use the arrow button [badge:⤴️] at the top left of the dialog to zoom back out."
+        ]
+      },
+      {
+        "type": "tip",
+        "text": "*Example:* See a huge tile? That is likely a forgotten video file. Click it, I'll find the folder for you and we can clean up!"
+      }
+    ]
+  },
+  {
+    "id": "multi_rename",
+    "icon": "edit",
+    "title": "Batch Rename",
+    "keywords": "rename batch multi pattern regex counter date placeholder",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "edit",
+        "text": "Batch Rename"
+      },
+      {
+        "type": "p",
+        "text": "If you want to clean up many files at once, I'm here for you. Press [key:F2] with multiple files selected, and I'll open my special tool."
+      },
+      {
+        "type": "h2",
+        "text": "The Blocks (Placeholders)"
+      },
+      {
+        "type": "p",
+        "text": "This tells me what the new name should look like. The square brackets are important!"
+      },
+      {
+        "type": "table",
+        "headers": [
+          "Code",
+          "Result"
+        ],
+        "rows": [
+          {
+            "c1": "*[N]*",
+            "c2": "The *old filename* (e.g. 'Photo')."
+          },
+          {
+            "c1": "*[E]*",
+            "c2": "The *extension* (e.g. 'jpg'). Without this, the file loses its type!"
+          },
+          {
+            "c1": "*[C]*",
+            "c2": "A *Counter* (1, 2, 3...). You can set start and padding at the bottom."
+          },
+          {
+            "c1": "*[YMD]*",
+            "c2": "The file's *modified date* (2025-12-31). Great for sorting."
+          },
+          {
+            "c1": "*[tYMD]*",
+            "c2": "*Today's* date (when you rename)."
+          }
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "Recipes & Examples"
+      },
+      {
+        "type": "grid",
+        "cards": [
+          {
+            "title": "1. Sorting Photos",
+            "text": "Pattern: `[YMD] - [N]`[br]Turns `Holiday.jpg` into `2024-05-20 - Holiday.jpg`. Sorts files chronologically."
+          },
+          {
+            "title": "2. Numbering",
+            "text": "Pattern: `Image_[C]`[br]Result: `Image_001`, `Image_002`...[br]Don't forget to set 'Digits' to 3 at the bottom!"
+          },
+          {
+            "title": "3. Auto-Fix Button",
+            "text": "Have `20240101_153000.jpg`? Just click the [badge:📅 Date Fix] button. I detect the date mess and turn it into `2024-01-01 15-30-00.jpg`."
+          },
+          {
+            "title": "4. Partial Name",
+            "text": "Want only 'Invoice' from `Invoice_2023_Final`? Use `[N-7]`. This takes the first 7 letters."
+          }
+        ]
+      },
+      {
+        "type": "tip",
+        "text": "*Pro Tip:* Use 'Search & Replace' on the right to swap e.g. all spaces with underscores `_`. I do this automatically *after* renaming."
+      }
+    ]
+  },
+  {
+    "id": "accessibility",
+    "icon": "view",
+    "title": "Accessibility & Comfort",
+    "keywords": "access dark mode font size large text contrast visual aid",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "view",
+        "text": "Accessibility & Comfort"
+      },
+      {
+        "type": "p",
+        "text": "I firmly believe that software should adapt to *you*, not the other way around. I have several tools built-in to make your daily work easier on the eyes and simpler to navigate."
+      },
+      {
+        "type": "h2",
+        "text": "🌙 Dark Mode"
+      },
+      {
+        "type": "p",
+        "text": "Staring at a bright white screen late at night is no fun. In my [badge:Options] menu, you can toggle *Dark Mode*."
+      },
+      {
+        "type": "ul",
+        "items": [
+          "I will instantly switch my entire interface to deep, eye-friendly grays and blacks.",
+          "This is entirely local to your current browser—meaning you can have Dark Mode on your home laptop, but keep Light Mode on your bright office PC."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "🔎 Dynamic Font Sizing"
+      },
+      {
+        "type": "p",
+        "text": "Is the text too small to read comfortably? Or perhaps you have a massive 4K monitor and everything looks tiny?"
+      },
+      {
+        "type": "p",
+        "text": "In the Settings, you'll find a **Font Size slider**. As you drag it, I don't just make the text bigger—I proportionally increase the height of the rows, the size of the icons, and the spacing of the menus. I offer 6 distinct size levels so you can find your perfect fit."
+      },
+      {
+        "type": "h2",
+        "text": "🖱️ Interaction Helpers"
+      },
+      {
+        "type": "grid",
+        "cards": [
+          {
+            "title": "Single Click Mode",
+            "text": "If double-clicking is difficult or tiring, turn on 'Single Click Mode' in Settings. I will act more like a web page: hovering underlines a file, and a single click opens it."
+          },
+          {
+            "title": "Persistent Checkboxes",
+            "text": "Selecting multiple files by holding 'Ctrl' can be tricky. Turn on 'Checkboxes' to permanently display a clickable box next to every file, making selection easy and error-free."
+          }
+        ]
+      },
+      {
+        "type": "tip",
+        "text": "*Tip:* You can also ask me to hide disabled buttons in the toolbar (via the 'Hide disabled' setting). This significantly reduces visual clutter if you prefer a minimalist interface."
+      }
+    ]
+  },
+  {
+    "id": "actions",
+    "icon": "pro",
+    "title": "Actions & Conflicts",
+    "role": "write",
+    "keywords": "conflict overwrite keep both zip unzip copy move",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "pro",
+        "text": "Actions & Conflicts"
+      },
+      {
+        "type": "h2",
+        "text": "⚔️ The Conflict Dialog️"
+      },
+      {
+        "type": "p",
+        "text": "If you upload or move a file and the name is taken, I will ask you:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "*Overwrite:* I permanently delete the old file and save the new one.",
+          "*Keep Both:* I rename the new file for you (e.g. \"Photo (1).jpg\"). That's the safest option.",
+          "*Skip:* I cancel the action for this file."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "📦 Zip vs. Download"
+      },
+      {
+        "type": "p",
+        "text": "Important difference for me:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "*Button \"Download\":* I zip the files and download them to your computer.",
+          "*Context Menu \"Copy to Zip\":* I create a zip file [i]on the server[/i], right next to the original folder. Useful if you want me to make cloud backups."
+        ]
+      },
+      {
+        "type": "tip",
+        "text": "*Example:* Want to backup a project? Right-click the folder -> \"Copy to Zip\". Now I have saved a backup file for you in the cloud."
+      },
+      {
+        "type": "warn",
+        "text": "*Attention:* I have a maximum size limit for the creation of ZIP files!"
+      }
+    ]
+  }
+]

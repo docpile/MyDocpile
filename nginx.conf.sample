@@ -1,0 +1,69 @@
+# These are the necessary settings for the cloud. 
+# Add them to your current settings:
+
+client_max_body_size 10737418240;
+
+# ---------------------------------------------------------------------
+# WEBDAV
+# ---------------------------------------------------------------------
+location ^~ /webdav.php {
+        
+     # 1. Include defaults FIRST so they don't overwrite your custom params below
+     include /etc/nginx/fastcgi.conf;
+ 
+     # 2. Custom FastCGI Params
+     fastcgi_split_path_info ^(.+\.php)(/.+)$;
+     fastcgi_param PATH_INFO $fastcgi_path_info;
+     fastcgi_param SCRIPT_FILENAME $document_root/webdav.php;
+     fastcgi_param HTTP_DEPTH $http_depth;
+     fastcgi_param HTTP_AUTHORIZATION $http_authorization;
+
+    # Point to PHP socket
+    fastcgi_pass unix:/var/www/vhosts/system/emailer.li/php-fpm.sock; 
+
+	# This prevents Nginx from replacing the PHP-generated 404 
+	# with your global custom error page.
+	fastcgi_intercept_errors off;
+	error_page 404 =404;
+    access_log off;
+
+
+	# Ensure large WebDAV uploads don't timeout
+    proxy_read_timeout 1200;
+	fastcgi_read_timeout 1200;
+    client_max_body_size 0;
+
+    # Stream uploads directly to PHP, preventing double disk I/O
+    fastcgi_request_buffering off;
+
+    # Keep TCP/TLS connections open for chatty WebDAV clients
+    keepalive_timeout 65;
+    keepalive_requests 10000;
+}
+
+# ---------------------------------------------------------------------
+# CLOUD 
+# Map WKD requests to the domain-segregated storage 
+# ---------------------------------------------------------------------
+location ~ ^/\.well-known/openpgpkey/hu/(.+)$ {
+        default_type application/octet-stream;
+        add_header Access-Control-Allow-Origin "*" always;
+        add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+
+        # Silently rewrite the URI behind the scenes to inject the domain folder.
+        # Nginx takes this rewritten URI and automatically appends it to your existing document root.
+        rewrite ^/\.well-known/openpgpkey/hu/(.+)$ /.well-known/openpgpkey/hu/$host/$1 break;
+}
+
+location /cloud/ {
+ 		autoindex off;
+        expires 2d;
+}
+
+
+# ---------------------------------------------------------------------
+# Deny access to certain directories and files
+# ---------------------------------------------------------------------
+location ~ ^/(?:vendor|tmp)(?:$|/)  {  return 404; }
+location ~ ^/(composer.*)$ {  return 404; }
+try_files $uri /index.php;
