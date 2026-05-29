@@ -21,7 +21,7 @@ Where security critical, I also intervened and even did some coding myself. The 
 
 **Webmail UI**
 
-![Webmail UI](https://github.com/docpile/MyDocpile/blob/main/images/03_main_webmail_ui.png.png?raw=true)
+![Webmail UI](https://github.com/docpile/MyDocpile/blob/main/images/03_main_webmail_ui.png?raw=true)
 
 **Gallery Mode** - especially handy ion mobile devices
 
