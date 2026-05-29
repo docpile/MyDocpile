@@ -1,21 +1,21 @@
-# MyCloud
-Feature rich PHP cloud software created mainly using AI
+# My Document Pile - MyDocpile
+Feature rich PHP cloud and webmail software created mainly using AI
 
-Actually, I wanted to see how far one could come using AI to build a feature rich cloud software. The idea came as I worked with AI to solve certain code problems. This is how far I came after about 6 weeks of part time work.
+Actually, I wanted to see how far one could come using AI to build a feature rich cloud software. The idea came up as I worked with AI to solve certain code problems. This is how far I came after about 6 months of part time work.
 
-Nobody said the resulting code would be beautiful (in fact, it's quite ugly)... But surprisingly, it works pretty well! It almost became an "Operating System in the browser"!
+Nobody said the resulting code would be beautiful (in fact, in most places it's quite ugly)... But surprisingly, it works pretty well! It almost became an "Operating System in the browser"!
 
 Where security critical, I also intervened and even did some coding myself. The login handler here is just a simplified version of the one I use in reality (would be to complex in the setup to include all the stuff here). The code published here is not "bullet proof" - but likely more than sufficient for your "private NAS" at home.
 
 Now let's come to the software:
 
-# MyCloud - Advanced AJAX File Explorer
+# MyDocpile - Advanced AJAX File Explorer
 
-MyCloud is a highly responsive, AJAX-only web file explorer that provides a native Windows-style layout directly in the browser. It features a rich set of file management tools, real-time media streaming, document previews, and an integrated SSH terminal.
+MyDocpile is a highly responsive, AJAX-only web file explorer that provides a native Windows-style layout directly in the browser. It features a rich set of file management tools, real-time media streaming, document previews, and an integrated SSH terminal.
 
-The MyCloud software is designed to have **the least depenencies possible**. So, no big MySQL database (in fact, as for the app itself, no db at all). Of course, this does not scale much. On the other hand, *it was never a design goal to write a second Nextcloud!* 
+The MyDocpile software is designed to have **the least depenencies possible**. So, no big MySQL database (in fact, as for the app itself, no db at all). Of course, this does not scale much. On the other hand, *it was never a design goal to write a second Nextcloud!* 
 
-**❗Very Important Notice:** *None* - I repeat: **_none_** - of the MyCloud PHP code or even its data is to be stored within the www-root. From the very beginning, it was designed to, except for a small index.php stub and some js files needed, **_completely live outside of www-root_**. This was a deliberate design decision to elimiate many security risks commercial products are suffering from. And as I do not trust AI too much security-wise, better safe than sorry. Make sure to adjust your PHP "openbasedir" setting accordingly (See the installation guide). 
+**❗Very Important Notice:** *None* - I repeat: **_none_** - of the MyDocpile PHP code or even its data is to be stored within the www-root. From the very beginning, it was designed to, except for a small index.php stub and some js files needed, **_completely live outside of www-root_**. This was a deliberate design decision to elimiate many security risks commercial products are suffering from. And as I do not trust AI too much security-wise, better safe than sorry. Make sure to adjust your PHP "openbasedir" setting accordingly (See the installation guide). 
 
 ## 🚀 Features
 
@@ -97,7 +97,7 @@ The MyCloud software is designed to have **the least depenencies possible**. So,
 
 ## ⚠️ Limitations
 
-* **Tightly Coupled Architecture:** The frontend CSS, JavaScript, and HTML are delivered entirely via inline PHP includes (`init.php`, `styles.php`). On the other hand, the MyCloud itself does not use any big pictures (actually, it uses no pictures at all) and loads itself exactly once per session. The bytes delivered over the network are comparable or even less than Nextcloud (depending on the Nextcloud setup even dramatically less).
+* **Tightly Coupled Architecture:** The frontend CSS, JavaScript, and HTML are delivered entirely via inline PHP includes (`init.php`, `styles.php`). On the other hand, the MyDocpile itself does not use any big pictures (actually, it uses no pictures at all) and loads itself exactly once per session. The bytes delivered over the network are comparable or even less than Nextcloud (depending on the Nextcloud setup even dramatically less).
 * **Resource Intensive Processing:** On-the-fly zip generation and recursive directory stat calculations can consume significant CPU and RAM on large directories, despite built-in timeout and memory limiters. Keep that in mind or edit the limits in the config if needed.
 * **Statefulness:** Relies heavily on PHP Sessions (`$_SESSION`). Does CSRF validation and role authorization. Cluster load-balancing: This requires sticky sessions if deployed across a cluster.
 * **External CDN Dependencies:** Relies on third-party CDNs (unpkg, cdn.sheetjs.com) for document previewers. These assets must be downloaded and hosted locally (see below under "Setup & Installation".
@@ -108,25 +108,18 @@ The MyCloud software is designed to have **the least depenencies possible**. So,
 ## 🛠️ Setup & Installation
 
 ### 1. Requirements
-* **PHP:** PHP 7.4+ or 8.x
-* **Extensions:** `zip`, `mbstring`, `fileinfo` (for EXIF data). `Imagick` or `GD` (for image processing).
-* **Composer:** A `vendor/autoload.php` is required (specifically expecting `MatthiasMullie\Minify`).
+* **PHP:** PHP 8.4 or higher
+* **Webserver:** Any webserver software would do, with Nginx preferred.
+* **Mailserver:** For 2FA, for security reasons, a local mailserver account is needed. If you do not use the SFTP "Admin Mode" plugin, 2FA is not used and a local mailserver is not needed. 
+* **Extensions:** `zip`, `mbstring`, `fileinfo` (for EXIF data). `Imagick` or `GD` (for image processing). Also further packages are required, see install.sh for a detailed list. 
+* **Composer:** Is being autofilled within the installation directory of the main app during setup.
 
 ### 2. Configuration
-The system expects several global variables to be defined **before** the code is included in your main application flow.
+The system expects several PHP variables to be defined. Most of them are automatically set during installation. 
 
-```php
-// Define core paths
-$cloud_path = '/path/to/user/files/';       // Absolute path to the user's root folder
-$cloud_dir  = __DIR__ . '/mycloud_source/'; // Path to the MyCloud source files
-$work_dir   = __DIR__ . '/';                // Web root or project root
+### 3. Integration Into Other Applications
+The login UI submitted here is just an excerpt of the login used in my much larger (and safer) real-life application login; however, it gives you an impression of the needs of the MyDocpile application itself and should be sufficiently secure for smaller implementations.  
 
-// Define constraints
-$cloud_max_preview_size = 10485760; // 10MB
-$zip_warn_limit = 314572800;        // 300MB
-
-// Access Roles (Configured via $GLOBALS['user_details'])
-// Roles determine permissions: 'full', 'modify', 'read-only', 'no-access', 'admin_mode'
 
 
 
