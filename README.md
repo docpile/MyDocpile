@@ -1,5 +1,5 @@
 # My Document Pile - MyDocpile
-![Main UI](https://raw.githubusercontent.com/docpile/MyDocpile/images/02_main_cloud_ui.png)
+![Main UI](https://github.com/docpile/MyDocpile/blob/main/images/02_main_cloud_ui.png?raw=true)
 
 Feature rich PHP cloud and webmail software created mainly using AI
 
