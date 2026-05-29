@@ -1,4 +1,6 @@
 # My Document Pile - MyDocpile
+![Main UI](https://raw.githubusercontent.com/docpile/MyDocpile/images/02_main_cloud_ui.png)
+
 Feature rich PHP cloud and webmail software created mainly using AI
 
 Actually, I wanted to see how far one could come using AI to build a feature rich cloud software. The idea came up as I worked with AI to solve certain code problems. This is how far I came after about 6 months of part time work.
