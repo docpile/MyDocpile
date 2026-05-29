@@ -1,4 +1,4 @@
-# My Document Pile - MyDocpile
+# <span style="color:#9999ff">My Document Pile - MyDocpile</span>
 ![Main UI](https://github.com/docpile/MyDocpile/blob/main/images/02_main_cloud_ui.png?raw=true)
 
 **Feature rich PHP cloud and webmail software created mainly using AI**
