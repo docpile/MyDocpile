@@ -37,7 +37,7 @@ Optional: **OnlyOffice integration** - makes the cloud almost a desktop replacem
 
 **PDF Management** (also stacking/unstacking documents, print e.g. Word documents to PDF and so on)
 
-![PDF Management](https://github.com/docpile/MyDocpile/blob/main/images/07_pdf_toolkit?raw=true)
+![PDF Management](https://github.com/docpile/MyDocpile/blob/main/images/07_pdf_toolkit.png?raw=true)
 
 **Document Management** (called Office View)
 
@@ -51,6 +51,17 @@ Optional: **OnlyOffice integration** - makes the cloud almost a desktop replacem
 
 ![End-To-End File Encryption](https://github.com/docpile/MyDocpile/blob/main/images/10_e2e_encrypted_vaults.png?raw=true)
 
+**Dark Mode** - For mobile devices or people with impaired vision
+
+![End-To-End File Encryption](https://github.com/docpile/MyDocpile/blob/main/images/11_dark_mode.png?raw=true)
+
+**Many more Options** - For mobile devices or people with impaired vision
+
+![Options](https://github.com/docpile/MyDocpile/blob/main/images/12_options.png?raw=true)
+
+**Multilingual Support** - As many as 20 languages, also RTL. Mostly AI translated. If more are needed, simply request them. Or help out where the AI was lacking...
+
+![Multilingual](https://github.com/docpile/MyDocpile/blob/main/images/13_multilingual_with_rtl_support.png?raw=true)
 
 Now let's come to the software:
 
