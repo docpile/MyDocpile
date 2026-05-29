@@ -180,24 +180,21 @@ The login UI submitted here is just an excerpt of the login used in my much larg
 ### 4. Installation on Your Server
 
 1. Create a domain with an empty www-root on your webserver.
-
 2. Secure it with a certificate.
-
 3. Get PHP 8.4 running on that domain.
-
 4. Now download the whole code into an empty directory (or, download and unpack an release ZIP file):
 
-`git clone https://github.com/docpile/MyDocpile.git`
+    `git clone https://github.com/docpile/MyDocpile.git`
+   
+6. then execute the file install.sh:
 
-then execute the file install.sh
+    `cd ./MyDocpile`
 
-`cd ./MyDocpile`
+     `bash ./install.sh`
 
-`bash ./install.sh`
-
-5. Follow the on-screen instructions. 
-
-6. Implement the changes as layed out in the respective .sample files here (e.g. to get webdav and/or OnlyOffice running). 
+7. Follow the on-screen instructions. 
+8. Add the open_basedir as requested by the installation and restart PHP.
+9. Implement the changes as layed out in the respective .sample files here (e.g. to get webdav and/or OnlyOffice running). 
 
 That's it.
 
