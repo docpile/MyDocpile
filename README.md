@@ -71,7 +71,7 @@ MyDocpile is a highly responsive, AJAX-only web file explorer and web based mail
 
 The MyDocpile software is designed to have **the least depenencies possible**. So, no big MySQL database (in fact, as for the app itself, no db at all). Of course, this does not scale much. On the other hand, *it was never a design goal to write a second Nextcloud!* 
 
-**❗Very Important Notice:** *None* - repeat: **_none_** - of the MyDocpile PHP code or its data itself is to be stored within the www-root. From the very beginning, it was designed to, except for a small index.php stub and some js, css and image files needed, **_completely live outside of www-root_**. This was a deliberate design decision to elimiate many security risks commercial products are suffering from. And as you cannot trust AI too much security-wise, better safe than sorry. Make sure to adjust your PHP "openbasedir" setting accordingly (See the installation guide; the install.sh will show you the necessary changes to make). 
+**❗Very Important Notice:** *None* - repeat: **_none_** - of the MyDocpile PHP code or its data is to be stored within the www-root. From the very beginning, it was designed to, except for a small index.php stub and some js, css and image files needed, **_completely live outside of www-root_**. This was a deliberate design decision to elimiate many security risks commercial products are suffering from. Make sure to adjust your PHP "open_basedir" setting accordingly (See the installation guide; the install.sh will show you the necessary changes to make). 
 
 ## 🚀 Features
 
@@ -103,12 +103,13 @@ The MyDocpile software is designed to have **the least depenencies possible**. S
   *  **Full RTL Support:** Automatically mirrors layouts, arrows, and toggle behaviors if the active language is Right-to-Left (e.g., Arabic...).
   *  **Many languages included:** Major languages are included (most of them AI translated, so feel free to change the translations if needed) 
 * **Multiple View Modes:**
+  * **Tree View Pane:** A draggable, resizable directory tree. You can use it almost like the Explorer/Finder/Nautilus on your own device.
   * **List View:** Detailed data table with sortable columns, custom checkboxes, and sticky headers.
-  * **Gallery View:** Grid-based masonry layout prioritizing image thumbnails with hover-zoom interactions. Perfect for mobile devices.
-* **Icon View / Icon Dark:** Icon-centric desktop layout.
-* **Commander Mode:** A dual-pane layout for power users to manage files side-by-side with independent view states and split-ratio tracking. 
-* **Multi-Cloud Switcher:** Top-level  tabs that allow users to seamlessly hot-swap between multiple cloud accounts without reloading the application. Cave: Since these clouds are security boundaries, you cannot copy and paste between them.
-* **Resizable Tree View:** A draggable, resizable directory tree. You can use it almost like the explorer on your own device.
+  * **Gallery View:** Grid-based masonry layout prioritizing image thumbnails with hover-zoom interactions. Perfect for mobile devices. No Tree View Pane here.
+  * **Icon View:** In the details pane quite similar to Gallery View, but more "Explorer-like". Also displays the Tree View pane.
+  * **Commander Mode:** A dual-pane layout for power users to manage files side-by-side with independent view states and split-ratio tracking. 
+  * **Webmail Mode:** Full featured secure webmail app. Users can - as the rights are granted - also add mailboxes on other servers (optionally even outlook.com). Also, mails can be saved to the clouds either as EML or as PDF files. 
+* **Multi-Cloud Switcher:** Top-level tabs allow users to seamlessly hot-swap between multiple cloud accounts without reloading the application. Cave: Since these clouds are security boundaries, you cannot copy and paste between them.
 * **Command Palette:** A keyboard-driven command interface (invoked via `>` or typing directly) to search files or trigger commands (e.g., `>Upload File`, `>Open SSH Terminal`).
 * **Device Intelligence:** Evaluates the type of hardware running on the user side to adapt spacing and interactions for Desktop, Touch-Laptops, Tablets, Phones, and even Foldable devices. Most settings can be done independently for **desktop** (including touch support), **tablet** (including foldables), and **phones** to suit your needs on different hardware.
 
