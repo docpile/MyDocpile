@@ -17,7 +17,7 @@ if [ -t 1 ] && command -v tput >/dev/null 2>&1 && [ "$(tput colors 2>/dev/null |
     msg_success() { echo -e "${GREEN}[✔]${RESET} $1"; }
     msg_warn()    { echo -e "${YELLOW}[!]${RESET} $1"; }
     msg_error()   { echo -e "${RED}[✖]${RESET} $1"; }
-    msg_ask_nl()  { echo -e "${BOLD}${CYAN}[?]${RESET} $1"; }
+    msg_ask_nl()  { echo -e "${BOLD}    $1${RESET}"; }
     msg_ask()     { echo -ne "${BOLD}${CYAN}[?]${RESET} $1"; }
 else
     msg_header()  { echo ""; echo "======================================================================="; echo "  $1"; echo "======================================================================="; echo ""; }
@@ -225,8 +225,8 @@ function gather_configuration() {
     PHP_VERSION=${PHP_VERSION:-8.4}
 
     echo ""
-    msg_info "Welcome to the MyDocpile Configuration!"
-    msg_info "Ensure you have a web server, PHP, and local mail server ready."
+    msg_ask_nl "Welcome to the MyDocpile Configuration!"
+    msg_ask_nl "Ensure you have a web server, PHP, and local mail server ready."
     msg_ask "Is your environment ready to proceed? (y/N): " 
     read agree_start
     if [[ ! "$agree_start" =~ ^[Yy]$ ]]; then
@@ -290,19 +290,26 @@ function gather_configuration() {
     www_group=${www_group:-$DETECTED_GROUP}
 
 
-    msg_ask "Enter PHP version to use (minimum 8.4) [$PHP_VERSION]: " 
+	echo ""
+    msg_ask_nl "Now we need the PHP version (minimum 8.4)."
+    msg_ask "Enter the PHP version to use [$PHP_VERSION]: " 
     read PHP_VERSION
     PHP_VERSION=${PHP_VERSION:-8.4}
 
+	echo ""
 	msg_ask_nl "Where are the public files for domain $main_domain stored?" 
     msg_ask "Enter target www-root path [$DEFAULT_WWW]: " 
     read www
     www=${www:-$DEFAULT_WWW}
 
-    msg_ask "Enter email sender address [no_reply@$main_domain]: " 
+ 	echo ""
+	msg_ask_nl "For 2FA setup we need the email sender address." 
+    msg_ask "Enter the email sender address [no_reply@$main_domain]: " 
     read email_sender
     email_sender=${email_sender:-no_reply@$main_domain}
 
+ 	echo ""
+	msg_ask_nl "Now some more general questions." 
     msg_ask "Should logins be IP-bound? (true/false) [true]: " 
     read ip_bound
     ip_bound=${ip_bound:-true}
@@ -327,9 +334,11 @@ function gather_configuration() {
     read preview_cache
     preview_cache=${preview_cache:-/home/mydocpile/preview_cache}
 
-    msg_ask "Enable ClamAV? (true/false) [true]: " 
+ 	echo ""
+    msg_ask_nl "Optional Components setup." 
+    msg_ask "Enable ClamAV on the cloud? (y/N): "
     read clamav_enabled
-    clamav_enabled=${clamav_enabled:-true}
+    clamav_enabled=${clamav_enabled:-N}
 
     msg_ask "Is OnlyOffice used and set up? (y/N): " 
     read use_oo
@@ -340,7 +349,7 @@ function gather_configuration() {
         read oo_url
     fi
 
-    msg_ask "Office365 (Azure) Client ID (leave blank to skip): " 
+    msg_ask "Office365 (Azure) Client ID (for webmail in outlook.com, leave blank to skip): " 
     read o365_client_id
     if [ -n "$o365_client_id" ]; then
         msg_ask "O365 Client Secret: " 
@@ -359,7 +368,7 @@ function gather_configuration() {
         fi
     fi
 
-    msg_ask "Install Mailparse PHP extension? (Y/n): " 
+    msg_ask "Install Mailparse PHP extension (performance enhancement for webmail? (Y/n): " 
     read opt_mailparse
     opt_mailparse=${opt_mailparse:-Y}
 
@@ -376,11 +385,54 @@ function prompt_admin_password() {
         msg_ask "Confirm password: "
         read -s ADMIN_PWD_CONFIRM
         echo ""
-        if [ -n "$ADMIN_PWD" ] && [ "$ADMIN_PWD" == "$ADMIN_PWD_CONFIRM" ]; then
-            break
-        else
+        
+        # Check if empty or mismatch
+        if [ -z "$ADMIN_PWD" ] || [ "$ADMIN_PWD" != "$ADMIN_PWD_CONFIRM" ]; then
             msg_error "Passwords do not match or are empty. Please try again."
+            continue
         fi
+
+        # 1. Length check
+        if [ ${#ADMIN_PWD} -lt 12 ]; then
+            msg_error "Password must be at least 12 characters long."
+            continue
+        fi
+
+        # 2. Invalid characters check (', ", ´, `, space)
+        if [[ "$ADMIN_PWD" == *" "* || "$ADMIN_PWD" == *"'"* || "$ADMIN_PWD" == *"\""* || "$ADMIN_PWD" == *"´"* || "$ADMIN_PWD" == *"\`"* ]]; then
+            msg_error "Password must not contain spaces or any of the following: ' \" ´ \`"
+            continue
+        fi
+
+        # 3. Complexity check (Upper, Lower, Number, Special Character)
+        if [[ ! "$ADMIN_PWD" =~ [A-Z] ]] || [[ ! "$ADMIN_PWD" =~ [a-z] ]] || [[ ! "$ADMIN_PWD" =~ [0-9] ]] || [[ ! "$ADMIN_PWD" =~ [^a-zA-Z0-9] ]]; then
+            msg_error "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character."
+            continue
+        fi
+
+        # 4. Have I Been Pwned (HIBP) check via k-Anonymity
+        if command -v sha1sum >/dev/null 2>&1 && command -v curl >/dev/null 2>&1; then
+            msg_info "Checking password against Have I Been Pwned database..."
+            
+            # Hash password to SHA-1 and convert to uppercase
+            local hash=$(printf "%s" "$ADMIN_PWD" | sha1sum | awk '{print toupper($1)}')
+            local prefix=${hash:0:5}
+            local suffix=${hash:5:35}
+            
+            # Fetch hashes matching the first 5 characters
+            local hibp_result=$(curl -s --connect-timeout 5 "https://api.pwnedpasswords.com/range/$prefix")
+            
+            # Check if our suffix is in the response (carriage return safe)
+            if echo "$hibp_result" | grep -qi "^$suffix"; then
+                msg_error "This password has been exposed in a known data breach (HIBP). Please choose a different one."
+                continue
+            fi
+        else
+            msg_warn "Required tools (curl, sha1sum) are missing. Skipping HIBP check."
+        fi
+
+        # All checks passed
+        break
     done
 }
 
@@ -598,6 +650,9 @@ function generate_config() {
         chmod -R ug+rwX "$icon_cache" "$preview_cache"
     fi
 
+    local php_clamav="false"
+    if [[ "$clamav_enabled" =~ ^[Yy]$ ]]; then php_clamav="true"; fi
+
     cat << EOF > "$config_file"
 <?php
 date_default_timezone_set('$timezone');
@@ -619,7 +674,7 @@ date_default_timezone_set('$timezone');
 \$cloud_icon_cache = '$icon_cache';
 \$cloud_preview_cache = '$preview_cache';
 
-\$cloud_clamav_enabled = $clamav_enabled;
+\$cloud_clamav_enabled = $php_clamav;
 \$cloud_oauth_my_domain = 'https://$main_domain/cloud/index.php';
 
 \$MYCLOUD_O365_CLIENT_ID = '$o365_client_id';
