@@ -129,6 +129,63 @@ function execute_logged() {
 # --------------------------------------------------------------------------
 #   CORE FUNCTIONS
 # --------------------------------------------------------------------------
+function fetch_repository_if_missing() {
+    local target_dir="/tmp/mydocpile_repo"
+    local source_cloud="./cloud (not on www-root!)"
+    local source_www="./www-root"
+
+    if [ ! -d "$source_cloud" ] || [ ! -d "$source_www" ]; then
+        msg_info "Local application directories not found. Fetching from repository..."
+
+        # Ensure git is installed
+        if ! command -v git >/dev/null 2>&1; then
+            if [[ "$PKG_MNGR" == "apt" ]]; then execute_logged apt-get install -y git
+            elif [[ "$PKG_MNGR" == "dnf" || "$PKG_MNGR" == "yum" ]]; then execute_logged $PKG_MNGR install -y git
+            elif [[ "$PKG_MNGR" == "pacman" ]]; then execute_logged pacman -S --noconfirm git
+            elif [[ "$PKG_MNGR" == "zypper" ]]; then execute_logged zypper install -y git
+            fi
+        fi
+
+        local repo_url="https://github.com/docpile/MyDocpile.git"
+        
+        if [ -d "$target_dir/.git" ]; then
+            msg_info "Repository exists in $target_dir, updating automatically..."
+            cd "$target_dir" || exit
+            execute_logged git remote set-url origin "$repo_url"
+            execute_logged git fetch --all
+            execute_logged git reset --hard origin/main
+            cd - > /dev/null || exit
+        else
+            msg_info "Cloning repository..."
+            rm -rf "$target_dir"
+            execute_logged git clone "$repo_url" "$target_dir"
+        fi
+
+        # Copy downloaded files to the current directory for deployment
+        if [ -d "$target_dir/cloud (not on www-root!)" ]; then
+            cp -r "$target_dir/cloud (not on www-root!)" .
+        fi
+        if [ -d "$target_dir/www-root" ]; then
+            cp -r "$target_dir/www-root" .
+        fi
+        cp "$target_dir"/*.sample . 2>/dev/null || true
+
+        msg_success "Application files fetched successfully."
+    else
+        msg_info "Local application files found. Skipping fresh clone."
+        
+        # Comprehensive update logic if the script is run in an existing Git directory
+        if [ -d ".git" ]; then
+            msg_info "Local git repository detected, checking for updates..."
+            local repo_url="https://github.com/docpile/MyDocpile.git"
+            execute_logged git remote set-url origin "$repo_url"
+            execute_logged git fetch --all
+            execute_logged git reset --hard origin/main
+            msg_success "Local repository updated cleanly."
+        fi
+    fi
+}
+
 function detect_php_binary() {
     msg_info "Detecting correct PHP executable for version $PHP_VERSION..."
     if command -v plesk >/dev/null 2>&1; then
@@ -170,7 +227,7 @@ function gather_configuration() {
 
 	echo ""
     msg_ask_nl "Enter all allowed domain names" 
-    msg_ask_nl "Also ibclude nere all domain aliases (space-separated)" 
+    msg_ask_nl "Also include all domain aliases (space-separated)" 
     msg_ask "Default: [$main_domain]: " 
     read -a allowed_domains
     if [ ${#allowed_domains[@]} -eq 0 ]; then
@@ -270,14 +327,14 @@ function gather_configuration() {
         read oo_url
     fi
 
-    msg_ask "O365 Client ID (leave blank to skip): " 
+    msg_ask "Office365 (Azure) Client ID (leave blank to skip): " 
     read o365_client_id
     if [ -n "$o365_client_id" ]; then
         msg_ask "O365 Client Secret: " 
         read o365_client_secret
     fi
 
-    msg_ask "Install Cloud Search (Recoll, Tesseract, OCR)? (Y/n): " 
+    msg_ask "Install Full Text Search (Recoll, Tesseract, OCR)? (Y/n): " 
     read opt_cloud
     opt_cloud=${opt_cloud:-Y}
 
@@ -338,25 +395,25 @@ function resolve_system_packages() {
 
     # 2. Append OS Specific Non-PHP Packages
     if [[ "$PKG_MNGR" == "apt" ]]; then
-        packages=("${php_pkgs[@]}" imagemagick libmemcached-dev memcached brotli ghostscript qpdf pdftk clamdscan ffmpeg antiword unrtf wkhtmltopdf)
+        packages=("${php_pkgs[@]}" git imagemagick ghostscript qpdf pdftk clamdscan ffmpeg wkhtmltopdf)
         if [[ "$opt_cloud" =~ ^[Yy]$ ]]; then
             packages+=(recoll tesseract-ocr poppler-utils)
             for lang in "${ocr_langs[@]}"; do packages+=("tesseract-ocr-$lang"); done
         fi
     elif [[ "$PKG_MNGR" == "dnf" || "$PKG_MNGR" == "yum" ]]; then
-        packages=("${php_pkgs[@]}" ImageMagick libmemcached-devel memcached brotli ghostscript qpdf pdftk clamav ffmpeg antiword unrtf wkhtmltopdf)
+        packages=("${php_pkgs[@]}" git ImageMagick ghostscript qpdf pdftk clamav ffmpeg wkhtmltopdf)
         if [[ "$opt_cloud" =~ ^[Yy]$ ]]; then
             packages+=(recoll tesseract poppler-utils)
             for lang in "${ocr_langs[@]}"; do packages+=("tesseract-langpack-$lang"); done
         fi
     elif [[ "$PKG_MNGR" == "pacman" ]]; then
-        packages=("${php_pkgs[@]}" imagemagick libmemcached memcached brotli ghostscript qpdf pdftk clamav ffmpeg antiword unrtf wkhtmltopdf)
+        packages=("${php_pkgs[@]}" git imagemagick ghostscript qpdf pdftk clamav ffmpeg wkhtmltopdf)
         if [[ "$opt_cloud" =~ ^[Yy]$ ]]; then
             packages+=(recoll tesseract poppler)
             for lang in "${ocr_langs[@]}"; do packages+=("tesseract-data-$lang"); done
         fi
     elif [[ "$PKG_MNGR" == "zypper" ]]; then
-        packages=("${php_pkgs[@]}" ImageMagick libmemcached-devel memcached brotli ghostscript qpdf pdftk clamav ffmpeg antiword unrtf wkhtmltopdf)
+        packages=("${php_pkgs[@]}" git ImageMagick ghostscript qpdf pdftk clamav ffmpeg wkhtmltopdf)
         if [[ "$opt_cloud" =~ ^[Yy]$ ]]; then
             packages+=(recoll tesseract poppler-tools)
             for lang in "${ocr_langs[@]}"; do packages+=("tesseract-ocr-$lang"); done
@@ -830,6 +887,7 @@ case $MODE in
         show_configuration_summary
         install_system_packages
         install_plesk_pecl_apcu
+		fetch_repository_if_missing
         deploy_application_files ""
         generate_config
         apply_admin_password
@@ -848,6 +906,7 @@ case $MODE in
         show_configuration_summary
         install_system_packages
         install_plesk_pecl_apcu
+		fetch_repository_if_missing
         deploy_application_files ""
         generate_config
         apply_admin_password
@@ -864,6 +923,7 @@ case $MODE in
         install_system_packages
         install_plesk_pecl_apcu
         deploy_application_files ""
+		fetch_repository_if_missing
         install_composer_components
         if [[ "$opt_mailparse" =~ ^[Yy]$ ]]; then optional_component_mailparse; fi
 		setup_cronjobs
@@ -890,6 +950,7 @@ case $MODE in
         detect_php_binary
         install_system_packages
         install_plesk_pecl_apcu
+		fetch_repository_if_missing
         deploy_application_files "-u"
         install_composer_components
  		setup_cronjobs
