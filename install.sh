@@ -167,25 +167,11 @@ function fetch_repository_if_missing() {
             execute_logged git clone "$repo_url" "$target_dir"
         fi
 
-        # Copy downloaded files to the current directory for deployment
-        if [ -d "$target_dir/cloud (not on www-root!)" ]; then
-            cp -r "$target_dir/cloud (not on www-root!)" .
-        fi
-        if [ -d "$target_dir/www-root" ]; then
-            cp -r "$target_dir/www-root" .
-        fi
-        if [ -d "$target_dir/documentation" ]; then
-            cp -r "$target_dir/documentation" .
-        fi
-        cp "$target_dir"/install.sh . 2>/dev/null || true
-		chmod +x "$CLOUD_DIR/install.sh" 2>/dev/null || true
-        cp "$target_dir"/*.sample . 2>/dev/null || true
-        cp "$target_dir"/LICENSE . 2>/dev/null || true
-        cp "$target_dir"/README.md . 2>/dev/null || true
-
+        SRC_DIR="$target_dir"
         msg_success "Application files fetched successfully."
     else
         msg_info "Local application files found. Skipping fresh clone."
+		SRC_DIR="."
         
         # Comprehensive update logic if the script is run in an existing Git directory
         if [ -d ".git" ]; then
@@ -600,29 +586,32 @@ function install_system_packages() {
 function deploy_application_files() {
     local update_flag=$1 # Pass "-u" for update mode
     msg_info "Deploying application files..."
+	SRC_DIR=${SRC_DIR:-.}
 
 	mkdir -p "$CLOUD_DIR"
-    cp ./nginx.conf.onlyoffice-proxy.sample "$CLOUD_DIR"/ 
-    cp ./nginx.conf.sample "$CLOUD_DIR"/ 
-    cp ./php.ini.sample "$CLOUD_DIR"/ 
+    cp "$SRC_DIR/nginx.conf.onlyoffice-proxy.sample" "$CLOUD_DIR"/ 2>/dev/null || true
+    cp "$SRC_DIR/nginx.conf.sample" "$CLOUD_DIR"/ 2>/dev/null || true
+    cp "$SRC_DIR/php.ini.sample" "$CLOUD_DIR"/ 2>/dev/null || true
+    cp "$SRC_DIR/install.sh" "$CLOUD_DIR/install.sh" 2>/dev/null || true
+	chmod +x "$CLOUD_DIR/install.sh" 2>/dev/null || true
 
-    if [ -d "./cloud (not on www-root!)" ]; then
-        cp -a $update_flag "./cloud (not on www-root!)"/* "$CLOUD_DIR"/ || true
+    if [ -d "$SRC_DIR/cloud (not on www-root!)" ]; then
+        cp -a $update_flag "$SRC_DIR/cloud (not on www-root!)"/. "$CLOUD_DIR"/ || true
 		
         chown -R "$wwwuser":"$www_group" "$CLOUD_DIR"
         chmod -R ug+rwX "$CLOUD_DIR"
         msg_success "Cloud files deployed."
     else
-        msg_warn "Source directory './cloud (not on www-root!)' not found."
+        msg_warn "Source directory '$SRC_DIR/cloud (not on www-root!)' not found."
     fi
 
-    if [ -d "./www-root" ]; then
+    if [ -d "$SRC_DIR/www-root" ]; then
         mkdir -p "$www"
-        cp -a $update_flag "./www-root"/* "$www"/ || true
+        cp -a $update_flag "$SRC_DIR/www-root"/. "$www"/ || true
         chown -R "$wwwuser":"$www_group" "$www"
         msg_success "WWW files deployed."
     else
-        msg_warn "Source directory './www-root' not found."
+        msg_warn "Source directory '$SRC_DIR/www-root' not found."
     fi
 }
 
