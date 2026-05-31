@@ -29,8 +29,14 @@ else
 fi
 
 if [ "$EUID" -ne 0 ]; then
-    msg_error "Please run as root (or use sudo)."
-    exit 1
+    msg_info "Not running as root. Attempting to elevate privileges via sudo..."
+    if command -v sudo >/dev/null 2>&1; then
+        exec sudo bash "$0" "$@"
+		exit 0
+    else
+        msg_error "sudo is not installed. Please run as root."
+        exit 1
+    fi
 fi
 
 # --------------------------------------------------------------------------
@@ -46,7 +52,7 @@ touch "$LOG_FILE"
 
 # Redirect normal stdout/stderr to tee. 
 # This logs UI messages to the file with timestamps while keeping them visible on screen.
-exec > >(tee >(while IFS= read -r line; do echo "[$(date +'%Y-%m-%d %H:%M:%S')] $line" >> "$LOG_FILE"; done)) 2>&1
+exec > >(tee >(while IFS= read -r line; do echo "[$(date +'%Y-%m-%d %H:%M:%S')] $line" >> "$LOG_FILE" 2>/dev/null; done)) 2>&1
 echo -e "\n--- MyDocpile Setup Session Started ---"
 
 msg_header "System Configuration & Installer: MyDocpile"
@@ -168,7 +174,14 @@ function fetch_repository_if_missing() {
         if [ -d "$target_dir/www-root" ]; then
             cp -r "$target_dir/www-root" .
         fi
+        if [ -d "$target_dir/documentation" ]; then
+            cp -r "$target_dir/documentation" .
+        fi
+        cp "$target_dir"/install.sh . 2>/dev/null || true
+		chmod +x "$CLOUD_DIR/install.sh" 2>/dev/null || true
         cp "$target_dir"/*.sample . 2>/dev/null || true
+        cp "$target_dir"/LICENSE . 2>/dev/null || true
+        cp "$target_dir"/README.md . 2>/dev/null || true
 
         msg_success "Application files fetched successfully."
     else
@@ -426,6 +439,14 @@ function resolve_system_packages() {
         league/oauth2-client league/oauth2-google thenetworg/oauth2-azure 
         webklex/php-imap
     )
+    # Filter out already installed system packages so only missing ones remain
+    local missing_packages=()
+    for pkg in "${packages[@]}"; do
+        if ! is_pkg_installed "$pkg"; then
+            missing_packages+=("$pkg")
+        fi
+    done
+    packages=("${missing_packages[@]}")
 }
 
 function is_pkg_installed() {
@@ -440,12 +461,6 @@ function is_pkg_installed() {
 }
 
 function show_configuration_summary() {
-    local missing_packages=()
-    for pkg in "${packages[@]}"; do
-        if ! is_pkg_installed "$pkg"; then
-            missing_packages+=("$pkg")
-        fi
-    done
 
     msg_header "Configuration Summary"
     msg_info "Please review the following settings before changes are made:"
@@ -475,19 +490,15 @@ function show_configuration_summary() {
     echo ""
 
     msg_info "System Packages to be installed ($PKG_MNGR):"
-    if [ ${#missing_packages[@]} -eq 0 ]; then
+    if [ ${#packages[@]} -eq 0 ]; then
         echo "  -> (None. All required system packages are already installed.)"
     else
-        echo "  -> ${missing_packages[*]}"
+        echo "  -> ${packages[*]}"
     fi
     echo ""
 
-    msg_info "Composer Packages (PHP) to be installed:"
-    echo "  -> ${composer_packages[*]}"
-    echo ""
     msg_info "Note: Composer and its packages will only be installed LOCALLY"
-    msg_info "within the application directory ($CLOUD_DIR)."
-    msg_info "This is for explicit PHP version compatibility."
+    msg_info "within the application directory. No system-wide modification."
     echo ""
 
     msg_ask "${BOLD}${YELLOW}Are all settings correct? Proceed with installation?${RESET} (y/N): "
@@ -499,6 +510,10 @@ function show_configuration_summary() {
 }
 
 function install_system_packages() {
+    if [ ${#packages[@]} -eq 0 ]; then
+        msg_info "All required system packages are already installed. Skipping package installation."
+        return
+    fi
     msg_info "Updating system repositories..."
     if [[ "$PKG_MNGR" == "apt" ]]; then execute_logged apt-get update -y
     elif [[ "$PKG_MNGR" == "dnf" || "$PKG_MNGR" == "yum" ]]; then execute_logged $PKG_MNGR check-update
@@ -508,7 +523,6 @@ function install_system_packages() {
 
     local failed=()
     for pkg in "${packages[@]}"; do
-        if is_pkg_installed "$pkg"; then continue; fi
 
         msg_info "Installing package: $pkg..."
         if [[ "$PKG_MNGR" == "apt" ]]; then DEBIAN_FRONTEND=noninteractive execute_logged apt-get -y install "$pkg"
@@ -753,6 +767,9 @@ PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 
 # Cache refresh and recyclers cleanup (every 5 minutes)
 */5 * * * * root MEM=\$(free -m | awk '/^Mem:/{print \$7}'); [[ -z "\$MEM" || "\$MEM" -lt 512 ]] && MEM=512; sudo -u $wwwuser $PHP_BIN -d memory_limit=\${MEM}M -d max_execution_time=3550 -d opcache.enable_cli=0 -d opcache.jit=disable /var/lib/mydocpile/cloud/cronjobs.php --cache-refresh --delete-recyclers >> $list_dir/cloud.housekeeping.log 2>&1
+
+# Weekly automated MyDocpile update (Sunday at 04:00 AM)
+0 4 * * 0 root $CLOUD_DIR/install.sh --update > /dev/null 2>&1
 EOF
 
     if [[ "$opt_cloud" =~ ^[Yy]$ ]]; then
@@ -792,7 +809,6 @@ function execute_uninstall() {
 }
 
 function execute_uninstall_all() {
-    execute_uninstall
     
     if [ -f "$PKG_STATE_FILE" ]; then
         msg_info "Removing explicitly installed system packages..."
@@ -815,6 +831,7 @@ function execute_uninstall_all() {
     else
         msg_info "No tracking file found for installed packages. Skipping package removal."
     fi
+	execute_uninstall
 }
 
 function show_post_install_instructions() {
@@ -848,7 +865,10 @@ function show_post_install_instructions() {
 # --------------------------------------------------------------------------
 #   EXECUTION ROUTING
 # --------------------------------------------------------------------------
-if [ -f "$STATE_FILE" ]; then
+if [[ "$1" == "--update" || "$1" == "update" ]]; then
+    MODE="update"
+    msg_info "Running in automated update mode."
+elif [ -f "$STATE_FILE" ]; then
     msg_header "MyDocpile Management"
     echo "  1) Update       (Copy newer files, install missing dependencies)"
     echo "  2) Refresh      (Re-run whole setup, keep existing config.php)"
