@@ -1,5 +1,6 @@
 3.2.250
-	Improvement: config.dist.php recognition in modules.admim_ui.php
+	First public release
+    Improvement: config.dist.php recognition in modules.admim_ui.php
 	Improvement: Make edit log file optional
 	Fix: Admin UI save bug
 
