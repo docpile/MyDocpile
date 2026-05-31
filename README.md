@@ -75,7 +75,22 @@ The MyDocpile software is designed to have **the least depenencies possible**. S
 
 ## 🚀 Features
 
-### 1. Core File & Directory Management
+### 1. Layouts, UI & Navigation
+* **Multiple View Modes:**
+  * **Tree View Pane:** A draggable, resizable directory tree. You can use it almost like the Explorer/Finder/Nautilus on your own device.
+  * **List View:** Detailed data table with sortable columns, custom checkboxes, and sticky headers.
+  * **Gallery View:** Grid-based masonry layout prioritizing image thumbnails with hover-zoom interactions. Perfect for mobile devices. No Tree View Pane here.
+  * **Icon View:** In the details pane quite similar to Gallery View, but more "Explorer-like". Also displays the Tree View pane.
+  * **Commander Mode:** A dual-pane layout for power users to manage files side-by-side with independent view states and split-ratio tracking. 
+  * **Webmail Mode:** Full featured secure webmail app. Users can - as the rights are granted - also add mailboxes on other servers (optionally even outlook.com). Also, mails can be saved to the clouds either as EML or as PDF files. 
+* **Multi-Cloud Switcher:** Top-level tabs allow users to seamlessly hot-swap between multiple cloud accounts without reloading the application. Cave: Since these clouds are security boundaries, you cannot copy and paste between them.
+* **Command Palette:** A keyboard-driven command interface (invoked via `>` or typing directly) to search files or trigger commands (e.g., `>Upload File`, `>Open SSH Terminal`).
+* **Device Intelligence:** Evaluates the type of hardware running on the user side to adapt spacing and interactions for Desktop, Touch-Laptops, Tablets, Phones, and even Foldable devices. Most settings can be done independently for **desktop** (including touch support), **tablet** (including foldables), and **phones** to suit your needs on different hardware.
+* **Multi-Language support:**
+  *  **Full RTL Support:** Automatically mirrors layouts, arrows, and toggle behaviors if the active language is Right-to-Left (e.g., Arabic...).
+  *  **Many languages included:** Major languages are included (most of them AI translated, so feel free to change the translations if needed) 
+
+### 2. Core File & Directory Management
 * **Standard Operations:**
   * Full support for Create files and folders, Delete, Move, Copy, and Rename... Much of that also in a batch mode.
 * **Advanced Upload System:**
@@ -93,25 +108,10 @@ The MyDocpile software is designed to have **the least depenencies possible**. S
 * **End-to-End encrypted vaults:**
   * Uses state-of-the-art encryption to generate fully encrypted directories. It uses a per-file encryption, thereby also encrypting the file names.
 
-### 2. Archiving & Compression
+### 3. Archiving & Compression
 * **Dynamic Zipping:** Download entire folders as `.zip` files generated dynamically on the server. 
 * **Native Archive Browsing:** The file tree and list views can "step into" `.zip` files and browse their internal file structure identically to standard folders without extracting them to disk.
 * **Surgical Extraction:** Extract specific files from within a `.zip` directly to the active folder, or extract the entire archive natively.
-
-### 3. Layouts, UI & Navigation
-* **Multi-Language support:**
-  *  **Full RTL Support:** Automatically mirrors layouts, arrows, and toggle behaviors if the active language is Right-to-Left (e.g., Arabic...).
-  *  **Many languages included:** Major languages are included (most of them AI translated, so feel free to change the translations if needed) 
-* **Multiple View Modes:**
-  * **Tree View Pane:** A draggable, resizable directory tree. You can use it almost like the Explorer/Finder/Nautilus on your own device.
-  * **List View:** Detailed data table with sortable columns, custom checkboxes, and sticky headers.
-  * **Gallery View:** Grid-based masonry layout prioritizing image thumbnails with hover-zoom interactions. Perfect for mobile devices. No Tree View Pane here.
-  * **Icon View:** In the details pane quite similar to Gallery View, but more "Explorer-like". Also displays the Tree View pane.
-  * **Commander Mode:** A dual-pane layout for power users to manage files side-by-side with independent view states and split-ratio tracking. 
-  * **Webmail Mode:** Full featured secure webmail app. Users can - as the rights are granted - also add mailboxes on other servers (optionally even outlook.com). Also, mails can be saved to the clouds either as EML or as PDF files. 
-* **Multi-Cloud Switcher:** Top-level tabs allow users to seamlessly hot-swap between multiple cloud accounts without reloading the application. Cave: Since these clouds are security boundaries, you cannot copy and paste between them.
-* **Command Palette:** A keyboard-driven command interface (invoked via `>` or typing directly) to search files or trigger commands (e.g., `>Upload File`, `>Open SSH Terminal`).
-* **Device Intelligence:** Evaluates the type of hardware running on the user side to adapt spacing and interactions for Desktop, Touch-Laptops, Tablets, Phones, and even Foldable devices. Most settings can be done independently for **desktop** (including touch support), **tablet** (including foldables), and **phones** to suit your needs on different hardware.
 
 ### 4. Media & Document Previews
 * **High-Performance Smart Thumbnails:** Generates lightweight thumbnail caches on the server to prevent CPU load on repeat visits.
