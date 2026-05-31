@@ -17,6 +17,7 @@ if [ -t 1 ] && command -v tput >/dev/null 2>&1 && [ "$(tput colors 2>/dev/null |
     msg_success() { echo -e "${GREEN}[✔]${RESET} $1"; }
     msg_warn()    { echo -e "${YELLOW}[!]${RESET} $1"; }
     msg_error()   { echo -e "${RED}[✖]${RESET} $1"; }
+    msg_ask_nl()  { echo -e "${BOLD}${CYAN}[?]${RESET} $1"; }
     msg_ask()     { echo -ne "${BOLD}${CYAN}[?]${RESET} $1"; }
 else
     msg_header()  { echo ""; echo "======================================================================="; echo "  $1"; echo "======================================================================="; echo ""; }
@@ -167,6 +168,22 @@ function gather_configuration() {
     msg_ask "Enter the main domain for the cloud (e.g., example.com): " 
     read main_domain
 
+	echo ""
+    msg_ask_nl "Enter all allowed domain names" 
+    msg_ask_nl "Also ibclude nere all domain aliases (space-separated)" 
+    msg_ask "Default: [$main_domain]: " 
+    read -a allowed_domains
+    if [ ${#allowed_domains[@]} -eq 0 ]; then
+        allowed_domains=("$main_domain")
+    fi
+
+	echo ""
+    msg_ask_nl "Among these, which are WEBMAIL ONLY domains?" 
+    msg_ask_nl "Meaning no file cloud would be displayed there" 
+    msg_ask_nl "(e.g. webmail.example.com)" 
+    msg_ask "Space-separated, simply leave blank for none: " 
+    read -a webmail_domains
+
     if command -v plesk >/dev/null 2>&1; then
         msg_info "Plesk detected."
         DEFAULT_GROUP="psacln"
@@ -178,9 +195,11 @@ function gather_configuration() {
             DETECTED_USER=$(plesk bin domain -i "$main_domain" 2>/dev/null | grep "FTP Login" | awk '{print $3}')
             DETECTED_GROUP=$(id -gn "$DETECTED_USER" 2>/dev/null)
         fi
+
         wwwuser=${DETECTED_USER:-$main_domain}
-        wwwuser=${wwwuser:-$DEFAULT_USER}
-        www_group=${DETECTED_GROUP:-$DEFAULT_GROUP}
+        DETECTED_USER=${wwwuser:-$DEFAULT_USER}
+        DETECTED_GROUP=${DETECTED_GROUP:-$DEFAULT_GROUP}
+
     else
         msg_info "Assuming standard Linux environment."
         DETECTED_USER=$(ps axo user,comm | grep -E '(apache2|httpd|nginx)' | grep -v root | head -n 1 | awk '{print $1}')
@@ -188,51 +207,47 @@ function gather_configuration() {
         DETECTED_GROUP=$(id -gn "$DETECTED_USER" 2>/dev/null)
         DETECTED_GROUP=${DETECTED_GROUP:-$DEFAULT_GROUP}
 
-        msg_ask "Enter web user [$DETECTED_USER]: " 
-        read wwwuser
-        wwwuser=${wwwuser:-$DETECTED_USER}
-
-        msg_ask "Enter web group [$DETECTED_GROUP]: " 
-        read www_group
-        www_group=${www_group:-$DETECTED_GROUP}
     fi
+
+	echo ""
+	msg_ask_nl "We also need to set the rights for the new directories." 
+    msg_ask "Enter web user [$DETECTED_USER]: " 
+    read wwwuser
+    wwwuser=${wwwuser:-$DETECTED_USER}
+
+    msg_ask "Enter web group [$DETECTED_GROUP]: " 
+    read www_group
+    www_group=${www_group:-$DETECTED_GROUP}
+
 
     msg_ask "Enter PHP version to use (minimum 8.4) [$PHP_VERSION]: " 
     read PHP_VERSION
     PHP_VERSION=${PHP_VERSION:-8.4}
 
+	msg_ask_nl "Where are the public files for domain $main_domain stored?" 
     msg_ask "Enter target www-root path [$DEFAULT_WWW]: " 
     read www
     www=${www:-$DEFAULT_WWW}
 
-    msg_ask "Enter email sender address [root@$main_domain]: " 
+    msg_ask "Enter email sender address [no_reply@$main_domain]: " 
     read email_sender
-    email_sender=${email_sender:-root@$main_domain}
+    email_sender=${email_sender:-no_reply@$main_domain}
 
     msg_ask "Should logins be IP-bound? (true/false) [true]: " 
     read ip_bound
     ip_bound=${ip_bound:-true}
 
-    msg_ask "Enter allowed domains (space-separated) [$main_domain]: " 
-    read -a allowed_domains
-    if [ ${#allowed_domains[@]} -eq 0 ]; then
-        allowed_domains=("$main_domain")
-    fi
-
-    msg_ask "Enter webmail ONLY domains (no file cloud; space-separated, blank for none): " 
-    read -a webmail_domains
-
-    msg_ask "Enter timezone [Europe/Berlin]: " 
+    msg_ask "Enter the timezone [Europe/Berlin]: " 
     read timezone
     timezone=${timezone:-Europe/Berlin}
 
-    msg_ask "Max public share upload quota (e.g., 2G) [4G]: " 
+    msg_ask "Max public share upload quota (e.g., 2G) [1G]: " 
     read public_quota
     public_quota=${public_quota:-4G}
 
-    msg_ask "Max ZIP download size [1G]: " 
+    msg_ask "Max ZIP download size [400M]: " 
     read max_zip_size
-    max_zip_size=${max_zip_size:-1G}
+    max_zip_size=${max_zip_size:-400M}
 
     msg_ask "Icon cache dir [/home/mydocpile/icon_cache]: " 
     read icon_cache
