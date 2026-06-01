@@ -9,9 +9,30 @@ Nobody said the resulting code would be beautiful (in fact, in most places it's 
 
 Where security critical, I also intervened and even did some coding myself. The login handler here is just a simplified version of the one I use in reality (would be to complex in the setup to include all the stuff here). The code published here is not "bullet proof" - but likely more than sufficient for your "private NAS" at home.
 
+Of course, I'd be more than happy to receive some kind of a feedback - this product should become ever more stable and more secure over time. Also, feature requests are welcome.
+
 **[Official Website](https://docpile.de)**
 
 [Changelog](cloud%20(not%20on%20www-root!)/cloud/versioninfo.txt)
+
+**Table of contents:**
+- [My Document Pile - MyDocpile](#my-document-pile---mydocpile)
+  - [Screenshots](#screenshots)
+  - [MyDocpile](#mydocpile)
+  - [Features](#features)
+    - [1. Layouts, UI & Navigation](#1-layouts-ui--navigation)
+    - [2. Core File & Directory Management](#2-core-file--directory-management)
+    - [3. Archiving & Compression](#3-archiving--compression)
+    - [4. Media & Document Previews](#4-media--document-previews)
+    - [5. Advanced System & Power User Tools](#5-advanced-system--power-user-tools)
+    - [6. Webmail](#6-webmail)
+    - [7. Security Infrastructure](#7-security-infrastructure)
+  - [Limitations](#limitations)
+  - [Setup & Installation](setup--installation)
+    - [1. Requirements](#1-requirements)
+    - [2. Configuration](#2-configuration)
+    - [3. Integration Into Other Applications](#3-integration-into-other-applications)
+    - [4. Installation on Your Server](#4-installation-on-your-server)
 
 [Skip screenshots](#mydocpile)
 
@@ -75,7 +96,7 @@ The MyDocpile software is designed to have **the least depenencies possible**. S
 
 **❗Very Important Notice:** *None* - repeat: **_none_** - of the MyDocpile PHP code or its data is to be stored within the www-root. From the very beginning, it was designed to, except for a small index.php stub and some js, css and image files needed, **_completely live outside of www-root_**. This was a deliberate design decision to elimiate many security risks commercial products are suffering from. Make sure to adjust your PHP "open_basedir" setting accordingly (See the installation guide; the install.sh will show you the necessary changes to make). 
 
-## 🚀 Features
+## Features
 
 ### 1. Layouts, UI & Navigation
 * **Multiple View Modes:**
@@ -152,7 +173,7 @@ The MyDocpile software is designed to have **the least depenencies possible**. S
 * **Path Jailing:** Uses aggressive validation to ensure bad actors cannot execute directory traversal attacks 
 * **Cache Management:** Mail caches, address books and other sensitive private data is stored encrypted on the disk. This currently is not end-to-end (maybe in a future release), but at least way more secure than other apps do (by putting this clear-text into a database) 
 
-## ⚠️ Limitations
+## Limitations
 
 * **Tightly Coupled Architecture:** The frontend CSS, JavaScript, and HTML are delivered entirely via inline PHP includes. On the other hand, the MyDocpile itself does not use any big pictures and loads itself exactly once per session. The bytes delivered over the network are comparable or even less than Nextcloud (depending on the Nextcloud setup even dramatically less).
 * **Resource Intensive Processing:** On-the-fly zip generation and recursive directory stat calculations can consume significant CPU and RAM on large directories, despite built-in timeout and memory limiters. Keep that in mind or edit the limits in the config if needed.
@@ -162,7 +183,7 @@ The MyDocpile software is designed to have **the least depenencies possible**. S
 
 ---
 
-## 🛠️ Setup & Installation
+## Setup & Installation
 
 ### 1. Requirements
 * **Operating System:** As it needs some executable code outside of PHP to function (mostly for PHP and image processing), sorry to say currently it's *running on Linux systems only*. Actually, it was tested on Ubuntu only.
