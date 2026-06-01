@@ -34,7 +34,7 @@ Of course, I'd be more than happy to receive some kind of a feedback - this prod
     - [3. Integration Into Other Applications](#3-integration-into-other-applications)
     - [4. Installation on Your Server](#4-installation-on-your-server)
 
-[Skip screenshots](#mydocpile)
+---
 
 ## Screenshots
 
@@ -88,6 +88,7 @@ Optional: **OnlyOffice integration** - makes the cloud almost a desktop replacem
 
 Now let's come to the software:
 
+---
 ## MyDocpile
 
 MyDocpile is a highly responsive, AJAX-only web file explorer and web based mail app that provides a native Windows-style layout directly in the browser. It features a rich set of file management tools, real-time media streaming, document previews, and if wanted even an integrated SSH terminal.
@@ -96,6 +97,7 @@ The MyDocpile software is designed to have **the least depenencies possible**. S
 
 **❗Very Important Notice:** *None* - repeat: **_none_** - of the MyDocpile PHP code or its data is to be stored within the www-root. From the very beginning, it was designed to, except for a small index.php stub and some js, css and image files needed, **_completely live outside of www-root_**. This was a deliberate design decision to elimiate many security risks commercial products are suffering from. Make sure to adjust your PHP "open_basedir" setting accordingly (See the installation guide; the install.sh will show you the necessary changes to make). 
 
+---
 ## Features
 
 ### 1. Layouts, UI & Navigation
@@ -173,6 +175,7 @@ The MyDocpile software is designed to have **the least depenencies possible**. S
 * **Path Jailing:** Uses aggressive validation to ensure bad actors cannot execute directory traversal attacks 
 * **Cache Management:** Mail caches, address books and other sensitive private data is stored encrypted on the disk. This currently is not end-to-end (maybe in a future release), but at least way more secure than other apps do (by putting this clear-text into a database) 
 
+---
 ## Limitations
 
 * **Tightly Coupled Architecture:** The frontend CSS, JavaScript, and HTML are delivered entirely via inline PHP includes. On the other hand, the MyDocpile itself does not use any big pictures and loads itself exactly once per session. The bytes delivered over the network are comparable or even less than Nextcloud (depending on the Nextcloud setup even dramatically less).
