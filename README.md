@@ -6,9 +6,11 @@ Actually, I wanted to see how far one could come using AI to build a feature ric
 
 Nobody said the resulting code would be beautiful (in fact, in most places it's quite ugly)... But surprisingly, it works pretty well! It almost became an "Operating System in the browser"!
 
-Where security critical, I also intervened and even did some coding myself. The login handler here is just a simplified version of the one I use in reality (would be to complex in the setup to include all the stuff here). The code published here is not "bullet proof" - but likely more than sufficient for your "private NAS" at home.
+Where security critical, I also intervened and even did some coding myself. The login handler here is just a simplified version of the one I use in reality (would be to complex in the dependencies and therefore in the setup to include all the stuff here). 
 
-Of course, I'd be more than happy to receive some kind of a feedback - this product should become ever more stable and more secure over time. Also, feature requests are welcome.
+The code published here surely is not "bullet proof" - but likely more than sufficient for your "private NAS" at home or some smaller installation on the web.
+
+Of course, I'd be more than happy to receive some kind of a feedback - this product should become ever more stable, reliable and also secure over time. Also, feature requests are very welcome.
 
 **[Official Website](https://docpile.de)**
 
