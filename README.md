@@ -28,12 +28,12 @@ Of course, I'd be more than happy to receive some kind of a feedback - this prod
     - [5. Advanced System & Power User Tools](#5-advanced-system--power-user-tools)
     - [6. Webmail](#6-webmail)
     - [7. Security Infrastructure](#7-security-infrastructure)
+    - [8. Integration Into Other Applications](#8-integration-into-other-applications)
   - [Limitations](#limitations)
   - ***[Setup & Installation](#setup--installation)***
     - [1. Requirements](#1-requirements)
     - [2. Configuration](#2-configuration)
-    - [3. Integration Into Other Applications](#3-integration-into-other-applications)
-    - [4. Installation on Your Server](#4-installation-on-your-server)
+    - [3. Installation on Your Server](#3-installation-on-your-server)
 
 ---
 
@@ -179,7 +179,11 @@ The MyDocpile software is designed to have **the least depenencies possible**. S
 * **CSRF Protection:** Tokens and nonces are generated using multi-entropy sources and required on every single write or sensitive read operation 
 * **Role-Based Access Control (RBAC):** All operations strictly check against fine grained user permissions 
 * **Path Jailing:** Uses aggressive validation to ensure bad actors cannot execute directory traversal attacks 
-* **Cache Management:** Mail caches, address books and other sensitive private data is stored encrypted on the disk. This currently is not end-to-end (maybe in a future release), but at least way more secure than other apps do (by putting this clear-text into a database) 
+* **Cache Management:** Mail caches, address books and other sensitive private data is stored encrypted on the disk. This currently is not end-to-end (maybe in a future release), but at least way more secure than other apps do (by putting this clear-text into a database)
+
+### 8. Integration Into Other Applications
+* The login UI submitted here is just an excerpt of the login used in my much larger (and safer) real-life application login; however, it gives you an impression of the needs of the MyDocpile application itself and should be sufficiently secure for smaller implementations.  
+
 
 ---
 ## Limitations
@@ -199,16 +203,13 @@ The MyDocpile software is designed to have **the least depenencies possible**. S
 * **PHP:** *PHP 8.4* or higher
 * **Webserver:** Any webserver software would do, with *Nginx* preferred.
 * **Mailserver:** For 2FA, for security reasons, a local mailserver account is needed. If you do not use the SFTP "Admin Mode" plugin, 2FA is not used and a local mailserver is not needed. 
-* **Extensions:** `zip`, `mbstring`, `fileinfo` (for EXIF data). `Imagick` or `GD` (for image processing). Also further ubuntu/debian packages are required, see install.sh for a detailed list. All dependencies will be checked and installed automatically. 
+* **Additional components needed:** `zip`, `mbstring`, `fileinfo` (for EXIF data). `Imagick` or `GD` (for image processing). Also further ubuntu/debian packages are required, see install.sh for a detailed list. Most dependencies will be checked and installed automatically. 
 * **Composer:** Is being automatically installed within the installation directory of the main app only. No  system modifications here.
 
 ### 2. Configuration
 The system expects several config.php variables to be defined. Most of them are automatically set up during installation. 
 
-### 3. Integration Into Other Applications
-The login UI submitted here is just an excerpt of the login used in my much larger (and safer) real-life application login; however, it gives you an impression of the needs of the MyDocpile application itself and should be sufficiently secure for smaller implementations.  
-
-### 4. Installation on Your Server
+### 3. Installation on Your Server
 
 1. Create a domain with an empty www-root on your webserver.
 2. Secure it with a certificate.
