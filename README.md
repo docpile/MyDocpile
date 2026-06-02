@@ -29,7 +29,7 @@ Of course, I'd be more than happy to receive some kind of a feedback - this prod
     - [6. Webmail](#6-webmail)
     - [7. Security Infrastructure](#7-security-infrastructure)
   - [Limitations](#limitations)
-  - [Setup & Installation](setup--installation)
+  - ***[Setup & Installation](#setup--installation)***
     - [1. Requirements](#1-requirements)
     - [2. Configuration](#2-configuration)
     - [3. Integration Into Other Applications](#3-integration-into-other-applications)
