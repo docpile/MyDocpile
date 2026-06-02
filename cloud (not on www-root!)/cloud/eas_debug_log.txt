@@ -1,0 +1,140 @@
+--- PARSED XML RESPONSE ---
+<?xml version="1.0" encoding="UTF-8"?>
+<FolderSync/>
+
+
+--- PARSED XML RESPONSE ---
+<?xml version="1.0" encoding="UTF-8"?>
+<FolderSync/>
+
+
+--- PARSED XML RESPONSE ---
+<?xml version="1.0" encoding="UTF-8"?>
+<FolderSync/>
+
+
+--- PARSED XML RESPONSE ---
+<?xml version="1.0" encoding="UTF-8"?>
+<FolderSync/>
+
+
+--- PARSED XML RESPONSE ---
+<?xml version="1.0" encoding="UTF-8"?>
+<FolderSync/>
+
+
+--- PARSED XML RESPONSE ---
+<?xml version="1.0" encoding="UTF-8"?>
+<FolderSync/>
+
+
+--- PARSED XML RESPONSE ---
+<?xml version="1.0" encoding="UTF-8"?>
+<FolderSync/>
+
+
+--- PARSED XML RESPONSE ---
+<?xml version="1.0" encoding="UTF-8"?>
+<Sync/>
+
+
+--- PARSED XML RESPONSE ---
+<?xml version="1.0" encoding="UTF-8"?>
+<Sync/>
+
+
+--- PARSED XML RESPONSE ---
+<?xml version="1.0" encoding="UTF-8"?>
+<FolderSync/>
+
+
+--- PARSED XML RESPONSE ---
+<?xml version="1.0" encoding="UTF-8"?>
+<FolderSync/>
+
+
+--- PARSED XML RESPONSE ---
+<?xml version="1.0" encoding="UTF-8"?>
+<Sync/>
+
+
+--- PARSED XML RESPONSE ---
+<?xml version="1.0" encoding="UTF-8"?>
+<Sync/>
+
+
+--- PARSED XML RESPONSE ---
+<?xml version="1.0" encoding="UTF-8"?>
+<Sync/>
+
+
+--- PARSED XML RESPONSE ---
+<?xml version="1.0" encoding="UTF-8"?>
+<Sync/>
+
+
+--- PARSED XML RESPONSE ---
+<?xml version="1.0" encoding="UTF-8"?>
+<FolderSync/>
+
+
+--- PARSED XML RESPONSE ---
+<?xml version="1.0" encoding="UTF-8"?>
+<FolderSync><Status>142</Status></FolderSync>
+
+
+--- PARSED XML RESPONSE ---
+<?xml version="1.0" encoding="UTF-8"?>
+<Sync><Status>142</Status></Sync>
+
+
+--- PARSED XML RESPONSE ---
+<?xml version="1.0" encoding="UTF-8"?>
+<Provision><Status>101</Status></Provision>
+
+
+--- PARSED XML RESPONSE ---
+<?xml version="1.0" encoding="UTF-8"?>
+<Provision><Status>101</Status></Provision>
+
+
+--- PARSED XML RESPONSE ---
+<?xml version="1.0" encoding="UTF-8"?>
+<FolderSync><Status>142</Status></FolderSync>
+
+
+--- PARSED XML RESPONSE ---
+<?xml version="1.0" encoding="UTF-8"?>
+<Provision><Status>101</Status></Provision>
+
+
+--- PARSED XML RESPONSE ---
+<?xml version="1.0" encoding="UTF-8"?>
+<FolderSync><Status>142</Status></FolderSync>
+
+
+--- PARSED XML RESPONSE ---
+<?xml version="1.0" encoding="UTF-8"?>
+<Sync><Status>142</Status></Sync>
+
+
+--- PARSED XML RESPONSE ---
+<?xml version="1.0" encoding="UTF-8"?>
+<Provision><Status>101</Status></Provision>
+
+
+--- PARSED XML RESPONSE ---
+<?xml version="1.0" encoding="UTF-8"?>
+<Provision><Status>101</Status></Provision>
+
+
+--- PARSED XML RESPONSE ---
+<?xml version="1.0" encoding="UTF-8"?>
+<FolderSync><Status>142</Status></FolderSync>
+
+
+--- PARSED XML RESPONSE ---
+<?xml version="1.0" encoding="UTF-8"?>
+<Provision><Status>101</Status></Provision>
+
+
