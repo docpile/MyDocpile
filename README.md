@@ -161,7 +161,8 @@ The MyDocpile software is designed to have **the least depenencies possible**. S
   * Phishing resistance: Many security measures implemented to limit phishing
   * Spam protection: Shows the DMARC result and whether the mail was transmitted via TLS
   * Tracking protection: All pictures (of course except identified tracking) are proxied by the server, thereby making sender tracking profiles almost useless
-  * Scripting protection: Heavily sandboxed mail display. Therefore, no code whatsoever can be executed by emails. 
+  * Scripting protection: Heavily sandboxed mail display. Therefore, no code whatsoever can be executed by emails.
+* *Remark:* The Exchange EAS feature is still in beta, meaning: it likely won't work right now.
 
 ### 7. Security Infrastructure
 * **Security first:** Follows a consequent security first strategy
