@@ -1,5 +1,4 @@
 # My Document Pile - MyDocpile
-![Main UI](https://github.com/docpile/MyDocpile/blob/main/images/02_main_cloud_ui.png?raw=true)
 
 **Feature rich PHP cloud and webmail software created mainly using AI**
 
@@ -41,6 +40,10 @@ Of course, I'd be more than happy to receive some kind of a feedback - this prod
 **Login**
 
 ![Login](https://github.com/docpile/MyDocpile/blob/main/images/01_login.png?raw=true)
+
+**Main UI**
+
+![Main UI](https://github.com/docpile/MyDocpile/blob/main/images/02_main_cloud_ui.png?raw=true)
 
 **Webmail UI**
 
