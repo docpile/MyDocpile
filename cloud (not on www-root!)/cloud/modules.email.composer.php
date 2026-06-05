@@ -593,7 +593,7 @@ window.myCloudShowEmailComposer = function(prefill = null) {
             if (phpAction === 'email_send' && reqReceipt && reqReceipt.checked) fd.append('read_receipt', '1');
 
             // Add 10-second buffer for undo send
-            if (phpAction === 'email_send') fd.append('undo_buffer', '10');
+            if (phpAction === 'email_send') fd.append('undo_buffer', '5');
 
             if (draftUid) {
                 fd.append('draft_uid', draftUid);
@@ -656,7 +656,7 @@ window.myCloudShowEmailComposer = function(prefill = null) {
                              document.body.appendChild(tc);
                          }
                          
-                         let timeLeft = 10;
+                         let timeLeft = 5;
                          const toast = document.createElement('div');
                          toast.className = 'ce-email-undo-toast';
                          toast.innerHTML = `<span>${(L.sending_delayed || 'Sending in %s...').replace('%s', timeLeft + 's')}</span> <button class="ce-email-undo-btn">${L.undo || 'Undo'}</button>`;
@@ -702,7 +702,8 @@ window.myCloudShowEmailComposer = function(prefill = null) {
                             });
                             fetch('', { method: 'POST', body: pollFd }).then(r => r.json()).then(pollRes => {
                                 if (pollRes.status === 'success') {
-                                    if (typeof myCloudNotify === 'function') myCloudNotify(L.email_sent_success || "Email sent successfully!");
+                                    if (typeof cxToast === 'function') cxToast(L.email_sent_success || "Email sent successfully!", true);
+                                    else if (typeof myCloudShowAlert === 'function') myCloudShowAlert(L.success || "Success", L.email_sent_success || "Email sent successfully!");
                                 } else if (pollRes.status === 'error') {
                                     myCloudShowAlert('Error', pollRes.msg || "Send failed");
                                 } else {

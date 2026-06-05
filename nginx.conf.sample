@@ -3,6 +3,10 @@
 
 client_max_body_size 10737418240;
 
+# only with http3 (nginx bug):
+fastcgi_request_buffering on;
+
+
 # ---------------------------------------------------------------------
 # WEBDAV
 # ---------------------------------------------------------------------
@@ -33,8 +37,9 @@ location ^~ /webdav.php {
 	fastcgi_read_timeout 1200;
     client_max_body_size 0;
 
-    # Stream uploads directly to PHP, preventing double disk I/O
-    fastcgi_request_buffering off;
+    # off: Stream uploads directly to PHP, preventing double disk I/O
+	# on: Currently needed to add support for http3 due to a nginx problem to prevent upload hangs  
+    fastcgi_request_buffering on;
 
     # Keep TCP/TLS connections open for chatty WebDAV clients
     keepalive_timeout 65;

@@ -478,47 +478,69 @@ window._emailPromptFolderDelete = function(folderId) {
 };
 
 window._emailToggleReadStatus = function(msgId, markAsRead) {
-    // Get exact meta mapping
     const clickedMsg = myCloudEmailState.currentMessages.find(m => String(m.id) === String(msgId));
-    if(!clickedMsg) return;
-    
+    if (!clickedMsg) return;
+
     const targetAcc = clickedMsg.account_id || myCloudEmailState.activeAccount;
     const targetFolder = clickedMsg.folder || myCloudEmailState.activeFolder;
-    
+
     const msgKey = targetAcc + '|' + targetFolder + '|' + msgId;
     let targetKeys = [msgKey];
+    
+    // Support multi-selection toggling
     if (myCloudEmailState.selectedMessages && myCloudEmailState.selectedMessages.includes(msgKey)) {
         targetKeys = [...myCloudEmailState.selectedMessages];
     }
-    
-    const groups = window._emailGroupSelectedMessages(targetKeys);
 
     const action = markAsRead ? 'email_mark_read' : 'email_mark_unread';
     
-    // Instant Optimistic Updates
+    let backendGroups = {};
+    let revertState = []; 
+
     targetKeys.forEach(k => {
         const parts = k.split('|');
         const acc = parts[0];
         const fld = parts[1];
         const id = parts[2];
-        const msg = myCloudEmailState.currentMessages.find(m => String(m.id) === String(id));
+        
+        // STRICT 1:1 TARGETING:
+        // Find only the exact raw message ID that was clicked. 
+        // We intentionally do NOT unroll thread children here to prevent the badge from multiplying.
+        const msg = myCloudEmailState.currentMessages.find(m => String(m.id) === String(id) && (m.account_id || myCloudEmailState.activeAccount) === acc && (m.folder || myCloudEmailState.activeFolder) === fld);
+        
         if (msg && msg.is_read !== markAsRead) {
-            msg.is_read = markAsRead;
+            // Save the exact state in case the server fails and we need to revert
+            revertState.push({ msg: msg, acc: acc, fld: fld, previous_read: msg.is_read });
             
+            // Optimistically update the UI state
+            msg.is_read = markAsRead;
+
+            const grpKey = acc + '|' + fld;
+            if (!backendGroups[grpKey]) backendGroups[grpKey] = { acc, fld, ids: new Set() };
+            backendGroups[grpKey].ids.add(msg.id);
+
+            // Update UI badge counts securely using uppercase comparison
             if (myCloudEmailState.foldersData[acc]) {
                 const folderData = myCloudEmailState.foldersData[acc].find(f => f.id === fld);
                 if (folderData) {
                     folderData.unread += markAsRead ? -1 : 1;
                     if (folderData.unread < 0) folderData.unread = 0;
-                    if (fld === 'INBOX') myCloudEmailState.inboxUnreadCounts[acc] = folderData.unread;
+                    if (fld.toUpperCase() === 'INBOX') myCloudEmailState.inboxUnreadCounts[acc] = folderData.unread;
                 }
             }
         }
     });
-	myCloudEmailRenderTree();
+
+    if (Object.keys(backendGroups).length === 0) return;
+
+    // Flush DOM Updates
+    myCloudEmailRenderTree();
     window._emailRenderMessageList();
 
-    const promises = groups.map(g => {
+    const processedGroups = Object.values(backendGroups).map(g => ({...g, ids: Array.from(g.ids)}));
+
+    // Dispatch physical changes to the server
+    const promises = processedGroups.map(g => {
         const fd = new URLSearchParams({ myCloud_action: action, myCloud_key: myCloudState.key, myCloud_token: window.myCloudCsrfToken, account_id: g.acc, folder: g.fld, message_id: g.ids.join(',') });
         return fetch('', {method:'POST', body:fd}).then(r=>r.json()).then(res => {
             if (res.status !== 'OK') throw new Error(res.msg);
@@ -526,29 +548,21 @@ window._emailToggleReadStatus = function(msgId, markAsRead) {
         });
     });
 
+    // Revert visual changes if the network fails
     Promise.all(promises).catch(err => {
-        // Revert Optimistic Statuses
-        targetKeys.forEach(k => {
-            const parts = k.split('|');
-            const acc = parts[0];
-            const fld = parts[1];
-            const id = parts[2];
-            const msg = myCloudEmailState.currentMessages.find(m => String(m.id) === String(id));
-            if (msg) {
-                msg.is_read = !markAsRead; 
-                if (myCloudEmailState.foldersData[acc]) {
-                    const folderData = myCloudEmailState.foldersData[acc].find(f => f.id === fld);
-                    if (folderData) {
-                        folderData.unread += !markAsRead ? -1 : 1;
-                        if (folderData.unread < 0) folderData.unread = 0;
-                        if (fld === 'INBOX') myCloudEmailState.inboxUnreadCounts[acc] = folderData.unread;
-                    }
+        revertState.forEach(rev => {
+            rev.msg.is_read = rev.previous_read;
+            if (myCloudEmailState.foldersData[rev.acc]) {
+                const folderData = myCloudEmailState.foldersData[rev.acc].find(f => f.id === rev.fld);
+                if (folderData) {
+                    folderData.unread += !markAsRead ? -1 : 1;
+                    if (folderData.unread < 0) folderData.unread = 0;
+                    if (rev.fld.toUpperCase() === 'INBOX') myCloudEmailState.inboxUnreadCounts[rev.acc] = folderData.unread;
                 }
             }
         });
         myCloudEmailRenderTree();
-		window._emailRenderMessageList();
-//        if (typeof myCloudShowAlert === 'function') myCloudShowAlert('Error', err.message || 'Action failed.');
+        window._emailRenderMessageList();
     });
 };
 
@@ -1633,7 +1647,7 @@ window.myCloudEmailFetchMessages = function(folderId, silent = false, loadMore =
             }
 
             // --- STRICT UID-BASED NOTIFICATION ENGINE ---
-            if (incomingMsgs.length > 0 && (folderId === 'INBOX' || folderId === 'SMARTBOX')) {
+            if (incomingMsgs.length > 0 && (folderId.toUpperCase() === 'INBOX' || folderId === 'SMARTBOX')) {
                 if (!myCloudEmailState.latestMsgIds) myCloudEmailState.latestMsgIds = {};
                 
                 let maxUid = 0;
@@ -2189,6 +2203,24 @@ window._emailHandleItemClick = function(item, m, e) {
                 myCloudEmailState.readTimer = setTimeout(() => {
 
                     m.is_read = true;
+                    let uidsToMark = [m.id];
+                    let unreadCountToSubtract = 1;
+        
+                    const realParentMsg = myCloudEmailState.currentMessages.find(cm => String(cm.id) === String(m.id) && (cm.account_id || myCloudEmailState.activeAccount) === targetAcc && (cm.folder || myCloudEmailState.activeFolder) === targetFolder);
+                    if (realParentMsg) realParentMsg.is_read = true;
+        
+                    if (m.is_thread_parent && m.children) {
+                        m.children.forEach(child => {
+                            if (!child.is_read) {
+                                child.is_read = true;
+                                uidsToMark.push(child.id);
+                                unreadCountToSubtract++;
+                                const realChildMsg = myCloudEmailState.currentMessages.find(cm => String(cm.id) === String(child.id) && (cm.account_id || myCloudEmailState.activeAccount) === targetAcc && (cm.folder || myCloudEmailState.activeFolder) === targetFolder);
+                                if (realChildMsg) realChildMsg.is_read = true;
+                            }
+                        });
+                    }
+
                     const listItem = document.querySelector(`.ce-email-list-item[data-msg-key="${CSS.escape(msgKey)}"]`);
                     if (listItem) {
                         const dot = listItem.querySelector('.ce-email-unread-dot');
@@ -2198,21 +2230,31 @@ window._emailHandleItemClick = function(item, m, e) {
                     if (myCloudEmailState.foldersData[targetAcc]) {
                         const folderData = myCloudEmailState.foldersData[targetAcc].find(f => f.id === targetFolder);
                         if (folderData && folderData.unread > 0) {
-                            folderData.unread--;
-                            if (targetFolder === 'INBOX') myCloudEmailState.inboxUnreadCounts[targetAcc] = folderData.unread;
+                            folderData.unread = Math.max(0, folderData.unread - unreadCountToSubtract);
+                            if (targetFolder.toUpperCase() === 'INBOX') myCloudEmailState.inboxUnreadCounts[targetAcc] = folderData.unread;
                             myCloudEmailRenderTree();
                         }
                     }
 
-                    const fd = new URLSearchParams({ myCloud_action: 'email_mark_read', myCloud_key: myCloudState.key, myCloud_token: window.myCloudCsrfToken, account_id: targetAcc, folder: targetFolder, message_id: m.id });
+                    const fd = new URLSearchParams({ myCloud_action: 'email_mark_read', myCloud_key: myCloudState.key, myCloud_token: window.myCloudCsrfToken, account_id: targetAcc, folder: targetFolder, message_id: uidsToMark.join(',') });
                     fetch('', { method: 'POST', body: fd }).then(r => r.json()).then(res => {
                         if (res.status !== 'OK') {
                             m.is_read = false;
+                            if (realParentMsg) realParentMsg.is_read = false;
+                            if (m.is_thread_parent && m.children) {
+                                m.children.forEach(child => {
+                                    if (uidsToMark.includes(child.id)) {
+                                        child.is_read = false;
+                                        const realChildMsg = myCloudEmailState.currentMessages.find(cm => String(cm.id) === String(child.id) && (cm.account_id || myCloudEmailState.activeAccount) === targetAcc && (cm.folder || myCloudEmailState.activeFolder) === targetFolder);
+                                        if (realChildMsg) realChildMsg.is_read = false;
+                                    }
+                                });
+                            }
                             if (myCloudEmailState.foldersData[targetAcc]) {
                                 const folderData = myCloudEmailState.foldersData[targetAcc].find(f => f.id === targetFolder);
                                 if (folderData) {
-                                    folderData.unread++;
-                                    if (targetFolder === 'INBOX') myCloudEmailState.inboxUnreadCounts[targetAcc] = folderData.unread;
+                                    folderData.unread += unreadCountToSubtract;
+                                    if (targetFolder.toUpperCase() === 'INBOX') myCloudEmailState.inboxUnreadCounts[targetAcc] = folderData.unread;
                                     myCloudEmailRenderTree();
                                 }
                             }
@@ -3458,6 +3500,11 @@ window._emailSaveAttachmentToCloud = function(accId, folder, msgId, part, filena
                 if (upRes.status === 'OK') {
                     if (typeof cxToast === 'function') cxToast(L.save_cloud_success || 'Saved successfully to cloud.', true);
                     else if (typeof myCloudShowAlert === 'function') myCloudShowAlert(L.success || 'Success', L.save_cloud_success || 'Saved successfully to cloud.');
+                    
+                    if (delAfter) {
+                        const metaSafe = encodeURIComponent(JSON.stringify({id: msgId, account_id: accId, folder: folder})).replace(/'/g, "%27");
+                        window.myCloudEmailAction('delete', msgId, metaSafe);
+                    }
                 } else {
                     throw new Error(upRes.msg || 'Upload failed');
                 }
@@ -4643,7 +4690,7 @@ window.myCloudEmailAction = function(action, msgId, metaObjStr) {
                     const folderData = myCloudEmailState.foldersData[acc].find(f => f.id === fld);
                     if (folderData && folderData.unread > 0) {
                         folderData.unread = Math.max(0, folderData.unread - count);
-                        if (fld === 'INBOX') myCloudEmailState.inboxUnreadCounts[acc] = folderData.unread;
+                        if (fld.toUpperCase() === 'INBOX') myCloudEmailState.inboxUnreadCounts[acc] = folderData.unread;
                     }
                 }
             });
@@ -4743,7 +4790,7 @@ window.myCloudEmailAction = function(action, msgId, metaObjStr) {
                         const folderData = myCloudEmailState.foldersData[acc].find(f => f.id === fld);
                         if (folderData) {
                             folderData.unread += count;
-                            if (fld === 'INBOX') myCloudEmailState.inboxUnreadCounts[acc] = folderData.unread;
+                            if (fld.toUpperCase() === 'INBOX') myCloudEmailState.inboxUnreadCounts[acc] = folderData.unread;
                         }
                     }
                 });

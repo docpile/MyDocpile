@@ -1,3 +1,6 @@
+3.2.252
+	Fix: Webmail several bugfixes
+
 3.2.251
 	Fix: Webmail EAS does not work as expected
 

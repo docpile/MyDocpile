@@ -6,8 +6,9 @@
  * Manages live IMAP connections with strict UTF-8 enforcement to prevent
  * JSON encoding failures, alongside attachment extraction and native SMTP.
  */
+ 
 
-if (basename($_SERVER['PHP_SELF']) == basename(__FILE__)) {
+if (php_sapi_name() !== 'cli' && basename($_SERVER['PHP_SELF']) == basename(__FILE__)) {
     die('Direct access not permitted');
 }
 
@@ -260,7 +261,7 @@ class MyCloudEASClient {
         $this->user = $acc['login_user'] ?: $acc['email'];
         $this->pass = $password;
         $this->oauth_token = $oauth_token;
-		$this->deviceId = strtoupper(md5('mycloud_eas_' . $this->user . '_' . $this->host));
+		$this->deviceId = strtoupper(md5('mycloud_eas_v3_' . $this->user . '_' . $this->host));
         $this->wbxml = new MyCloudWBXML();
 
          global $cloud_user_profiles;
@@ -319,11 +320,12 @@ class MyCloudEASClient {
         $ch = curl_init($url);
 		curl_setopt($ch, CURLOPT_RESOLVE, [$parsedHost . ":443:" . $ip, $parsedHost . ":80:" . $ip]);
 		curl_setopt($ch, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
+		curl_setopt($ch, CURLOPT_USERAGENT, 'Outlook/15.0 (Windows NT 10.0; Win64; x64)');
         $headers = [
-            'MS-ASProtocolVersion: 16.1', // 16.1 required for Office365/Modern Exchange
+            'MS-ASProtocolVersion: 14.0', // 16.1  for Office365/Modern Exchange
             'X-MS-PolicyKey: ' . $this->policyKey,
-            'User-Agent: Outlook/16.0 (Windows NT 10.0; Win64; x64)',
-            'Accept:' // Suppresses cURL's default Accept header to match Outlook exactly
+            'Accept:', // Suppresses cURL's default Accept header to match Outlook exactly
+            'Expect:'  // Suppresses cURL's automatic 100-Continue header for large payloads
         ];
 
         if ($xmlPayload) {
@@ -389,7 +391,7 @@ class MyCloudEASClient {
              
              global $cloud_beta;
              if (!empty($cloud_beta)) {
-                 $logPath = __DIR__ . '/eas_debug_log.txt';
+                 $logPath = $work_dir . 'data/_eas_debug_log.txt';
                  @file_put_contents($logPath, "--- PARSED XML RESPONSE ---\n" . $dom->saveXML() . "\n\n", FILE_APPEND);
              }
              
@@ -410,7 +412,8 @@ class MyCloudEASClient {
     }
 
     private function provisionDevice() {
-        $reqXml = '<?xml version="1.0" encoding="utf-8"?><Provision xmlns="Provision" xmlns:settings="Settings"><settings:DeviceInformation><settings:Set><settings:Model>WindowsOutlook15</settings:Model><settings:IMEI>'.$this->deviceId.'</settings:IMEI><settings:FriendlyName>MyCloud Webmail</settings:FriendlyName><settings:OS>Windows 10</settings:OS><settings:OSLanguage>English</settings:OSLanguage><settings:UserAgent>Outlook/16.0</settings:UserAgent></settings:Set></settings:DeviceInformation><Policies><Policy><PolicyType>MS-EAS-Provisioning-WBXML</PolicyType></Policy></Policies></Provision>';
+        $desktopName = 'DESKTOP-' . strtoupper(substr(md5($this->user), 0, 7));
+        $reqXml = '<?xml version="1.0" encoding="utf-8"?><Provision xmlns="Provision" xmlns:settings="Settings"><settings:DeviceInformation><settings:Set><settings:Model>WindowsOutlook15</settings:Model><settings:FriendlyName>'.$desktopName.'</settings:FriendlyName><settings:OS>Windows</settings:OS><settings:OSLanguage>English</settings:OSLanguage><settings:UserAgent>Outlook/15.0</settings:UserAgent></settings:Set></settings:DeviceInformation><Policies><Policy><PolicyType>MS-EAS-Provisioning-WBXML</PolicyType></Policy></Policies></Provision>';
         $dom = $this->request('Provision', $reqXml);
         
         $tempKey = $this->getNodeValue($dom, 'PolicyKey');
@@ -727,6 +730,27 @@ class MyCloudEmailServer {
        exit;
     }
 	
+    // Instantly releases the browser UI while keeping the PHP script alive in the background
+    private function sendJsonAndContinue($data) {
+        global $cloud_beta, $eas_debug_log;
+        if (!empty($cloud_beta) && !empty($eas_debug_log)) {
+            $data['eas_debug'] = $eas_debug_log;
+        }
+        while (ob_get_level() > 0) ob_end_clean();
+        header('Content-Type: application/json');
+        header('Connection: close');
+        ob_start();
+        $json = json_encode($data, JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
+        echo $json !== false ? $json : json_encode(['status' => 'ERR', 'msg' => 'Encoding error']);
+        $size = ob_get_length();
+        header("Content-Length: $size");
+        ob_end_flush();
+        @ob_flush();
+        flush();
+        if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+        else ignore_user_abort(true);
+    }
+
 	// --- SERVER-SIDE RIGHTS EVALUATOR ---
     private function actionAllowed($action) {
         global $__ex_role, $MYCLOUD_RIGHTS_MATRIX;
@@ -875,6 +899,7 @@ class MyCloudEmailServer {
         }
         return $configs;
     }
+
 
     private function saveConfigs($configs) {
         global $cloud_mail_only_localhost;
@@ -1627,130 +1652,163 @@ class MyCloudEmailServer {
     }
 
     // --- TRANSACTIONAL OUTBOX PROCESSOR ---
-    private function processOutboxQueue() {
+   private function processOutboxQueue() {
         $outboxDir = dirname($this->config_file) . '/' . $this->username . '_outbox';
         if (!is_dir($outboxDir)) return;
         
-        $jobs = glob($outboxDir . '/*.job');
-        foreach ($jobs as $job) {
-            if (!is_file($job) || is_link($job)) continue;
-            
-            // SECURITY FIX: Use atomic rename instead of flock to prevent permanent deadlocks on script crash
-            $processing = $job . '.processing';
-            if (file_exists($processing)) continue;
-            
-            if (@rename($job, $processing)) {
-                try {
-                    $jobData = json_decode(file_get_contents($processing), true);
+        $hasPendingFutureJobs = true;
+        $maxLoops = 35; // Maximum daemon lifetime of ~70 seconds to prevent zombie processes
+        $loopCount = 0;
 
-                     if (!empty($jobData['execute_after']) && time() < $jobData['execute_after']) {
-                         rename($processing, $job);
-                         continue;
-                     }
-
-                    $configs = $this->loadConfigs();
-                    $acc = $configs[$jobData['account_id']] ?? null;
+        while ($hasPendingFutureJobs && $loopCount < $maxLoops) {
+            $hasPendingFutureJobs = false;
+            $jobs = glob($outboxDir . '/*.job');
+            
+            foreach ($jobs as $job) {
+                if (!is_file($job) || is_link($job)) continue;
+                
+                $jobDataRaw = @file_get_contents($job);
+                if (!$jobDataRaw) continue;
+                $jobData = json_decode($jobDataRaw, true);
+                
+                // If the undo timer hasn't expired, stay alive and wait for it
+                if (!empty($jobData['execute_after']) && time() < $jobData['execute_after']) {
+                    $hasPendingFutureJobs = true;
+                    continue;
+                }
+                
+                // SECURITY FIX: Use atomic rename instead of flock to prevent permanent deadlocks on script crash
+                $processing = $job . '.processing';
+                if (file_exists($processing)) continue;
+                
+                if (@rename($job, $processing)) {
+                    // Strip the '.job.processing' (15 chars) to get the clean task ID base path for the status checker
+                    $baseFile = substr($processing, 0, -15); 
                     
-                    if ($acc) {
-                        $p = $jobData['payload'];
-                        if ($jobData['action'] === 'email_send') {
-                            $safeAttachments = [];
-                            foreach (($p['attachments'] ?? []) as $att) {
-                                if (isset($att['tmp_name']) && isset($att['name'])) {
-                                    $base = basename($att['tmp_name']);
-                                    $safePath = $outboxDir . '/' . $base;
-                                    if (file_exists($safePath) && realpath($safePath) === realpath($att['tmp_name'])) {
-                                        $att['tmp_name'] = $safePath;
-                                        $safeAttachments[] = $att;
+                    try {
+                        $configs = $this->loadConfigs();
+                        $acc = $configs[$jobData['account_id']] ?? null;
+                        
+                        if ($acc) {
+                            $p = $jobData['payload'];
+                            if ($jobData['action'] === 'email_send') {
+                                $safeAttachments = [];
+                                foreach (($p['attachments'] ?? []) as $att) {
+                                    if (isset($att['tmp_name']) && isset($att['name'])) {
+                                        $base = basename($att['tmp_name']);
+                                        $safePath = $outboxDir . '/' . $base;
+                                        if (file_exists($safePath) && realpath($safePath) === realpath($att['tmp_name'])) {
+                                            $att['tmp_name'] = $safePath;
+                                            $safeAttachments[] = $att;
+                                        }
                                     }
                                 }
-                            }
 
-                            $res = $this->sendSmtpMail($acc, $p['to'], $p['subject'], $p['body'], $p['from'], $p['cc'], $p['bcc'], $safeAttachments, false, !empty($p['read_receipt']));
-                            if (is_array($res) && $res['status'] === 'OK') {
-                                list($client, $folderObj, $err) = $this->connectImap($acc, '', false);
-                                if ($client) {
-                                    $rawMimeForAppend = $res['raw'];
-                                    if (!empty($p['bcc'])) {
-                                         $rawMimeForAppend = preg_replace('/(To: .*?\r\n|Cc: .*?\r\n)/i', "$1Bcc: " . $p['bcc'] . "\r\n", $rawMimeForAppend, 1);
-                                         if (strpos($rawMimeForAppend, "Bcc:") === false) {
-                                             $rawMimeForAppend = "Bcc: " . $p['bcc'] . "\r\n" . $rawMimeForAppend;
-                                         }
-                                    }
-                                    try {
-                                        $sentFld = $client->getFolderByPath($this->getSentFolder($client));
-                                        if ($sentFld) $sentFld->appendMessage($rawMimeForAppend, ['\Seen']);
-                                    } catch (\Throwable $e) {}
-                                    $client->disconnect();
-                                }
-                                file_put_contents(str_replace('.processing', '.success', $processing), json_encode(['msg' => 'Sent successfully']));
-                            } else {
-                                file_put_contents(str_replace('.processing', '.error', $processing), json_encode(['msg' => is_string($res) ? $res : 'Send failed']));
-                            }
-                            foreach ($safeAttachments as $att) { @unlink($att['tmp_name']); }
-                        } elseif ($jobData['action'] === 'email_delete_msg') {
-                            list($client, $folderObj, $err) = $this->connectImap($acc, (string)($p['folder'] ?? ''), false);
-                            if ($client && $folderObj) {
-                                try {
-                                    $msg = $folderObj->query()->getMessageByUid($p['message_id']);
-                                    if ($msg) {
-                                        $isTrash = preg_match('/trash|deleted|bin|papelera|corbeille/i', (string)($p['folder'] ?? ''));
-                                        if ($isTrash) { 
-                                            $msg->delete(); 
-                                            $folderObj->expunge();
-                                        } else {
-                                            $trashFolder = $this->getTrashFolder($client);
-                                            if ($trashFolder) {
-                                                $msg->move($trashFolder);
-                                            } else {
-                                                $msg->delete();
-                                                $folderObj->expunge();
+                                $res = $this->sendSmtpMail($acc, $p['to'], $p['subject'], $p['body'], $p['from'], $p['cc'], $p['bcc'], $safeAttachments, false, !empty($p['read_receipt']));
+                                if (is_array($res) && $res['status'] === 'OK') {
+                                    list($client, $folderObj, $err) = $this->connectImap($acc, '', false);
+                                    if ($client) {
+                                        $rawMimeForAppend = $res['raw'];
+                                        if (!empty($p['bcc'])) {
+                                            $rawMimeForAppend = preg_replace('/(To: .*?\r\n|Cc: .*?\r\n)/i', "$1Bcc: " . $p['bcc'] . "\r\n", $rawMimeForAppend, 1);
+                                            if (strpos($rawMimeForAppend, "Bcc:") === false) {
+                                                $rawMimeForAppend = "Bcc: " . $p['bcc'] . "\r\n" . $rawMimeForAppend;
                                             }
                                         }
+                                        try {
+                                            $sentFld = $client->getFolderByPath($this->getSentFolder($client));
+                                            if ($sentFld) $sentFld->appendMessage($rawMimeForAppend, ['\Seen']);
+                                        } catch (\Throwable $e) {}
+                                        $client->disconnect();
                                     }
-                                } catch (\Throwable $e) {}
-                                $client->disconnect();
-                            }
-                        } elseif ($jobData['action'] === 'email_move_msg' || $jobData['action'] === 'email_copy_msg') {
-                            if ($p['account_id'] === $p['dest_account_id']) {
-                                list($client, $folderObj, $err) = $this->connectImap($acc, $p['folder'], false);
+                                    file_put_contents($baseFile . '.success', json_encode(['msg' => 'Sent successfully']));
+                                } else {
+                                    file_put_contents($baseFile . '.error', json_encode(['msg' => is_string($res) ? $res : 'Send failed']));
+                                }
+                                foreach ($safeAttachments as $att) { @unlink($att['tmp_name']); }
+                            } elseif ($jobData['action'] === 'email_delete_msg') {
+                                list($client, $folderObj, $err) = $this->connectImap($acc, (string)($p['folder'] ?? ''), false);
                                 if ($client && $folderObj) {
-                                    try {
-                                        $msg = $folderObj->query()->getMessageByUid($p['message_id']);
-                                        if ($msg) {
-                                            if ($jobData['action'] === 'email_move_msg') $msg->move($p['dest_folder']);
-                                            else $msg->copy($p['dest_folder']);
-                                        }
-                                    } catch (\Throwable $e) {}
+                                    $isTrash = preg_match('/trash|deleted|bin|papelera|corbeille/i', (string)($p['folder'] ?? ''));
+                                    $trashFolder = $isTrash ? null : $this->getTrashFolder($client);
+                                    
+                                    foreach (explode(',', $p['message_id']) as $uid) {
+                                        if (empty($uid)) continue;
+                                        try {
+                                            $msg = $folderObj->query()->getMessageByUid($uid);
+                                            if ($msg) {
+                                                if ($isTrash) { 
+                                                    $msg->delete(); 
+                                                } else {
+                                                    if ($trashFolder) $msg->move($trashFolder);
+                                                    else $msg->delete();
+                                                }
+                                            }
+                                        } catch (\Throwable $e) {}
+                                    }
+                                    try { if (method_exists($folderObj, 'expunge')) $folderObj->expunge(); } catch (\Throwable $e) {}
                                     $client->disconnect();
                                 }
-                            } else {
-                                list($srcClient, $srcFolderObj, $srcErr) = $this->connectImap($configs[$p['account_id']], $p['folder'], false);
-                                list($destClient, $destFolderObj, $destErr) = $this->connectImap($configs[$p['dest_account_id']], $p['dest_folder'], false);
-                                if ($srcClient && $destClient && $srcFolderObj && $destFolderObj) {
-                                    try {
-                                        $msg = $srcFolderObj->query()->getMessageByUid($p['message_id']);
-                                        if ($msg) {
-                                            $rawMsg = $msg->getHeader()->raw . "\r\n" . $msg->getRawBody();
-                                            $destFolderObj->appendMessage($rawMsg);
-                                            if ($jobData['action'] === 'email_move_msg') { $msg->delete(); $srcFolderObj->expunge(); }
+                            } elseif ($jobData['action'] === 'email_move_msg' || $jobData['action'] === 'email_copy_msg') {
+                                $isMove = ($jobData['action'] === 'email_move_msg');
+                                if ($p['account_id'] === $p['dest_account_id']) {
+                                    list($client, $folderObj, $err) = $this->connectImap($acc, $p['folder'], false);
+                                    if ($client && $folderObj) {
+                                        foreach (explode(',', $p['message_id']) as $uid) {
+                                            if (empty($uid)) continue;
+                                            try {
+                                                $msg = $folderObj->query()->getMessageByUid($uid);
+                                                if ($msg) {
+                                                    if ($isMove) $msg->move($p['dest_folder']);
+                                                    else $msg->copy($p['dest_folder']);
+                                                }
+                                            } catch (\Throwable $e) {}
                                         }
-                                    } catch (\Throwable $e) {}
+                                        try { if ($isMove && method_exists($folderObj, 'expunge')) $folderObj->expunge(); } catch (\Throwable $e) {}
+                                        $client->disconnect();
+                                    }
+                                } else {
+                                    list($srcClient, $srcFolderObj, $srcErr) = $this->connectImap($configs[$p['account_id']], $p['folder'], false);
+                                    list($destClient, $destFolderObj, $destErr) = $this->connectImap($configs[$p['dest_account_id']], $p['dest_folder'], false);
+                                    if ($srcClient && $destClient && $srcFolderObj && $destFolderObj) {
+                                        foreach (explode(',', $p['message_id']) as $uid) {
+                                            if (empty($uid)) continue;
+                                            try {
+                                                $msg = $srcFolderObj->query()->getMessageByUid($uid);
+                                                if ($msg) {
+                                                    $rawMsg = $msg->getHeader()->raw . "\r\n" . $msg->getRawBody();
+                                                    $destFolderObj->appendMessage($rawMsg);
+                                                    if ($isMove) $msg->delete();
+                                                }
+                                            } catch (\Throwable $e) {}
+                                        }
+                                        try { if ($isMove && method_exists($srcFolderObj, 'expunge')) $srcFolderObj->expunge(); } catch (\Throwable $e) {}
+                                    }
+                                    if ($srcClient) $srcClient->disconnect();
+                                    if ($destClient) $destClient->disconnect();
                                 }
-                                if ($srcClient) $srcClient->disconnect();
-                                if ($destClient) $destClient->disconnect();
+                                
+                                // Cross-folder dirty flags to ensure the UI updates correctly on next view
+                                $safeDestFld = preg_replace('/[^a-zA-Z0-9_-]/', '_', $p['dest_folder']);
+                                touch($this->cache_dir . "/{$p['dest_account_id']}_{$safeDestFld}.dirty");
                             }
+                            @unlink($processing);
                         }
+                    } catch (\Throwable $e) {
+                        file_put_contents($baseFile . '.error', json_encode(['msg' => 'Fatal error: ' . $e->getMessage()]));
                         @unlink($processing);
                     }
-                } catch (Throwable $e) {
-                    file_put_contents(str_replace('.processing', '.error', $processing), json_encode(['msg' => 'Fatal error: ' . $e->getMessage()]));
-                    @unlink($processing);
                 }
+            }
+            
+            // Sleep for 2 seconds before checking the queue again
+            if ($hasPendingFutureJobs) {
+                sleep(2);
+                $loopCount++;
             }
         }
     }
-
+	
 	// --- CENTRALIZED HELPER: BULLETPROOF TIMESTAMP EXTRACTION ---
     private function extractMessageTimestamp($msg) {
         $ts = 0;
@@ -2554,6 +2612,22 @@ class MyCloudEmailServer {
                     if ($accId === 'smartbox') {
                         foreach ($configs as $id => $acc) {
                             if (!empty($acc['is_inactive'])) continue;
+
+                                // Seamlessly inject cached EAS messages into the Smartbox view
+                                if (($acc['server_type'] ?? 'imap') === 'eas') {
+                                    $deviceId = strtoupper(md5('mycloud_eas_v3_' . ($acc['login_user'] ?: $acc['email']) . '_' . rtrim($acc['eas_host'] ?? '', '/')));
+                                    $easFile = $this->cache_dir . '/eas_state_' . $deviceId . '.json';
+                                    if (file_exists($easFile)) {
+                                        $state = json_decode(file_get_contents($easFile), true);
+                                        if ($state) {
+                                            foreach ($state as $k => $v) {
+                                                if (strpos($k, 'emails_') === 0 && is_array($v)) foreach ($v as $m) $messages[] = $m;
+                                            }
+                                        }
+                                    }
+                                    continue;
+                                }
+
                             $files = glob($this->cache_dir . "/{$id}_*_[0-9]*.json.enc");
                             $validFolders = ['inbox', 'sent', 'sent_items', 'sent_messages', 'inbox_sent', 'gesendet', 'envoy_s', 'enviados'];
                             foreach ($files as $file) {
@@ -2605,6 +2679,7 @@ class MyCloudEmailServer {
                 if ($accId === 'smartbox') {
                     foreach ($configs as $id => $acc) {
                         if (!empty($acc['is_inactive'])) continue;
+						if (($acc['server_type'] ?? 'imap') === 'eas') continue; // Prevent IMAP connections for EAS accounts
                         $targetsByAccount[$id] = ['INBOX', '__DISCOVER_SENT__'];
                     }
                 } else {
@@ -2711,6 +2786,10 @@ class MyCloudEmailServer {
                             } else {
                                 $folderObj->query()->all()->limit(1)->count(); // Implicit selection
                             }
+                             // CRITICAL FIX: Eradicate "ghost" messages left \Deleted but unexpunged by external mail clients
+                             if (method_exists($folderObj, 'expunge')) {
+                                 $folderObj->expunge();
+                             }
                         } catch (\Throwable $e) { continue; }
 
                         // 1. FETCH STATUS FIRST FOR FAILSAFES
@@ -3672,34 +3751,10 @@ class MyCloudEmailServer {
                      'payload' => $_POST
                  ];
                  file_put_contents("$outboxDir/$jobId.job", json_encode($jobData));
-                 
-                 $this->sendJsonAndExit(['status' => 'OK']);
-                 break;
-                 // --- END INTERCEPT ---
-                 
-                 list($client, $folderObj, $err) = $this->connectImap($configs[$accId], $folder, false);
-                 if ($client && $folderObj) {
-                     $msg = $folderObj->query()->getMessageByUid($msgId);
-                     if ($msg) {
-                         $isTrash = preg_match('/trash|deleted|bin|papelera|corbeille/i', (string)($folder ?? ''));
-                         if ($isTrash) { 
-                             $msg->delete(); 
-                             $folderObj->expunge();
-                         } else {
-                             $trashFolder = $this->getTrashFolder($client);
-                             if ($trashFolder) {
-                                 $msg->move($trashFolder);
-                             } else {
-                                 $msg->delete();
-                                 $folderObj->expunge();
-                             }
-                         }
-                     }
-                     $client->disconnect();
-                 }
-
+ 
                  $this->purgeLocalCacheUids($accId, $folder, $msgId);
-                 $this->sendJsonAndExit(['status' => 'OK']);
+                 $this->sendJsonAndContinue(['status' => 'OK', 'task_id' => $jobId]);
+                 $this->processOutboxQueue();
                  break;
 
             case 'email_move_msg':
@@ -3726,58 +3781,13 @@ class MyCloudEmailServer {
                     'payload' => $_POST
                 ];
                 file_put_contents("$outboxDir/$jobId.job", json_encode($jobData));
-                
-                $this->sendJsonAndExit(['status' => 'OK']);
-                break;
-                
-                if ($accId === $destAccId) {
-                    list($client, $folderObj, $err) = $this->connectImap($configs[$accId], $srcFolder, false);
-                    if ($client && $folderObj) {
-                        try {
-                            $msg = $folderObj->query()->getMessageByUid($msgId);
-                            if ($msg) {
-                                if ($isMove) $msg->move($destFolder);
-                                else $msg->copy($destFolder);
-                            }
-                        } catch (\Throwable $e) {}
-                        $client->disconnect();
+                $this->sendJsonAndContinue(['status' => 'OK', 'task_id' => $jobId]);
+                $this->processOutboxQueue();
 
-                        // CRITICAL FIX: Drop a dirty flag on the destination folder
-                        $safeDestFld = preg_replace('/[^a-zA-Z0-9_-]/', '_', $destFolder);
-                        touch($this->cache_dir . "/{$destAccId}_{$safeDestFld}.dirty");
-
-                        if ($isMove) {
-                            $this->purgeLocalCacheUids($accId, $srcFolder, $msgId);
-                        }
-                        $this->releaseUiAndPrewarmCache($destAccId, $destFolder);
-                    } else {
-                        $this->sendJsonAndExit(['status'=>'ERR', 'msg'=>"Failed to process message: $err"]);
-                    }
-                } else {
-                    list($srcClient, $srcFolderObj, $srcErr) = $this->connectImap($configs[$accId], $srcFolder, false);
-                    list($destClient, $destFolderObj, $destErr) = $this->connectImap($configs[$destAccId], $destFolder, false);
-                    if ($srcClient && $destClient && $srcFolderObj && $destFolderObj) {
-                        try {
-                            $msg = $srcFolderObj->query()->getMessageByUid($msgId);
-                            if ($msg) {
-                                $rawMsg = $msg->getHeader()->raw . "\r\n" . $msg->getRawBody();
-                                $destFolderObj->appendMessage($rawMsg);
-                                if ($isMove) { $msg->delete(); $srcFolderObj->expunge(); }
-                            }
-                        } catch (\Throwable $e) {}
-                    }
-                    if ($srcClient) $srcClient->disconnect();
-                    if ($destClient) $destClient->disconnect();
-
-                    // CRITICAL FIX: Drop a dirty flag on the cross-account destination folder
-                    $safeDestFld = preg_replace('/[^a-zA-Z0-9_-]/', '_', $destFolder);
-                    touch($this->cache_dir . "/{$destAccId}_{$safeDestFld}.dirty");
-
-                    if ($isMove) {
-                        $this->purgeLocalCacheUids($accId, $srcFolder, $msgId);
-                    }
-                    $this->releaseUiAndPrewarmCache($destAccId, $destFolder);
+                if ($isMove) {
+                    $this->purgeLocalCacheUids($accId, $srcFolder, $msgId);
                 }
+//				$this->sendJsonAndExit(['status' => 'OK']);
                 break;
 				
             case 'email_restore_msg':
@@ -3985,18 +3995,18 @@ class MyCloudEmailServer {
 			case 'email_check_send_status':
                  $taskId = preg_replace('/[^a-zA-Z0-9_-]/', '', $_POST['task_id'] ?? '');
                 $outboxDir = dirname($this->config_file) . '/' . $this->username . '_outbox';
-                $jobFile = $outboxDir . '/' . $taskId . '.job';
+                $baseFile = $outboxDir . '/' . $taskId;
                 
-                if (file_exists($jobFile) || file_exists($jobFile . '.lock')) {
-                    $this->sendJsonAndExit(['status' => 'pending']);
-                } else if (file_exists(str_replace('.job', '.success', $jobFile))) {
-                    @unlink(str_replace('.job', '.success', $jobFile));
+                if (file_exists($baseFile . '.success')) {
+                    @unlink($baseFile . '.success');
                     $this->sendJsonAndExit(['status' => 'success']);
-                } else if (file_exists(str_replace('.job', '.error', $jobFile))) {
-                    $errData = json_decode(file_get_contents(str_replace('.job', '.error', $jobFile)), true);
-                    @unlink(str_replace('.job', '.error', $jobFile));
+                } else if (file_exists($baseFile . '.error')) {
+                    $errData = json_decode(file_get_contents($baseFile . '.error'), true);
+                    @unlink($baseFile . '.error');
                     $this->sendJsonAndExit(['status' => 'error', 'msg' => $errData['msg'] ?? 'Operation failed']);
-                 }
+                } else if (file_exists($baseFile . '.job') || file_exists($baseFile . '.job.processing')) {
+                    $this->sendJsonAndExit(['status' => 'pending']);
+                }
                  $this->sendJsonAndExit(['status' => 'pending']);
                  break;
  
@@ -4117,6 +4127,18 @@ class MyCloudEmailServer {
                         $config->set('HTML.TargetBlank', true);
                         $config->set('URI.DisableExternalResources', false); 
                         $config->set('CSS.AllowTricky', true);
+
+                        // PERFORMANCE 1: Enable strict Definition Caching. 
+                        // Prevents HTMLPurifier from recompiling its rule dictionary on every email open.
+                        $purifierCache = $this->cache_dir . '/htmlpurifier';
+                        if (!is_dir($purifierCache)) @mkdir($purifierCache, 0770, true);
+                        $config->set('Cache.SerializerPath', $purifierCache);
+
+                        // PERFORMANCE 2: Disable the heavy DOM formatter. 
+                        // We only want security stripping, not beautiful HTML indentation.
+                        $config->set('HTML.TidyLevel', 'none');
+                        $config->set('Core.EscapeInvalidTags', false); // Drop invalid tags instantly instead of escaping them
+
                         $purifier = new \HTMLPurifier($config);
                         $cleanHtml = $purifier->purify($htmlContent);
                     } else {
@@ -4215,7 +4237,9 @@ class MyCloudEmailServer {
                         'payload' => $payload
                     ];
                     file_put_contents("$outboxDir/$jobId.job", json_encode($jobData));
-                    $this->sendJsonAndExit(['status' => 'OK', 'task_id' => $jobId]);
+                    $this->sendJsonAndContinue(['status' => 'OK', 'task_id' => $jobId]);
+                    $this->processOutboxQueue();
+					exit;
                 }
                 // --- END INTERCEPT ---
 
@@ -4826,6 +4850,19 @@ class MyCloudEmailServer {
                 $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Unknown action']);
         }
     }
+}
 
-
+// --- ALLOW CLI WORKER EXECUTION ---
+// If the background daemon or cronjob spawned this process, override the session username
+if (php_sapi_name() === 'cli' && isset($_SERVER['argv'][1])) {
+    parse_str($_SERVER['argv'][1], $cliArgs);
+    if (!empty($cliArgs['myCloud_cli_user']) && !empty($cliArgs['myCloud_action'])) {
+        $username = $cliArgs['myCloud_cli_user'];
+        $action = $cliArgs['myCloud_action'];
+        $key = hash('sha256', 'CLI_BACKGROUND_WORKER', true); // Bypass auth for internal isolated cron
+        
+        $emailServer = new MyCloudEmailServer($key, $username);
+        $emailServer->handleRequest($action);
+        exit(0);
+    }
 }

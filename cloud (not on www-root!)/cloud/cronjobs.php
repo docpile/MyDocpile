@@ -22,22 +22,23 @@ class myCloudHousekeeper {
     private $previewCachePath;
     private $previewMaxPixel;
     private $previewQuality;
-	
-	private $retentionDays;
+    private $usersDir;
+    
+    private $retentionDays;
 
     // State
     private $validSourcePaths = []; // Hash map for fast orphan detection
     private $memoryLimitReached = false;
     private $validExts = []; // Flipped array for O(1) lookup
-	private $stopRequested = false;
+    private $stopRequested = false;
 
     // Multi-Processor State
     private $maxWorkers = 1;
     private $pids = [];
     private $batchSize = 50;
-	private $verbose = false;
-	
-	// Locking & Heartbeat
+    private $verbose = false;
+    
+    // Locking & Heartbeat
     private $lockFileHandle;
     private $lockFilePath;
     private $heartbeatInterval = 5; // Seconds between touches
@@ -67,14 +68,15 @@ class myCloudHousekeeper {
             die("Error: PCNTL extension is required for multi-processor support.");
         }
 
-        $this->workDir = $workDir;
+        $this->workDir = rtrim($workDir, '/\\');
+        $this->usersDir = $this->workDir . '/configuration';
         $this->loadConfig();
         
         // Flip extensions for O(1) lookup speed (PDF REMOVED as requested)
         $exts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'mp4', 'webm', 'mov', 'mkv', 'avi'];
         $this->validExts = array_fill_keys($exts, true);
         
-		// Detect CPUs and set Workers (N-1)
+        // Detect CPUs and set Workers (N-1)
         $cpuCount = 1;
         if (is_file('/proc/cpuinfo')) {
             $cpuInfo = file_get_contents('/proc/cpuinfo');
@@ -93,7 +95,7 @@ class myCloudHousekeeper {
         @pcntl_setpriority(19, getmypid(), 0);
         
         $this->stats['start_time'] = microtime(true);
-		
+        
         // [NEW] Register Signal Handlers (Ctrl+C)
         if (function_exists('pcntl_async_signals')) {
             pcntl_async_signals(true);
@@ -123,8 +125,8 @@ class myCloudHousekeeper {
         $this->previewCachePath  = rtrim($cloud_preview_cache, '/');
         $this->previewMaxPixel   = $cloud_preview_maxpixel ?? 800;
         $this->previewQuality    = $cloud_preview_quality ?? 66;
-		
-		// Retention Days (Default 7 if missing)
+        
+        // Retention Days (Default 7 if missing)
         global $cloud_recycle_bin_retention_days;
         $this->retentionDays = isset($cloud_recycle_bin_retention_days) ? (int)$cloud_recycle_bin_retention_days : 7;
 
@@ -140,15 +142,15 @@ class myCloudHousekeeper {
         $this->log("\n!!! Interrupt Received ($signo). Finishing current item then stopping...");
     }
 
-
-/**
+    /**
      * Main Execution Loop
      * @param bool $doCache Perform cache generation and orphan cleanup
-	 * @param bool $doSearchIndex Perform search indexing
      * @param bool $doRecycler Perform recycle bin cleanup
+     * @param bool $doSearchIndex Perform search indexing
+     * @param bool $doOutbox Process stranded email queue files
      * @param bool $verbose Log detailed progress
      */
-    public function run($doCache = true, $doRecycler = true, $doSearchIndex = true, $verbose = false) {
+    public function run($doCache = true, $doRecycler = true, $doSearchIndex = true, $doOutbox = true, $verbose = false) {
         $this->verbose = $verbose; // Set verbose flag
         // 0. Robust Single-Instance Check
         if (!$this->acquireLock()) {
@@ -157,7 +159,7 @@ class myCloudHousekeeper {
         }
 
         $this->log("--- Starting myCloud Housekeeping ---");
-        $this->log("Mode: " . ($doCache ? "[Cache Refresh] " : "") . ($doRecycler ? "[Recycler Cleanup]" : ""));
+        $this->log("Mode: " . ($doCache ? "[Cache Refresh] " : "") . ($doRecycler ? "[Recycler Cleanup] " : "") . ($doOutbox ? "[Outbox Sweeper]" : ""));
         
         // Optimize PHP Environment
         set_time_limit(0);
@@ -172,18 +174,24 @@ class myCloudHousekeeper {
         if ($doRecycler) {
             $this->log(">>> Task: Cleaning Recycle Bins (Retention: {$this->retentionDays} days)");
             $this->cleanRecycleBins($roots);
-			
-			$this->log(">>> Task: Cleaning Stale Temporary Files");
+            
+            $this->log(">>> Task: Cleaning Stale Temporary Files");
             $this->cleanTempFiles();
         }
 
         $this->log(">>> Task: Cleaning Expired Shares & Tickets");
         $this->cleanExpiredDatabases();
-		
+        
         // --- SEARCH INDEXING ---
         if ($doSearchIndex) {
             $this->log(">>> Task: Updating Search Indexes (Recoll)");
             $this->updateSearchIndexes($roots);
+        }
+
+        // --- OUTBOX SWEEPER ---
+        if ($doOutbox) {
+            $this->log(">>> Task: Sweeping Stranded Email Outboxes");
+            $this->processAllOutboxes();
         }
 
         // --- CACHE REFRESH ---
@@ -215,10 +223,45 @@ class myCloudHousekeeper {
         }
 
         $this->log("--- Finished ---");
-		$this->releaseLock();
+        $this->releaseLock();
     }
 
-	/**
+    /**
+     * Iterates over all users and triggers their outbox processor asynchronously
+     * This acts as a safety net for any jobs that failed to spawn via the web UI.
+     */
+    private function processAllOutboxes() {
+		global  $work_dir;
+        $serverScript = __DIR__ . '/controller.server.email.php';
+        $outboxRoots = glob($this->usersDir . '/*_outbox', GLOB_ONLYDIR);
+        $processedCount = 0;
+        
+        foreach ($outboxRoots as $box) {
+            $jobs = glob($box . '/*.job');
+            if (!empty($jobs)) {
+                $baseName = basename($box);
+                $username = substr($baseName, 0, -7); // Remove '_outbox'
+                $logFile = $workdir . '/data/cronjob_mail_worker.log';
+				
+                $cmd = sprintf(
+                    'php %s "myCloud_action=email_process_outbox&myCloud_cli_user=%s" >> %s 2>&1 &',
+                    escapeshellarg($serverScript),
+                    escapeshellarg($username),
+                    escapeshellarg($logFile)
+                );
+                
+                if ($this->verbose) $this->log("Spawning outbox processor for user: $username");
+                @exec($cmd);
+                $processedCount++;
+            }
+        }
+        
+        if ($this->verbose && $processedCount > 0) {
+            $this->log("Triggered $processedCount queue processors.");
+        }
+    }
+
+    /**
      * Robust Locking with Stalled Process Detection
      */
     private function acquireLock() {
@@ -307,7 +350,7 @@ class myCloudHousekeeper {
 
             $files = scandir($recycleDir);
             foreach ($files as $f) {
-				$this->updateHeartbeat(); // Keep lock alive
+                $this->updateHeartbeat(); // Keep lock alive
                 if ($f === '.' || $f === '..') continue;
 
                 // We drive cleanup via .meta files
@@ -408,8 +451,8 @@ class myCloudHousekeeper {
             }
         }
     }
-	
-	/**
+    
+    /**
      * Cleans stale download zips and progress files from system temp
      */
     private function cleanTempFiles() {
@@ -426,9 +469,9 @@ class myCloudHousekeeper {
             
             // Check for App Temp Files AND CLI Tool Leaks (ImageMagick, Ghostscript, QPDF, OCR)
             if (preg_match('/^(ce_dl_|cloudex_prog_|myCloud_dl_|myCloud_office_|myCloud_rl_|pdf_qpdf_|pdf_gs_|mycloud_ocr_|xfdf_|magick-)/', $f)) {
-				$this->updateHeartbeat(); // Keep lock alive
+                $this->updateHeartbeat(); // Keep lock alive
                 $fullPath = $tmpDir . DIRECTORY_SEPARATOR . $f;
-				
+                
                 // Handle orphaned OCR directories specifically
                 if (is_dir($fullPath) && strpos($f, 'mycloud_ocr_') === 0) {
                      if (($now - filemtime($fullPath)) > $limit) { $this->rrmdir($fullPath); $count++; }
@@ -464,7 +507,7 @@ class myCloudHousekeeper {
             @rmdir($dir);
         }
     }
-	
+    
     /**
      * Phase 1: Process Source Files
      */
@@ -498,8 +541,8 @@ class myCloudHousekeeper {
             // Extension Check (O(1))
             // SplFileInfo::getExtension is fast
             if (!isset($this->validExts[strtolower($file->getExtension())])) continue;
-			
-			$this->updateHeartbeat(); // Keep lock alive
+            
+            $this->updateHeartbeat(); // Keep lock alive
 
             $this->stats['scanned']++;
             $fullPath = $file->getRealPath();
@@ -546,12 +589,11 @@ class myCloudHousekeeper {
                 // Check workers (non-blocking) to reap zombies
                 $this->checkWorkers(false);
                 gc_collect_cycles();
-                $mem = number_format(memory_get_usage() / 1024 / 1024, 1);
-				if ($this->verbose) {
+                if ($this->verbose) {
                     $mem = number_format(memory_get_usage() / 1024 / 1024, 1);
                     $this->log(".. scanned {$this->stats['scanned']} files [Mem: {$mem}MB] ..");
                 }
-			}
+            }
         }
 
         // Process remaining jobs
@@ -584,11 +626,11 @@ class myCloudHousekeeper {
         } else {
             // Child
             $this->pids = []; // Clear parent pids from memory
-			ini_set('memory_limit', '1024M');
-			gc_disable();
-			while (ob_get_level()) ob_end_clean();
+            ini_set('memory_limit', '1024M');
+            gc_disable();
+            while (ob_get_level()) ob_end_clean();
             $this->workerExecuteBatch($jobs);
-			// [CRITICAL FIX] Kill process instantly to avoid PHP shutdown crashes
+            // [CRITICAL FIX] Kill process instantly to avoid PHP shutdown crashes
             // Skipping the cleanup prevents 'double free' errors in shared memory
             if (function_exists('posix_kill')) {
                 posix_kill(getmypid(), SIGKILL);
@@ -683,14 +725,14 @@ class myCloudHousekeeper {
         $suffix = $isIconMode ? '_thumb.jpg' : '.jpg';
         $lenSuffix = strlen($suffix);
         $rootLen = strlen(realpath($cacheRoot)) + 1; // +1 for trailing slash
-		
-		$cleanCounter = 0;
+        
+        $cleanCounter = 0;
 
         foreach ($iterator as $file) {
             if ($this->stopRequested) { $this->log("--- Stopped safely by user ---"); exit; }
-			$this->updateHeartbeat(); // Keep lock alive
+            $this->updateHeartbeat(); // Keep lock alive
             $cachedFullPath = $file->getRealPath();
-			
+            
             // [NEW] Cleanup stale .tmp files from failed atomic writes
             if (substr($cachedFullPath, -4) === '.tmp') {
                 @unlink($cachedFullPath);
@@ -761,7 +803,7 @@ class myCloudHousekeeper {
         return false;
     }
 
-	/**
+    /**
      * Helper: Generate Image (Imagick > GD)
      * * Features:
      * - Auto-rotation (fixes sideways phone photos)
@@ -774,7 +816,7 @@ class myCloudHousekeeper {
 
         // Skip tiny files (spacers/corrupt) to avoid error spam
         if (@filesize($source) < 32) return false;
-		
+        
 
         // --- STRATEGY 0: FFMPEG (Video to Image Bridge) ---
         $videoExts = ['mp4', 'webm', 'mov', 'mkv', 'avi'];
@@ -868,7 +910,7 @@ class myCloudHousekeeper {
 
                 $im->clear();
                 $im->destroy();
-				if ($isTempVideoFrame) @unlink($source);
+                if ($isTempVideoFrame) @unlink($source);
                 $im = null;
                 return true;
 
@@ -950,7 +992,7 @@ class myCloudHousekeeper {
 
                 imagedestroy($srcImg);
                 imagedestroy($dst);
-				if ($isTempVideoFrame) @unlink($source);
+                if ($isTempVideoFrame) @unlink($source);
                 return true;
 
             } catch (Exception $e) {
@@ -960,7 +1002,7 @@ class myCloudHousekeeper {
 
         return false;
     }
-	
+    
 
     /**
      * Helpers
@@ -1037,19 +1079,21 @@ require_once $work_dir . '/configuration/config.php';
 require_once $user_db;
 
 // Parse CLI Arguments
-$args = getopt("", ["cache-refresh", "delete-recyclers", "search-index", "verbose"]);
+$args = getopt("", ["cache-refresh", "delete-recyclers", "search-index", "process-outbox", "verbose"]);
 
 // Default: Do ALL if no arguments provided
-$doCache = true;
-$doRecycle = true;
-$doSearchIndex = true;
+$doCache = false;
+$doRecycle = false;
+$doSearchIndex = false;
+$doOutbox = true;
 $isVerbose = isset($args['verbose']); // Check for flag
 
-if (isset($args['cache-refresh']) || isset($args['delete-recyclers']) || isset($args['search-index'])) {
+if (isset($args['cache-refresh']) || isset($args['delete-recyclers']) || isset($args['search-index']) || isset($args['process-outbox'])) {
     $doCache = isset($args['cache-refresh']);
     $doRecycle = isset($args['delete-recyclers']);
-	$doSearchIndex = isset($args['search-index']);
+    $doSearchIndex = isset($args['search-index']);
+    $doOutbox = isset($args['process-outbox']);
 }
 
 $housekeeper = new myCloudHousekeeper($work_dir);
-$housekeeper->run($doCache, $doRecycle, $doSearchIndex, $isVerbose);
+$housekeeper->run($doCache, $doRecycle, $doSearchIndex, $doOutbox, $isVerbose);
