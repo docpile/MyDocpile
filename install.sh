@@ -446,25 +446,25 @@ function resolve_system_packages() {
 
     # 2. Append OS Specific Non-PHP Packages
     if [[ "$PKG_MNGR" == "apt" ]]; then
-        packages=("${php_pkgs[@]}" git imagemagick ghostscript qpdf pdftk clamdscan ffmpeg wkhtmltopdf)
+        packages=("${php_pkgs[@]}" git imagemagick ghostscript qpdf pdftk-java clamdscan ffmpeg wkhtmltopdf)
         if [[ "$opt_cloud" =~ ^[Yy]$ ]]; then
             packages+=(recoll tesseract-ocr poppler-utils)
             for lang in "${ocr_langs[@]}"; do packages+=("tesseract-ocr-$lang"); done
         fi
     elif [[ "$PKG_MNGR" == "dnf" || "$PKG_MNGR" == "yum" ]]; then
-        packages=("${php_pkgs[@]}" git ImageMagick ghostscript qpdf pdftk clamav ffmpeg wkhtmltopdf)
+        packages=("${php_pkgs[@]}" git ImageMagick ghostscript qpdf pdftk-java clamav ffmpeg wkhtmltopdf)
         if [[ "$opt_cloud" =~ ^[Yy]$ ]]; then
             packages+=(recoll tesseract poppler-utils)
             for lang in "${ocr_langs[@]}"; do packages+=("tesseract-langpack-$lang"); done
         fi
     elif [[ "$PKG_MNGR" == "pacman" ]]; then
-        packages=("${php_pkgs[@]}" git imagemagick ghostscript qpdf pdftk clamav ffmpeg wkhtmltopdf)
+        packages=("${php_pkgs[@]}" git imagemagick ghostscript qpdf pdftk-java clamav ffmpeg wkhtmltopdf)
         if [[ "$opt_cloud" =~ ^[Yy]$ ]]; then
             packages+=(recoll tesseract poppler)
             for lang in "${ocr_langs[@]}"; do packages+=("tesseract-data-$lang"); done
         fi
     elif [[ "$PKG_MNGR" == "zypper" ]]; then
-        packages=("${php_pkgs[@]}" git ImageMagick ghostscript qpdf pdftk clamav ffmpeg wkhtmltopdf)
+        packages=("${php_pkgs[@]}" git ImageMagick ghostscript qpdf pdftk-java clamav ffmpeg wkhtmltopdf)
         if [[ "$opt_cloud" =~ ^[Yy]$ ]]; then
             packages+=(recoll tesseract poppler-tools)
             for lang in "${ocr_langs[@]}"; do packages+=("tesseract-ocr-$lang"); done
