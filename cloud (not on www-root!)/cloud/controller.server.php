@@ -4303,6 +4303,26 @@ class MyCloudServer {
     }
 
     private function handleOfficeCallback($data) {
+        // Enforce JWT validation to prevent unauthenticated arbitrary file overwrites and SSRF
+        $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+        $token = preg_match('/Bearer\s+(.*)/i', $authHeader, $matches) ? $matches[1] : ($data['token'] ?? '');
+        
+        if (empty($token)) {
+            header('HTTP/1.1 403 Forbidden');
+            exit('{"error":1, "msg":"Missing JWT signature"}');
+        }
+
+        $tokenParts = explode('.', $token);
+        if (count($tokenParts) !== 3) {
+            header('HTTP/1.1 403 Forbidden');
+            exit('{"error":1, "msg":"Invalid JWT format"}');
+        }
+        
+        $expectedSignature = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode(hash_hmac('sha256', $tokenParts[0] . '.' . $tokenParts[1], $this->officeSecret, true)));
+        if (!hash_equals($expectedSignature, $tokenParts[2])) {
+            header('HTTP/1.1 403 Forbidden');
+            exit('{"error":1, "msg":"Invalid JWT signature"}');
+        }
         while (ob_get_level()) ob_end_clean();
         header('Content-Type: application/json');
 

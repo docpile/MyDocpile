@@ -335,9 +335,13 @@ class HardenedDirectory extends \Sabre\DAV\FS\Directory {
         }
 
         // 2. PUT Size Restriction (Quota/DoS Protection)
-        $contentLength = $_SERVER['CONTENT_LENGTH'] ?? 0;
-        if ($contentLength > $this->maxFileSize) {
-            throw new \Sabre\DAV\Exception\EntityTooLarge('File exceeds maximum upload limit.');
+        $contentLength = (int)($_SERVER['CONTENT_LENGTH'] ?? 0);
+        $isChunked = isset($_SERVER['HTTP_TRANSFER_ENCODING']) && strcasecmp($_SERVER['HTTP_TRANSFER_ENCODING'], 'chunked') === 0;
+
+        // If the request is chunked, we cannot trust Content-Length pre-flight. 
+        // Reject chunked encoding to strictly enforce the quota firewall.
+        if ($contentLength > $this->maxFileSize || $isChunked) {
+            throw new \Sabre\DAV\Exception\EntityTooLarge('File exceeds maximum upload limit or uses unsupported chunked encoding.');
         }
 
         // 3. Path Vindicator (Double-check path within jail)
