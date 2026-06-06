@@ -639,29 +639,67 @@ function myCloudRenderToolbar() {
         return btn;
     };
 
+    const createRibbonGroup = function(label, subActions, tooltip, customRenderer) {
+        const group = document.createElement('div');
+        group.className = 'ce-ribbon-group';
+        group.style.display = 'flex';
+        group.style.flexDirection = 'column';
+        group.style.alignItems = 'center';
+        group.style.justifyContent = 'space-between';
+        group.style.borderRight = '1px solid var(--border-medium, rgba(0,0,0,0.12))';
+        group.style.padding = '0 4px';
+        group.style.margin = '2px 0';
+        group.title = tooltip;
+
+        const btnsContainer = document.createElement('div');
+        btnsContainer.className = 'ce-ribbon-group-btns';
+        btnsContainer.style.display = 'flex';
+        btnsContainer.style.flexDirection = 'row';
+        btnsContainer.style.alignItems = 'flex-start';
+        btnsContainer.style.flexGrow = '1';
+
+        subActions.forEach(act => {
+            const btn = customRenderer ? customRenderer(act) : createBtn(act);
+            btn.className = 'ce-ribbon-btn';
+            btnsContainer.appendChild(btn);
+        });
+
+        const labelDiv = document.createElement('div');
+        labelDiv.className = 'ce-ribbon-group-label';
+        labelDiv.style.fontSize = '11px';
+        labelDiv.style.color = 'var(--text-secondary, #605e5c)';
+        labelDiv.style.textAlign = 'center';
+        labelDiv.style.marginTop = '2px';
+        labelDiv.style.marginBottom = '2px';
+        labelDiv.style.whiteSpace = 'nowrap';
+        labelDiv.textContent = label;
+
+        group.appendChild(btnsContainer);
+        group.appendChild(labelDiv);
+
+        return group;
+    };
+
     if (isStacked) {
         if (toolsActions.length > 0) {
-            toolbar.appendChild(createRibbon(
+            toolbar.appendChild(createRibbonGroup(
                 myCloud_LANG.view, 
-                svgGroupTools, 
                 toolsActions, 
                 myCloud_LANG.ribbon_view_tooltip
             ));
         }
         
         if (editActions.length > 0) {
-            toolbar.appendChild(createRibbon(
+            toolbar.appendChild(createRibbonGroup(
                 myCloud_LANG.edit,
-                svgGroupEdit, 
                 editActions, 
                 myCloud_LANG.ribbon_edit_tooltip
             ));
         }
         
         if (selectionActions.length > 0) {
-            toolbar.appendChild(createRibbon(
+            toolbar.appendChild(createRibbonGroup(
                 myCloud_LANG.selection, 
-                svgGroupSelection,
                 selectionActions,
                 myCloud_LANG.ribbon_select_tooltip,
                 function(act) {
@@ -678,9 +716,8 @@ function myCloudRenderToolbar() {
         }
         
         if (actionActions.length > 0) {
-            toolbar.appendChild(createRibbon(
+            toolbar.appendChild(createRibbonGroup(
                 myCloud_LANG.actions,
-                svgGroupActions,
                 actionActions,
                 myCloud_LANG.ribbon_actions_tooltip
             ));
