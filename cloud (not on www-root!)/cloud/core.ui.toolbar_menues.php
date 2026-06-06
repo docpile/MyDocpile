@@ -598,46 +598,6 @@ function myCloudRenderToolbar() {
         return btn;
     };
 
-    const createRibbon = function(label, visualSvg, subActions, tooltip, customRenderer) {
-        const btn = document.createElement('button');
-        btn.className = 'ce-ribbon-btn'; 
-        btn.title = tooltip; 
-        btn.innerHTML = visualSvg + '<span class="ce-ribbon-label">' + label + '</span>';
-        btn.dataset.children = JSON.stringify(subActions);
-
-        btn.onmouseenter = function() {
-            if (btn.disabled) return;
-            if (window.myCloudMenuTimer) clearTimeout(window.myCloudMenuTimer);
-            
-            const existing = document.getElementById('myCloudFloatingMenu');
-            if (existing && existing.dataset.owner === btn.innerHTML && existing.dataset.pinned === 'true') return;
-            
-            myCloudShowFloatingMenu(btn, subActions, customRenderer || createBtn, false);
-        };
-
-        btn.onmouseleave = function() {
-            const m = document.getElementById('myCloudFloatingMenu');
-            if (m && m.dataset.pinned === 'true') return;
-            window.myCloudMenuTimer = setTimeout(function() { myCloudCloseFloatingMenu(); }, 300);
-        };
-        
-        btn.onclick = function(e) {
-            e.stopPropagation();
-            if (btn.disabled) return;
-            if (window.myCloudMenuTimer) clearTimeout(window.myCloudMenuTimer);
-
-            const existing = document.getElementById('myCloudFloatingMenu');
-            const isMyMenu = existing && existing.dataset.owner === btn.innerHTML;
-
-            if (isMyMenu) {
-                if (existing.dataset.pinned === 'true') myCloudCloseFloatingMenu();
-                else existing.dataset.pinned = 'true';
-            } else {
-                myCloudShowFloatingMenu(btn, subActions, customRenderer || createBtn, true);
-            }
-        };
-        return btn;
-    };
 
     const createRibbonGroup = function(label, subActions, tooltip, customRenderer) {
         const group = document.createElement('div');
@@ -822,9 +782,36 @@ function myCloudRenderToolbar() {
     // --- FAVORITES BUTTON ---
     const btnFav = document.createElement('button');
     btnFav.id = 'ceFavoritesBtn';
-    btnFav.className = 'ce-ribbon-btn';
+    btnFav.className = isStacked ? 'ce-office-ribbon-btn' : 'ce-ribbon-btn';
     btnFav.title = myCloud_LANG.fav_title;
-    btnFav.innerHTML = svgFavoritesRibbon + '<span class="ce-ribbon-label">' + myCloud_LANG.fav_title + '</span>';
+    btnFav.innerHTML = '<span class="myCloudIcon">' + svgFavoritesRibbon + '</span><span>' + myCloud_LANG.fav_title + '</span>';
+
+    if (isStacked) {
+        btnFav.style.display = 'flex';
+        btnFav.style.flexDirection = 'column';
+        btnFav.style.alignItems = 'center';
+        btnFav.style.justifyContent = 'flex-start';
+        btnFav.style.background = 'transparent';
+        btnFav.style.border = '1px solid transparent';
+        btnFav.style.borderRadius = '4px';
+        btnFav.style.padding = '4px 6px';
+        btnFav.style.minWidth = '52px';
+        btnFav.style.height = '54px';
+        btnFav.style.cursor = 'pointer';
+
+        const textSpan = btnFav.querySelector('span:not(.myCloudIcon)');
+        textSpan.style.fontSize = '11px';
+        textSpan.style.marginTop = '2px';
+
+        btnFav.onmouseenter = function() {
+            btnFav.style.background = 'var(--hover-bg-light, rgba(0, 120, 212, 0.1))';
+            btnFav.style.borderColor = 'var(--accent-primary, rgba(0, 120, 212, 0.3))';
+        };
+        btnFav.onmouseleave = function() {
+            btnFav.style.background = 'transparent';
+            btnFav.style.borderColor = 'transparent';
+        };
+    }
     
     btnFav.onclick = function(e) {
         e.stopPropagation();
@@ -852,10 +839,37 @@ function myCloudRenderToolbar() {
     if (window.myCloudActionAllowed('settings')) {
         const btnSet = document.createElement('button');
         btnSet.id = 'ceSettingsBtn';
-        btnSet.className = 'ce-ribbon-btn'; 
+        btnSet.className = isStacked ? 'ce-office-ribbon-btn' : 'ce-ribbon-btn';
         btnSet.dataset.action = 'settings';
         btnSet.title = myCloud_LANG.options;
-        btnSet.innerHTML = svgSettingsRibbon + '<span class="ce-ribbon-label">' + myCloud_LANG.options + '</span>';
+        btnSet.innerHTML = '<span class="myCloudIcon">' + svgSettingsRibbon + '</span><span>' + myCloud_LANG.options + '</span>';
+
+        if (isStacked) {
+            btnSet.style.display = 'flex';
+            btnSet.style.flexDirection = 'column';
+            btnSet.style.alignItems = 'center';
+            btnSet.style.justifyContent = 'flex-start';
+            btnSet.style.background = 'transparent';
+            btnSet.style.border = '1px solid transparent';
+            btnSet.style.borderRadius = '4px';
+            btnSet.style.padding = '4px 6px';
+            btnSet.style.minWidth = '52px';
+            btnSet.style.height = '54px';
+            btnSet.style.cursor = 'pointer';
+
+            const textSpan = btnSet.querySelector('span:not(.myCloudIcon)');
+            textSpan.style.fontSize = '11px';
+            textSpan.style.marginTop = '2px';
+
+            btnSet.onmouseenter = function() {
+                btnSet.style.background = 'var(--hover-bg-light, rgba(0, 120, 212, 0.1))';
+                btnSet.style.borderColor = 'var(--accent-primary, rgba(0, 120, 212, 0.3))';
+            };
+            btnSet.onmouseleave = function() {
+                btnSet.style.background = 'transparent';
+                btnSet.style.borderColor = 'transparent';
+            };
+        }
         
         btnSet.onclick = function(e) { 
             e.stopPropagation(); 
