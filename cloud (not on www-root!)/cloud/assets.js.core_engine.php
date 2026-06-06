@@ -1932,23 +1932,6 @@ document.addEventListener('visibilitychange', () => {
 });
 
 // ============================================================
-// DELAYED FONT LOADING (Wait for app to settle completely)
-// ============================================================
-window.addEventListener('load', function() {
-    const loadFonts = function() {
-        if (!document.getElementById('myCloudFontsLink')) {
-            const link = document.createElement('link');
-            link.id = 'myCloudFontsLink';
-            link.rel = 'stylesheet';
-            link.href = '/fonts/_fonts.css';
-            document.head.appendChild(link);
-        }
-    };
-    if (window.requestIdleCallback) window.requestIdleCallback(loadFonts, { timeout: 2000 });
-    else setTimeout(loadFonts, 1500);
-});
-
-// ============================================================
 // GLOBAL NATIVE CONTEXT MENU BLOCKER
 // ============================================================
  document.addEventListener('contextmenu', function(e) {
