@@ -1,3 +1,6 @@
+3.2.253
+	Improvement: External font dependency removed
+
 3.2.252
 	Fix: Webmail several bugfixes
 

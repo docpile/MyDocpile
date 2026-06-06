@@ -12,8 +12,6 @@
 }
 ?>
 <style>
-/*	@import "/fonts/_fonts.css"; */
-	
     /* =========================================
        1. IMPORTS & VARIABLES
        ========================================= */
@@ -145,7 +143,7 @@
 
 
 body {
-	font-family: 'Comfortaa',"Segoe UI",Tahoma,"Lucida Grande",Helvetica,sans-serif;
+	font-family: "Segoe UI",Tahoma,"Lucida Grande",Helvetica,sans-serif;
 }
 
 /* Remove the outer browser scrollbar completely. 
