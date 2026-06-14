@@ -1,3 +1,11 @@
+3.2.256
+	Fix: Auto-decide about cloud beta did not work as expected
+	Fix: Webmail auto-adding of new addresses to addressbook did not work
+	Fix: Webmail composer autofill bugfixes
+
+3.2.255
+	Fix: Small fixes
+
 3.2.254
 	Security: Unauthenticated Arbitrary File Overwrite &amp; SSRF in ONLYOFFICE Callback
 	Fix: Minor bugfix release

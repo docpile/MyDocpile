@@ -2,26 +2,44 @@
 if (basename($_SERVER['PHP_SELF']) == basename(__FILE__)) die('Direct access not permitted');
 ?>
 <script>
+
+			console.log("Beta!!!!");
+
 /* --- GLOBAL RECIPIENT TILING LOGIC --- */
-window._emlAddRecipientTile = function(name, email, inputEl) {
+window._emlAddRecipientTile = function(name, rawEmailStr, inputEl) {
     const input = inputEl || document.getElementById('emlTo');
     const container = input.parentElement;
+    
+    let finalName = name;
+    let finalEmail = rawEmailStr;
+    
+    // Support formats like "John Doe <john@doe.com>"
+    const match = rawEmailStr.match(/^(.*?)\s*<([^>]+)>$/);
+    if (match) {
+        finalName = match[1].trim().replace(/['"]/g, '');
+        finalEmail = match[2].trim();
+    }
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     
-    if (!emailRegex.test(email)) {
+    if (!emailRegex.test(finalEmail)) {
         input.style.color = 'var(--danger)';
-        return;
+        return false; // Return false so the input handler knows it failed
     }
     input.style.color = '';
 
     const tile = document.createElement('div');
     tile.className = 'ce-email-tile';
-    tile.dataset.email = email;
-    const displayTxt = name && name !== email ? name : email;
-    const safeName = myCloudEscapeHtml(name).replace(/\\/g, "\\\\").replace(/'/g, "\\'");
-    const safeEmail = myCloudEscapeHtml(email).replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+    tile.dataset.email = finalEmail;
+    
+    const displayTxt = finalName && finalName !== finalEmail ? finalName : finalEmail;
+    const safeName = myCloudEscapeHtml(finalName || '').replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+    const safeEmail = myCloudEscapeHtml(finalEmail).replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+    
     tile.innerHTML = `<span onmouseenter="window._emailShowPopup(event, '${safeName}', '${safeEmail}')" onmouseleave="window._emailHidePopup()">${myCloudEscapeHtml(displayTxt)}</span><span onclick="window._emailHidePopup(); this.parentElement.remove()" style="cursor:pointer; margin-left:6px; font-weight:bold;">×</span>`;
     container.insertBefore(tile, input);
+    
+    return true;
 };
 
 let myCloudEditorLoaded = false;
@@ -648,6 +666,11 @@ window.myCloudShowEmailComposer = function(prefill = null) {
                     }
 
                     if (phpAction === 'email_send') {
+                        // Refresh contacts so auto-collected emails are instantly available
+                        if (typeof window.myCloudEmailLoadContacts === 'function') {
+                            window.myCloudEmailLoadContacts();
+                        }
+
                          // --- SERVER-SIDE UNDO SEND TOAST (Updated for Countdown) ---
                          let tc = document.getElementById('ce-email-toast-container');
                          if (!tc) {
@@ -1218,66 +1241,191 @@ window.myCloudShowEmailComposer = function(prefill = null) {
         const inputEl = document.getElementById(inputId);
         const tileContainer = inputEl.parentElement;
 
+        // --- Helper: Levenshtein Distance for Typo Tolerance ---
+        const getLevenshtein = (a, b) => {
+            if (a.length === 0) return b.length;
+            if (b.length === 0) return a.length;
+            const matrix = [];
+            for (let i = 0; i <= b.length; i++) { matrix[i] = [i]; }
+            for (let j = 0; j <= a.length; j++) { matrix[0][j] = j; }
+            for (let i = 1; i <= b.length; i++) {
+                for (let j = 1; j <= a.length; j++) {
+                    if (b.charAt(i - 1) === a.charAt(j - 1)) {
+                        matrix[i][j] = matrix[i - 1][j - 1];
+                    } else {
+                        matrix[i][j] = Math.min(matrix[i - 1][j - 1] + 1, Math.min(matrix[i][j - 1] + 1, matrix[i - 1][j] + 1));
+                    }
+                }
+            }
+            return matrix[b.length][a.length];
+        };
+
+        // --- Helper: Tokenized Fuzzy Matcher ---
+        const isFlexibleMatch = (searchStr, targetStr) => {
+            if (!searchStr || !targetStr) return false;
+            
+            const s = searchStr.toLowerCase().replace(/[^\w\s@.]/g, '');
+            const t = targetStr.toLowerCase().replace(/[^\w\s@.]/g, '');
+            if (t.includes(s)) return true; // Direct substring catch
+
+            const sTokens = s.split(/\s+/).filter(Boolean);
+            const tTokens = t.split(/\s+/).filter(Boolean);
+            
+            // Every search token must match at least one target token
+            return sTokens.every(st => {
+                return tTokens.some(tt => {
+                    if (tt.includes(st)) return true;
+                    // Allow up to 2 typos (e.g., transposed characters) for words >= 4 chars
+                    if (st.length >= 4 && Math.abs(st.length - tt.length) <= 2) {
+                        return getLevenshtein(st, tt) <= 2; 
+                    }
+                    return false;
+                });
+            });
+        };
+
         inputEl.addEventListener('input', function() {
             activeInput = this;
-            window._emlAutoIndex = -1;
             window.markDirty();
-            const currentSearch = this.value.split(',').pop().trim().toLowerCase();
-            if (currentSearch.length < 1) { autoMenu.style.display = 'none'; return; }
+
+            let val = this.value;
+
+            // 1. Explicit Delimiters (Comma or Semicolon)
+            if (val.includes(',') || val.includes(';')) {
+                const parts = val.split(/[,;]/);
+                const remainder = parts.pop().trimStart();
+                parts.forEach(p => { 
+                    const clean = p.trim();
+                    if (clean) window._emlAddRecipientTile('', clean, this); 
+                });
+                this.value = remainder;
+                val = remainder;
+                autoMenu.style.display = 'none';
+            }
+            
+            // 2. Space Delimiter (Only if a fully valid email is typed)
+            if (val.endsWith(' ') || val.endsWith('\u00A0')) {
+                const clean = val.trim();
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (emailRegex.test(clean)) {
+                    window._emlAddRecipientTile('', clean, this);
+                    this.value = '';
+                    val = '';
+                    autoMenu.style.display = 'none';
+                }
+            }
+
+            const currentSearch = val.trim().toLowerCase();
+            
+            // 3. MINIMUM CHARACTER GATE: Wait for 4 characters
+            if (currentSearch.length < 4) { 
+                autoMenu.style.display = 'none'; 
+                return; 
+            }
 
             autoMenu.innerHTML = '';
-            let hasResults = false;
+
+            // 4. RECENT INTERACTION SCORING
+            const recentScores = new Map();
+            if (window.myCloudEmailState && window.myCloudEmailState.currentMessages) {
+                // Look at the latest 150 messages in the currently open view
+                const msgs = window.myCloudEmailState.currentMessages.slice(0, 150);
+                msgs.forEach((m, idx) => {
+                    const score = 150 - idx; // Higher score = more recent
+                    const addrs = [m.fromEmail, m.to, m.cc, m.bcc].filter(Boolean).join(',');
+                    const matches = addrs.match(/[a-zA-Z0-9!#$%&'*+\-\/=?^_`{|}~.]+@[a-zA-Z0-9.-]+/g);
+                    if (matches) {
+                        matches.forEach(e => {
+                            const cleanE = e.toLowerCase();
+                            if (!recentScores.has(cleanE)) recentScores.set(cleanE, score);
+                        });
+                    }
+                });
+            }
 
             const allContacts = [...(window.myCloudEmailState.contacts || []), ...(window.myCloudEmailState.autoContacts || [])];
+            let matchedResults = [];
 
+            // 5. FIND AND SCORE MATCHES
             allContacts.forEach(c => {
-				const nameMatch = c.name && c.name.toLowerCase().includes(currentSearch);
                 let emailsArray = c.emails;
                 if (!emailsArray || !Array.isArray(emailsArray)) emailsArray = [];
 
                 if (emailsArray.length > 0) {
                     emailsArray.forEach(e => {
-                        if (nameMatch || (e.val && e.val.toLowerCase().includes(currentSearch))) {
-                            hasResults = true;
-                            const div = document.createElement('div');
-                            div.className = 'ce-autocomplete-item';
-                            div.style.padding = '8px 12px';
-                            div.style.cursor = 'pointer';
-                            div.style.borderBottom = '1px solid var(--border-subtle)';
-                            div.innerHTML = `<div style="display:flex; justify-content:space-between; margin-bottom:2px;"><b style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${myCloudEscapeHtml(c.name || e.val)}</b><span style="font-size:11px; opacity:0.7; white-space:nowrap; margin-inline-start:8px;">${myCloudEscapeHtml(e.type || 'Email')}</span></div><div style="font-size:12px; opacity:0.8; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${myCloudEscapeHtml(e.val)}</div>`;
-                            div.onmouseenter = function() {
-                                window._emlAutoIndex = Array.from(autoMenu.children).indexOf(this);
-                                Array.from(autoMenu.children).forEach((child, idx) => {
-                                    child.style.backgroundColor = (idx === window._emlAutoIndex) ? 'var(--hover-bg-medium)' : 'transparent';
-                                });
-                            };
-                            div.onmousedown = function(ev) {
-                                ev.preventDefault(); ev.stopPropagation();
-                                window._emlAddRecipientTile(c.name, e.val, activeInput);
-                                activeInput.value = '';
-                                autoMenu.style.display = 'none';
-                                activeInput.focus();
-                           };
-						    div.onclick = div.onmousedown;
-                            autoMenu.appendChild(div);
+                        const emailVal = e.val || '';
+                        
+                        if (isFlexibleMatch(currentSearch, c.name) || isFlexibleMatch(currentSearch, emailVal)) {
+                            const recencyScore = recentScores.get(emailVal.toLowerCase()) || 0;
+                            matchedResults.push({
+                                contact: c,
+                                email: e,
+                                score: recencyScore
+                            });
                         }
                     });
                 }
             });
 
-            if (hasResults) {
+            // 6. SORTING: Sort primarily by Recency Score (descending), then alphabetically
+            matchedResults.sort((a, b) => {
+                if (a.score !== b.score) {
+                    return b.score - a.score;
+                }
+                const nameA = a.contact.name || a.email.val;
+                const nameB = b.contact.name || b.email.val;
+                return nameA.localeCompare(nameB);
+            });
+
+            // 7. RENDER RESULTS
+            if (matchedResults.length > 0) {
+                
+                // AUTO-SELECT FIRST ENTRY
+                window._emlAutoIndex = 0;
+
+                matchedResults.forEach((res, idx) => {
+                    const c = res.contact;
+                    const e = res.email;
+                    
+                    const div = document.createElement('div');
+                    div.className = 'ce-autocomplete-item';
+                    div.style.padding = '8px 12px';
+                    div.style.cursor = 'pointer';
+                    div.style.borderBottom = '1px solid var(--border-subtle)';
+                    
+                    // Highlight the first item automatically
+                    div.style.backgroundColor = (idx === 0) ? 'var(--hover-bg-medium)' : 'transparent';
+                    
+                    const recentBadge = res.score > 0 ? `<span style="font-size:10px; color:var(--accent-primary); background:var(--gray-15); padding:1px 4px; border-radius:3px; margin-inline-end:6px;" title="Recent Contact">◷</span>` : '';
+
+                    div.innerHTML = `<div style="display:flex; justify-content:space-between; margin-bottom:2px;"><b style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${recentBadge}${myCloudEscapeHtml(c.name || e.val)}</b><span style="font-size:11px; opacity:0.7; white-space:nowrap; margin-inline-start:8px;">${myCloudEscapeHtml(e.type || 'Email')}</span></div><div style="font-size:12px; opacity:0.8; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${myCloudEscapeHtml(e.val)}</div>`;
+                    
+                    div.onmouseenter = function() {
+                        window._emlAutoIndex = Array.from(autoMenu.children).indexOf(this);
+                        Array.from(autoMenu.children).forEach((child, index) => {
+                            child.style.backgroundColor = (index === window._emlAutoIndex) ? 'var(--hover-bg-medium)' : 'transparent';
+                        });
+                    };
+                    div.onmousedown = function(ev) {
+                        ev.preventDefault(); ev.stopPropagation();
+                        window._emlAddRecipientTile(c.name || '', e.val, activeInput);
+                        activeInput.value = '';
+                        autoMenu.style.display = 'none';
+                        activeInput.focus();
+                    };
+                    div.onclick = div.onmousedown;
+                    autoMenu.appendChild(div);
+                });
+
                 autoMenu.style.display = 'block';
-                // Extract to body to escape all modal overflow clipping
                 if (autoMenu.parentElement !== document.body) document.body.appendChild(autoMenu);
                  
-                 // Force viewport properties to override rogue CSS inheritance
-                 autoMenu.style.position = 'fixed';
-                 autoMenu.style.bottom = 'auto';
-                 autoMenu.style.margin = '0';
+                autoMenu.style.position = 'fixed';
+                autoMenu.style.bottom = 'auto';
+                autoMenu.style.margin = '0';
 
-                 const containerRect = tileContainer.getBoundingClientRect();
-                 // Drop it safely below the entire tile row so it never covers the input text
-                 const menuTop = containerRect.bottom + 4;
+                const containerRect = tileContainer.getBoundingClientRect();
+                const menuTop = containerRect.bottom + 4;
                 
                 const containerNode = document.getElementById('myCloudContainer');
                 const isRtl = containerNode && containerNode.getAttribute('dir') === 'rtl';
@@ -1327,12 +1475,24 @@ window.myCloudShowEmailComposer = function(prefill = null) {
                 return;
             }
 
-            if ((e.key === 'Enter' || e.key === ',') && this.value.trim()) {
+            const isEnter = (e.key === 'Enter' || e.keyCode === 13);
+            const isCommaOrSemi = (e.key === ',' || e.key === ';' || e.keyCode === 188 || e.keyCode === 186);
+            const isSpace = (e.key === ' ' || e.keyCode === 32);
+
+            if ((isEnter || isCommaOrSemi || isSpace) && this.value.trim()) {
+                const rawVal = this.value.replace(/[,;]/g, '').trim();
+                
+                if (isSpace && !rawVal.includes('@')) {
+                    return; 
+                }
+
                 e.preventDefault();
-                if (e.key === 'Enter' && isMenuOpen && window._emlAutoIndex >= 0 && items[window._emlAutoIndex]) {
+                
+                // If Enter is pressed, the menu is open, and we have a pre-selected item, click it!
+                if (isEnter && isMenuOpen && window._emlAutoIndex >= 0 && items[window._emlAutoIndex]) {
                     items[window._emlAutoIndex].click();
                 } else {
-                    window._emlAddRecipientTile(null, this.value.replace(',', '').trim(), this);
+                    window._emlAddRecipientTile('', rawVal, this);
                     this.value = '';
                     autoMenu.style.display = 'none';
                 }
@@ -1345,7 +1505,7 @@ window.myCloudShowEmailComposer = function(prefill = null) {
             }
         };
     };
-
+	
     setupRecipientInput('emlTo');
     setupRecipientInput('emlCc');
     setupRecipientInput('emlBcc');

@@ -17,8 +17,10 @@
  *
  */
 
+$cloud_dir = __DIR__ . "/";
 $versionFile = $cloud_dir . 'versioninfo.txt';
 include_once __DIR__ . '/core.version.php';
+// error_log("Debug: " . print_r( $cloud_dir, true));
 	
 require_once $GLOBALS['work_dir'] . '/vendor/autoload.php';
 use MatthiasMullie\Minify;
