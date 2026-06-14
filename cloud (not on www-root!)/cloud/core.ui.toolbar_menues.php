@@ -517,7 +517,6 @@ function myCloudRenderToolbar() {
     if (window.myCloudActionAllowed('settings')) totalAllowedButtons++;
     
     let isStacked = config.stackedToolbar;
-    if (totalAllowedButtons < ribbonThreshold) isStacked = false;
 
     const translations = {
         toggle_tree: myCloud_LANG.tree_view,

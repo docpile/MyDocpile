@@ -111,7 +111,7 @@
                 if (typeof window.myCloudActionAllowed === 'function' && window.myCloudActionAllowed('share')) {
                     const tb = document.getElementById('myCloudToolbar');
                     if (tb) {
-                        const isStacked = tb.querySelector('.ce-ribbon-btn') !== null;
+                        const isStacked = tb.querySelector('button:not(.ce-ribbon-btn)') === null;
 
                         if (isStacked) {
                             const svgShareRibbon = 
