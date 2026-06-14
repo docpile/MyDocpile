@@ -197,12 +197,12 @@
                             const shareRibbon = createRibbon(myCloud_LANG.share_btn, svgShareRibbon, myCloud_LANG.share_manage);
                             const settingsBtn = document.getElementById('ceSettingsBtn');
                             
-                            if (settingsBtn) {
+                            if (settingsBtn && settingsBtn.parentNode) {
                                 const divider = settingsBtn.previousElementSibling; 
                                 if (divider) {
-                                    tb.insertBefore(shareRibbon, divider);
+                                    settingsBtn.parentNode.insertBefore(shareRibbon, divider);
                                 } else {
-                                    tb.insertBefore(shareRibbon, settingsBtn);
+                                    settingsBtn.parentNode.insertBefore(shareRibbon, settingsBtn);
                                 }
                             } else {
                                 tb.appendChild(shareRibbon);
@@ -210,7 +210,6 @@
 
                         } else {
                             const uploadBtn = tb.querySelector('button[data-action="upload"]');
-                            const insertPoint = uploadBtn ? uploadBtn.nextSibling : null;
 
                             const sep = document.createElement('div'); sep.className = 'myCloudDivider'; sep.dataset.cx = 'share';
                             const btn = document.createElement('button');
@@ -224,10 +223,12 @@
                             btnList.innerHTML = '<span class="myCloudIcon" style="display:flex;align-items:center;justify-content:center;width:24px;height:24px;font-size:24px;">' + myCloudSvg.shareList + '</span><span style="font-size:10px;margin-top:4px;">' + myCloud_LANG.share_all + '</span>';
                             btnList.onclick = (e) => { e.preventDefault(); e.stopPropagation(); window.cxShowAllShares(); return false; };
 
-                            if (insertPoint) {
-                                tb.insertBefore(sep, insertPoint);
-                                tb.insertBefore(btn, sep.nextSibling);
-                                tb.insertBefore(btnList, btn.nextSibling);
+                            if (uploadBtn && uploadBtn.parentNode) {
+                                const parent = uploadBtn.parentNode;
+                                const insertPoint = uploadBtn.nextSibling;
+                                parent.insertBefore(sep, insertPoint);
+                                parent.insertBefore(btn, sep.nextSibling);
+                                parent.insertBefore(btnList, btn.nextSibling);
                             } else {
                                 tb.appendChild(sep); tb.appendChild(btn); tb.appendChild(btnList);
                             }
