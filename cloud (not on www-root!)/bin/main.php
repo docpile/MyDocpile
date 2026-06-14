@@ -191,10 +191,13 @@ if (isset($_SESSION['loggedin']) && $_SESSION['loggedin'] === true) {
 	
 	// Final decision of the template to load
 	if ($isCloudOnly) {
-		$suffix = (isset($cloud_beta) && $cloud_beta !== '') ? $cloud_beta : '';
-		$loginRole = $work_dir . '/cloud' . $suffix . '/index.php';
+		$loginRole = $work_dir . '/cloud/index.php';
+		if (!empty($cloud_beta)) { 
+			$loginRole = $work_dir . '/cloud.beta/index.php';
+		}
 	}
 	
+
 	if (file_exists($loginRole) && is_readable($loginRole)) {
 		require_once $loginRole;
 	} else {

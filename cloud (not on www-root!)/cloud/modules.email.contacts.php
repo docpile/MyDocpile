@@ -184,9 +184,18 @@ window.myCloudShowEmailContacts = function() {
         listDiv.innerHTML = html;
     };
 
+    window._emlRenderContactList = () => {
+        if (document.getElementById('ceContactSearch')) {
+            renderList(document.getElementById('ceContactSearch').value);
+        }
+    };
+
     searchInput.addEventListener('input', (e) => renderList(e.target.value));
-    myCloudEmailLoadContacts();
     renderList();
+
+    myCloudEmailLoadContacts().then(() => {
+        window._emlRenderContactList();
+    });
 
     // The Sub-Modal for Editing/Adding with Dynamic Rows
     window._emailEditContact = (id) => {

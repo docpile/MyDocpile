@@ -136,7 +136,8 @@ class Login {
 		$this->global_login_window = $global_login_window ?? 60;
 
 
-		$cloud_path = '/cloud' . ($cloud_beta ?? '');
+		if (!empty($cloud_beta)) $cloud_path = '/cloud.beta' ?? $cloud_path = '/cloud'; 
+
 		$is_cloud_uri = (isset($_SERVER['REQUEST_URI']) && strpos($_SERVER['REQUEST_URI'], $cloud_path) !== false);
 		$this->isCloudOnly = $isCloudOnly ?? $is_cloud_uri;
 		

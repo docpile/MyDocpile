@@ -485,12 +485,26 @@ window._emailToggleReadStatus = function(msgId, markAsRead) {
     const targetFolder = clickedMsg.folder || myCloudEmailState.activeFolder;
 
     const msgKey = targetAcc + '|' + targetFolder + '|' + msgId;
-    let targetKeys = [msgKey];
+    let baseTargetKeys = [msgKey];
     
     // Support multi-selection toggling
     if (myCloudEmailState.selectedMessages && myCloudEmailState.selectedMessages.includes(msgKey)) {
-        targetKeys = [...myCloudEmailState.selectedMessages];
+        baseTargetKeys = [...myCloudEmailState.selectedMessages];
     }
+
+    // --- THREAD EXPANSION ---
+    let expandedKeys = [];
+    baseTargetKeys.forEach(k => {
+        expandedKeys.push(k);
+        const parts = k.split('|');
+        const renderedMsg = (window.myCloudEmailState.renderedMessages || []).find(m => String(m.id) === String(parts[2]) && (m.account_id || myCloudEmailState.activeAccount) === parts[0] && (m.folder || myCloudEmailState.activeFolder) === parts[1]);
+        if (renderedMsg && renderedMsg.is_thread_parent && renderedMsg.children) {
+            renderedMsg.children.forEach(child => {
+                expandedKeys.push(parts[0] + '|' + parts[1] + '|' + child.id);
+            });
+        }
+    });
+    let targetKeys = [...new Set(expandedKeys)];
 
     const action = markAsRead ? 'email_mark_read' : 'email_mark_unread';
     
@@ -638,23 +652,37 @@ window._emailPromptMoveCopy = function(action, msgData) {
      window._emailExecMoveCopy('move', targetKeys, srcAcc, spamFolder);
  };
 
-window._emailExecMoveCopy = function(action, targetKeys, destAcc, destFolder) {
+window._emailExecMoveCopy = function(action, baseTargetKeys	, destAcc, destFolder) {
     if (typeof myCloudShowLoading === 'function') myCloudShowLoading();
     const L = typeof myCloud_LANG !== 'undefined' ? myCloud_LANG : {};
+
+    // --- THREAD EXPANSION ---
+    let targetKeys = [];
+    baseTargetKeys.forEach(k => {
+        targetKeys.push(k);
+        const parts = k.split('|');
+        const renderedMsg = (window.myCloudEmailState.renderedMessages || []).find(m => String(m.id) === String(parts[2]) && (m.account_id || myCloudEmailState.activeAccount) === parts[0] && (m.folder || myCloudEmailState.activeFolder) === parts[1]);
+        if (renderedMsg && renderedMsg.is_thread_parent && renderedMsg.children) {
+            renderedMsg.children.forEach(child => {
+                targetKeys.push(parts[0] + '|' + parts[1] + '|' + child.id);
+            });
+        }
+    });
+    targetKeys = [...new Set(targetKeys)];
     
     const groups = window._emailGroupSelectedMessages(targetKeys);
 
     let nextMsgKey = null;
     if (action === 'move') {
         const listItems = Array.from(document.querySelectorAll('#ceEmailListContent .ce-email-list-item'));
-        const firstDeletedIndex = listItems.findIndex(el => targetKeys.includes(el.dataset.msgKey));
+        const firstDeletedIndex = listItems.findIndex(el => baseTargetKeys.includes(el.dataset.msgKey));
         if (firstDeletedIndex !== -1) {
             for (let i = firstDeletedIndex + 1; i < listItems.length; i++) {
-                if (!targetKeys.includes(listItems[i].dataset.msgKey)) { nextMsgKey = listItems[i].dataset.msgKey; break; }
+                if (!baseTargetKeys.includes(listItems[i].dataset.msgKey)) { nextMsgKey = listItems[i].dataset.msgKey; break; }
             }
             if (!nextMsgKey) {
                 for (let i = firstDeletedIndex - 1; i >= 0; i--) {
-                    if (!targetKeys.includes(listItems[i].dataset.msgKey)) { nextMsgKey = listItems[i].dataset.msgKey; break; }
+                    if (!baseTargetKeys.includes(listItems[i].dataset.msgKey)) { nextMsgKey = listItems[i].dataset.msgKey; break; }
                 }
             }
         }
@@ -683,6 +711,31 @@ window._emailExecMoveCopy = function(action, targetKeys, destAcc, destFolder) {
                 if (action === 'move') {
                     if (!myCloudEmailState.pendingDeletes) myCloudEmailState.pendingDeletes = new Set();
                     targetKeys.forEach(k => myCloudEmailState.pendingDeletes.add(k));
+
+                    // --- SUBTRACT UNREAD COUNT FOR MOVED MESSAGES ---
+                    let unreadMovedCountByFolder = {};
+                    targetKeys.forEach(k => {
+                        const parts = k.split('|');
+                        const msgObj = myCloudEmailState.currentMessages.find(m => String(m.id) === String(parts[2]) && (m.account_id || myCloudEmailState.activeAccount) === parts[0] && (m.folder || myCloudEmailState.activeFolder) === parts[1]);
+                        if (msgObj && !msgObj.is_read) {
+                            const grp = parts[0] + '|' + parts[1];
+                            unreadMovedCountByFolder[grp] = (unreadMovedCountByFolder[grp] || 0) + 1;
+                        }
+                    });
+
+                    Object.keys(unreadMovedCountByFolder).forEach(grp => {
+                        const parts = grp.split('|');
+                        const acc = parts[0], fld = parts[1];
+                        const count = unreadMovedCountByFolder[grp];
+                        if (myCloudEmailState.foldersData[acc]) {
+                            const folderData = myCloudEmailState.foldersData[acc].find(f => f.id === fld);
+                            if (folderData && folderData.unread > 0) {
+                                folderData.unread = Math.max(0, folderData.unread - count);
+                                if (fld.toUpperCase() === 'INBOX') myCloudEmailState.inboxUnreadCounts[acc] = folderData.unread;
+                            }
+                        }
+                    });
+                    myCloudEmailRenderTree();
 
                     if (!nextMsgKey) {
                         document.getElementById('emailPaneReading').innerHTML = '<div class="ce-email-empty">' + (L.msg_moved || 'Message(s) moved successfully.') + '</div>';
@@ -1131,11 +1184,16 @@ window.myCloudEmailLoadAccounts = function() {
 	
 window.myCloudEmailLoadContacts = function() {
     const fd = new URLSearchParams({ myCloud_action: 'email_get_contacts', myCloud_key: myCloudState.key, myCloud_token: window.myCloudCsrfToken });
-    fetch('', { method: 'POST', body: fd }).then(r=>r.json()).then(res => {
+    return fetch('', { method: 'POST', body: fd }).then(r=>r.json()).then(res => {
 		if (res.status === 'OK') {
              myCloudEmailState.contacts = res.contacts;
              myCloudEmailState.autoContacts = res.auto_contacts || [];
+             // If the contacts modal is open, refresh it automatically
+             if (typeof window._emlRenderContactList === 'function' && document.getElementById('ceContactList')) {
+                 window._emlRenderContactList();
+             }
          }
+		 return res;
 	});
 };
 
@@ -1682,7 +1740,9 @@ window.myCloudEmailFetchMessages = function(folderId, silent = false, loadMore =
             }
 
             if (loadMore) {
-                myCloudEmailState.currentMessages = myCloudEmailState.currentMessages.concat(incomingMsgs);
+                const existingIds = new Set(myCloudEmailState.currentMessages.map(m => String(m.id)));
+                const newMsgs = incomingMsgs.filter(m => !existingIds.has(String(m.id)));
+                myCloudEmailState.currentMessages = myCloudEmailState.currentMessages.concat(newMsgs);
             } else {
                 myCloudEmailState.currentMessages = incomingMsgs;
             }
@@ -2378,7 +2438,9 @@ window._emailRenderMessageList = function(isAppendOnly = false) {
         renderMsgs = msgs;
     }
 
-
+		window.myCloudEmailState.renderedMessages = renderMsgs;
+		
+		
         if (renderMsgs.length === 0) {
             const listPane = document.getElementById('emailPaneList');
             if (listPane && listPane.classList.contains('ce-pane-loading')) {
@@ -4623,27 +4685,42 @@ window.myCloudEmailAction = function(action, msgId, metaObjStr) {
     if (action === 'delete') {
         const isTrash = /trash|deleted|bin|papelera|corbeille|papierkorb|prullenbak/i.test(myCloudEmailState.activeFolder);
         
-        let targetKeys = [msgKey];
+        let baseTargetKeys = [msgKey];
         if (myCloudEmailState.selectedMessages && myCloudEmailState.selectedMessages.includes(msgKey)) {
-            targetKeys = [...myCloudEmailState.selectedMessages];
+            baseTargetKeys = [...myCloudEmailState.selectedMessages];
         }
+
+        // --- THREAD EXPANSION FIX ---
+        let targetKeys = [];
+        baseTargetKeys.forEach(k => {
+            targetKeys.push(k);
+            const parts = k.split('|');
+            const renderedMsg = (window.myCloudEmailState.renderedMessages || []).find(m => String(m.id) === String(parts[2]) && (m.account_id || myCloudEmailState.activeAccount) === parts[0] && (m.folder || myCloudEmailState.activeFolder) === parts[1]);
+            if (renderedMsg && renderedMsg.is_thread_parent && renderedMsg.children) {
+                renderedMsg.children.forEach(child => {
+                    targetKeys.push(parts[0] + '|' + parts[1] + '|' + child.id);
+                });
+            }
+        });
+        targetKeys = [...new Set(targetKeys)];
+
         const groups = window._emailGroupSelectedMessages(targetKeys);
 
         const execDelete = (skipUndo = false) => {
             // --- FIND NEXT MESSAGE TO AUTO-OPEN ---
             let nextMsgKey = null;
             const listItems = Array.from(document.querySelectorAll('#ceEmailListContent .ce-email-list-item'));
-            const firstDeletedIndex = listItems.findIndex(el => targetKeys.includes(el.dataset.msgKey));
+            const firstDeletedIndex = listItems.findIndex(el => baseTargetKeys.includes(el.dataset.msgKey));
             
             if (firstDeletedIndex !== -1) {
                 // Look downwards first
                 for (let i = firstDeletedIndex + 1; i < listItems.length; i++) {
-                    if (!targetKeys.includes(listItems[i].dataset.msgKey)) { nextMsgKey = listItems[i].dataset.msgKey; break; }
+                    if (!baseTargetKeys.includes(listItems[i].dataset.msgKey)) { nextMsgKey = listItems[i].dataset.msgKey; break; }
                 }
                 // Fallback upwards
                 if (!nextMsgKey) {
                     for (let i = firstDeletedIndex - 1; i >= 0; i--) {
-                        if (!targetKeys.includes(listItems[i].dataset.msgKey)) { nextMsgKey = listItems[i].dataset.msgKey; break; }
+                        if (!baseTargetKeys.includes(listItems[i].dataset.msgKey)) { nextMsgKey = listItems[i].dataset.msgKey; break; }
                     }
                 }
             }
