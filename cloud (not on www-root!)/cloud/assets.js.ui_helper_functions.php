@@ -555,8 +555,23 @@ function myCloudRenderCloudSwitcher() {
         }
     });
 	bar.appendChild(logoWrap);
+	
+        const scrollWrap = document.createElement('div');
+        scrollWrap.style.cssText = 'position: relative; display: flex; flex: 1; min-width: 0; margin-inline-end:4px;';
 
-    myCloudUserKeys.forEach(k => {
+    const tabsWrap = document.createElement('div');
+    tabsWrap.style.cssText = 'display:flex; overflow-x:auto; overflow-y:hidden; scrollbar-width:none; -ms-overflow-style:none; flex:1; gap:4px; align-items:flex-end;';
+    tabsWrap.className = 'myCloudCloudSwitcher-tabs';
+
+	// Translate vertical mouse wheel scrolling into horizontal tab scrolling
+	tabsWrap.addEventListener('wheel', (e) => {
+		if (e.deltaY !== 0 && !e.shiftKey) {
+			e.preventDefault();
+			tabsWrap.scrollLeft += e.deltaY;
+		}
+	}, { passive: false }); 
+
+	myCloudUserKeys.forEach(k => {
         const btn = document.createElement('button');
         btn.className = 'ce-cloud-btn';
         btn.dataset.key = k;
@@ -576,12 +591,35 @@ function myCloudRenderCloudSwitcher() {
             myCloudStartExplorer(k);
         };
         
-        bar.appendChild(btn);
+        tabsWrap.appendChild(btn);
     });
 
-    const spacer = document.createElement('div');
-    spacer.style.flex = '1';
-    bar.appendChild(spacer);
+    scrollWrap.appendChild(tabsWrap);
+    
+    // Add shadow indicators for overflow
+    const startInd = document.createElement('div');
+    startInd.className = 'cloud-indicator-start';
+    const endInd = document.createElement('div');
+    endInd.className = 'cloud-indicator-end';
+    scrollWrap.appendChild(startInd);
+    scrollWrap.appendChild(endInd);
+    
+    bar.appendChild(scrollWrap);
+    
+    const checkScroll = () => {
+        if (tabsWrap.scrollWidth > tabsWrap.clientWidth) {
+            let sL = Math.abs(tabsWrap.scrollLeft);
+            let maxS = tabsWrap.scrollWidth - tabsWrap.clientWidth;
+            startInd.style.opacity = sL <= 2 ? '0' : '1';
+            endInd.style.opacity = sL >= maxS - 2 ? '0' : '1';
+        } else {
+            startInd.style.opacity = '0';
+            endInd.style.opacity = '0';
+        }
+    };
+    tabsWrap.addEventListener('scroll', checkScroll, { passive: true });
+    window.addEventListener('resize', checkScroll, { passive: true });
+    setTimeout(checkScroll, 50);
 
     const logoutBtn = document.createElement('button');
     const isCloudOnly = <?php echo !empty($GLOBALS['isCloudOnly']) ? 'true' : 'false'; ?>;

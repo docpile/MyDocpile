@@ -199,9 +199,16 @@ window.myCloudHelpLangs = <?php
 // This fires only after ALL scripts and "further inits" are processed by the browser.
 document.addEventListener('DOMContentLoaded', function() {
     if (typeof myCloudStartExplorer === 'function') {
-        // Automatically start the explorer with the 'all' key.
-        // This replaces the inline <script> in your main PHP file.
-        myCloudStartExplorer('all');
+        let startKey = 'all';
+        if (window.myCloudIsMailOnly && typeof myCloudCloudConfig !== 'undefined') {
+            for (let k in myCloudCloudConfig) {
+                if (myCloudCloudConfig[k].interface === 'email') {
+                    startKey = k;
+                    break;
+                }
+            }
+        }
+        myCloudStartExplorer(startKey);
     }
 });
 

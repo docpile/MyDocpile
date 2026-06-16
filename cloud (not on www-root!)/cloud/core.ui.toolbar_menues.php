@@ -14,7 +14,7 @@
 if (typeof myCloudSvg !== 'undefined') {
     if (!myCloudSvg.share) myCloudSvg.share = '<svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>';
     if (!myCloudSvg.share_list) myCloudSvg.share_list = '<svg viewBox="0 0 24 24"><path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/></svg>';
-    if (!myCloudSvg.help) myCloudSvg.help = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>';
+    if (!myCloudSvg.help) myCloudSvg.help = '<svg viewBox="0 0 24 24" style="fill:none !important; stroke:currentColor !important; stroke-width:1.5 !important; stroke-linecap:round !important; stroke-linejoin:round !important;"><circle cx="12" cy="12" r="10" style="fill:none !important; stroke:currentColor !important;"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" style="fill:none !important; stroke:currentColor !important;"></path><line x1="12" y1="17" x2="12.01" y2="17" style="fill:none !important; stroke:currentColor !important;"></line></svg>';
 }
 
 function getActionStatus(action) {
@@ -207,8 +207,8 @@ function myCloudUpdateToolbarState() {
     });
 
     // Update Ribbon Parents
-    document.querySelectorAll('.ce-ribbon-btn:not(#ceSettingsBtn):not(#ceFavoritesBtn):not(#btnHelp)').forEach(function(ribbonBtn) {
-        const actions = ribbonBtn.dataset.children ? JSON.parse(ribbonBtn.dataset.children) : [];
+    document.querySelectorAll('.ce-ribbon-btn:not(#ceSettingsBtn):not(#ceFavoritesBtn):not(#btnHelp):not(#ceStackedTreeBtn)').forEach(function(ribbonBtn) {
+		const actions = ribbonBtn.dataset.children ? JSON.parse(ribbonBtn.dataset.children) : [];
         
         let visibleChildrenCount = 0;
         let enabledChildrenCount = 0;
@@ -308,6 +308,12 @@ function myCloudUpdateToolbarState() {
 // Renders the floating ribbon menu for grouped actions.
 // Handles positioning, pinning, and item creation.
 // Expects `tabData` which contains the columns and rows configuration.
+// Renders the floating ribbon menu for grouped actions.
+// Handles positioning, pinning, item creation, and responsive viewport shrinking.
+// Expects `tabData` which contains the columns and rows configuration.
+// Renders the floating ribbon menu for grouped actions.
+// Handles positioning, pinning, item creation, and responsive viewport shrinking.
+// Expects `tabData` which contains the columns and rows configuration.
 function myCloudShowFloatingMenu(btn, tabData, createBtnFn, pinned) {
     if (typeof pinned === 'undefined') pinned = false;
     const existing = document.getElementById('myCloudFloatingMenu');
@@ -379,6 +385,7 @@ function myCloudShowFloatingMenu(btn, tabData, createBtnFn, pinned) {
                 itemBtn.classList.add('ce-ribbon-sub-btn');
                 itemBtn.classList.add('ce-btn-type-' + itemConfig.type);
                 itemBtn.dataset.action = act;
+                itemBtn.dataset.origType = itemConfig.type; // Track original type for responsive reduction
                 itemBtn.disabled = status.disabled;
                 if (status.active && !status.disabled) itemBtn.classList.add('ce-force-active');
 
@@ -414,27 +421,133 @@ function myCloudShowFloatingMenu(btn, tabData, createBtnFn, pinned) {
 
     document.body.appendChild(menu);
 
-    const rect = btn.getBoundingClientRect();
-    const menuWidth = menu.offsetWidth;
-    const windowWidth = window.innerWidth;
-
-    let left = rect.left + (rect.width / 2) - (menuWidth / 2);
-
-    if (left < 5) left = 5; 
-    if (left + menuWidth > windowWidth - 5) {
-        left = windowWidth - menuWidth - 5;
-    }
+    // --- POSITIONING & RESPONSIVE SHRINK LOGIC ---
     
-    menu.style.top = (rect.bottom + 1) + 'px'; 
-    menu.style.left = left + 'px';
+    // 1. Force the browser to render the element fully so we can measure it
+    menu.style.position = 'fixed';
+    menu.style.visibility = 'hidden';
+    menu.style.display = 'block'; 
+    menu.style.maxHeight = 'none';
+    menu.style.overflowY = 'visible';
+    
+    // 2. Strip animations temporarily to prevent scaled/shrunk height miscalculations
+    const oldTrans = menu.style.transition;
+    const oldTransform = menu.style.transform;
+    const oldAnim = menu.style.animation;
+    menu.style.transition = 'none';
+    menu.style.transform = 'none';
+    menu.style.animation = 'none';
+    
+    // Force a synchronous DOM reflow
+    void menu.offsetHeight;
+    
+    const maxW = window.innerWidth - 10;
+    const maxH = window.innerHeight - 30; // 30px safety margin
+    
+    const checkFit = () => menu.offsetWidth <= maxW && menu.offsetHeight <= maxH;
 
-    myCloudApplyTheme();
+    // Step 1: Make columns smaller
+    if (!checkFit()) {
+        container.style.gap = '2px';
+        menu.querySelectorAll('.ce-ribbon-sub-col').forEach(c => { c.style.minWidth = '90px'; c.style.gap = '2px'; });
+        menu.querySelectorAll('.ce-ribbon-sub-btn').forEach(b => { b.style.padding = '2px 4px'; b.style.minHeight = 'auto'; });
+        menu.querySelectorAll('.myCloudIcon').forEach(i => i.style.marginRight = '4px');
+        void menu.offsetHeight;
+    }
+
+    // Step 2: Make "half" buttons appear as "full" (vertical alignment)
+    if (!checkFit()) {
+        menu.querySelectorAll('.ce-ribbon-sub-row').forEach(row => {
+            if (row.querySelector('[data-orig-type="half"]')) {
+                row.style.flexDirection = 'column';
+                row.querySelectorAll('.ce-ribbon-sub-btn').forEach(b => {
+                    b.classList.remove('ce-btn-type-half');
+                    b.classList.add('ce-btn-type-full');
+                    b.style.width = '100%';
+                });
+            }
+        });
+        void menu.offsetHeight;
+    }
+
+    // Step 3: Reduce the original "half" buttons to icons
+    if (!checkFit()) {
+        menu.querySelectorAll('.ce-ribbon-sub-row').forEach(row => {
+            const originalHalves = row.querySelectorAll('[data-orig-type="half"]');
+            if (originalHalves.length > 0) {
+                row.style.flexDirection = 'row'; // restore horizontal
+                originalHalves.forEach(b => {
+                    b.classList.remove('ce-btn-type-full', 'ce-btn-type-half');
+                    b.classList.add('ce-btn-type-icon');
+                    b.style.width = 'auto';
+                    const text = b.querySelector('.ce-btn-text');
+                    if (text) text.style.display = 'none';
+                    const icon = b.querySelector('.myCloudIcon');
+                    if (icon) icon.style.marginRight = '0';
+                });
+            }
+        });
+        void menu.offsetHeight;
+    }
+
+    // Step 4: Reduce more buttons to icons (start from the lower buttons)
+    if (!checkFit()) {
+        const allFulls = Array.from(menu.querySelectorAll('.ce-btn-type-full')).reverse();
+        for (let b of allFulls) {
+            b.classList.remove('ce-btn-type-full');
+            b.classList.add('ce-btn-type-icon');
+            const text = b.querySelector('.ce-btn-text');
+            if (text) text.style.display = 'none';
+            const icon = b.querySelector('.myCloudIcon');
+            if (icon) icon.style.marginRight = '0';
+            
+            void menu.offsetHeight;
+            if (checkFit()) break;
+        }
+    }
+
+    const menuHeight = menu.offsetHeight;
+    const menuWidth = menu.offsetWidth;
+
+    // Restore animations
+    menu.style.transition = oldTrans;
+    menu.style.transform = oldTransform;
+    menu.style.animation = oldAnim;
+
+    const rect = btn.getBoundingClientRect();
+    let leftPos = rect.left + (rect.width / 2) - (menuWidth / 2);
+
+    if (leftPos + menuWidth > window.innerWidth - 5) {
+        leftPos = window.innerWidth - menuWidth - 5;
+    }
+    if (leftPos < 5) leftPos = 5;
+    menu.style.left = leftPos + 'px';
+
+    let topPos = rect.bottom + 1;
+    
+    // Bottom Collision with safety margin
+    if (topPos + menuHeight > window.innerHeight - 25) {
+        menu.style.top = 'auto';
+        menu.style.bottom = '15px'; 
+        
+        // Failsafe if the screen is physically shorter than the heavily reduced menu
+        if (menuHeight > window.innerHeight - 30) {
+            menu.style.maxHeight = (window.innerHeight - 30) + 'px';
+            menu.style.overflowY = 'auto';
+        }
+    } else {
+        menu.style.top = topPos + 'px';
+        menu.style.bottom = 'auto';
+    }
+
+    if (typeof myCloudApplyTheme === 'function') myCloudApplyTheme();
+    menu.style.visibility = 'visible';
 
     setTimeout(function() {
         const closer = function(e) {
             const m = document.getElementById('myCloudFloatingMenu');
             if (m && !m.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
-                // Ignore clicks if a modal (like an alert dialog) is currently open
+                // Ignore clicks if a modal is currently open
                 const modalOverlay = document.getElementById('myCloudModalOverlay');
                 if (modalOverlay && modalOverlay.style.display !== 'none') return;
                 myCloudCloseFloatingMenu();
@@ -564,6 +677,7 @@ function myCloudRenderToolbar() {
     
     let isStacked = config.stackedToolbar;
     if (totalAllowedButtons < ribbonThreshold) isStacked = false;
+	const hideDisabled = config.hideDisabled === true && (!isStacked || devKey === 'phone')
 
     const translations = {
         toggle_tree: myCloud_LANG.tree_view,
@@ -602,6 +716,11 @@ function myCloudRenderToolbar() {
         let label = translations[action] || action;
         
         let iconHtml = myCloudSvg[action];
+
+        // Hamburger icon with strict stroke enforcement
+        if (action === 'toggle_tree') {
+            iconHtml = '<svg viewBox="0 0 24 24" style="fill:none !important; stroke:currentColor !important; stroke-width:2 !important; stroke-linecap:round !important; stroke-linejoin:round !important;"><line x1="3" y1="12" x2="21" y2="12" style="fill:none !important; stroke:currentColor !important;"></line><line x1="3" y1="6" x2="21" y2="6" style="fill:none !important; stroke:currentColor !important;"></line><line x1="3" y1="18" x2="21" y2="18" style="fill:none !important; stroke:currentColor !important;"></line></svg>';
+        }
 
         if (action === 'encrypt_dir') {
             iconHtml = '<svg viewBox="0 0 24 24" style="fill:currentColor;"><path d="M12.65 10A5.99 5.99 0 0 0 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6a5.99 5.99 0 0 0 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>';
@@ -855,13 +974,47 @@ function myCloudRenderToolbar() {
 
     if (isStacked) {
         toolbar.classList.add('ce-stacked-toolbar');
+
+        const treeStatus = getActionStatus('toggle_tree');
+        if (!treeStatus.hidden && !(hideDisabled && treeStatus.disabled)) {
+            const btnTree = createBtn('toggle_tree', 'icon');
+            btnTree.classList.add('ce-ribbon-btn');
+            
+            // Strip the red toggle circle behavior for the stacked hamburger menu
+            btnTree.id = 'ceStackedTreeBtn';
+            btnTree.classList.remove('tree-on', 'tree-off');
+            
+            btnTree.style.setProperty('padding', '4px 10px', 'important');
+            btnTree.style.setProperty('margin-inline-end', '4px', 'important');
+            btnTree.style.setProperty('align-self', 'center', 'important');
+            btnTree.style.setProperty('margin-bottom', '0', 'important');
+            btnTree.style.setProperty('border-radius', '4px', 'important');
+            
+            const iconSpan = btnTree.querySelector('.myCloudIcon');
+            if (iconSpan) {
+                iconSpan.style.setProperty('background', 'transparent', 'important');
+                iconSpan.style.setProperty('border', 'none', 'important');
+                iconSpan.style.setProperty('box-shadow', 'none', 'important');
+                iconSpan.style.setProperty('width', '1.6em', 'important');
+                iconSpan.style.setProperty('height', '1.6em', 'important');
+            }
+            
+            btnTree.disabled = treeStatus.disabled;
+            toolbar.appendChild(btnTree);
+            
+            const divEnd = document.createElement('div');
+            divEnd.style.setProperty('align-self', 'center', 'important');
+            divEnd.style.setProperty('margin-bottom', '0', 'important');
+            toolbar.appendChild(divEnd);
+        }
+
 		ribbonTabs.forEach(tab => {
             let hasVisible = false;
             tab.columns.forEach(col => {
                 col.rows.forEach(row => {
                     row.forEach(item => {
                         if (item.act) {
-                            const status = getActionStatus(item.act);
+							const status = getActionStatus(item.act);
                             if (!status.hidden && window.myCloudActionAllowed(item.act)) hasVisible = true;
                         }
                     });
@@ -973,12 +1126,14 @@ function myCloudRenderToolbar() {
         btnHelp.id = 'btnHelp';
         btnHelp.dataset.action = 'help';
         btnHelp.title = myCloud_LANG.help_tooltip || 'Help';
-if (isStacked) {
+
+		const exactHelpSvg = '<svg viewBox="0 0 24 24" style="fill:none !important; stroke:currentColor !important; stroke-width:1.5 !important; stroke-linecap:round !important; stroke-linejoin:round !important;"><circle cx="12" cy="12" r="10" style="fill:none !important; stroke:currentColor !important;"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" style="fill:none !important; stroke:currentColor !important;"></path><line x1="12" y1="17" x2="12.01" y2="17" style="fill:none !important; stroke:currentColor !important;"></line></svg>';
+		if (isStacked) {
             btnHelp.className = 'ce-ribbon-btn';
-            btnHelp.innerHTML = '<span class="myCloudIcon" style="width: 24px !important; height: 24px !important;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg></span><span class="ce-ribbon-label">' + (myCloud_LANG.help_btn || 'Help') + '</span>';
+            btnHelp.innerHTML = '<span class="myCloudIcon" style="width: 18px !important; height: 18px !important;">' + exactHelpSvg + '</span><span class="ce-ribbon-label">' + (myCloud_LANG.help_btn || 'Help') + '</span>';
 		} else {
             btnHelp.className = 'ce-ribbon-btn';
-            btnHelp.innerHTML = '<div class="myCloudIcon" style="width:34px; height:34px; margin-bottom:-2px;"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/></svg></div><span class="ce-ribbon-label">' + (myCloud_LANG.help_btn || 'Help') + '</span>';
+            btnHelp.innerHTML = '<div class="myCloudIcon" style="width:34px; height:34px; margin-bottom:-2px;">' + exactHelpSvg + '</div><span class="ce-ribbon-label">' + (myCloud_LANG.help_btn || 'Help') + '</span>';
 		}
         
         btnHelp.onclick = function(e) { 
@@ -2826,6 +2981,7 @@ function myCloudShowContextMenu(e, item, isTree) {
         }
 
         if (typeof myCloudApplyTheme === 'function') myCloudApplyTheme();
+		if (typeof myCloudToggleFontSize === 'function') myCloudToggleFontSize(myCloudState.fontLevel);
         menu.style.visibility = 'visible';
     }
 }
@@ -2856,7 +3012,8 @@ function myCloudShowBackgroundContextMenu(e, side) {
     const actions = [
         { label: myCloud_LANG.refresh || 'Update', icon: myCloudSvg.refresh, act: 'refresh', show: !isRecycleBin && !isInsideZip },
         { label: myCloud_LANG.new_file || 'New File', icon: myCloudSvg.newfile, act: 'newfile', show: window.myCloudActionAllowed('newfile') && !isInsideZip && !isRecycleBin },
-        { label: myCloud_LANG.new_folder || 'New Folder', icon: myCloudSvg.newfolder, act: 'newfolder', show: window.myCloudActionAllowed('newfolder') && !isInsideZip && !isRecycleBin }
+        { label: myCloud_LANG.new_folder || 'New Folder', icon: myCloudSvg.newfolder, act: 'newfolder', show: window.myCloudActionAllowed('newfolder') && !isInsideZip && !isRecycleBin },
+        { label: myCloud_LANG.upload || 'Upload', icon: myCloudSvg.upload, act: 'upload', show: window.myCloudActionAllowed('upload') && !isInsideZip && !isRecycleBin }
     ];
     
     let hasItems = false;
@@ -2885,6 +3042,7 @@ function myCloudShowBackgroundContextMenu(e, side) {
                     break;
                 case 'newfile':  myCloudAction_NewFile(); break;
                 case 'newfolder':myCloudAction_NewFolder(); break;
+				case 'upload':   myCloudTriggerUpload(); break;
             }
         };
         menu.appendChild(el);

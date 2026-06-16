@@ -43,19 +43,7 @@ if (!defined('MYCLOUD_OFFICE_BRIDGE')) {
 
         // Filter out non-webmail clouds for webmail-only domains globally
         if (in_array($current_host, $webmail_domains, true)) {
-            foreach ($user_details as &$global_ud) {
-                if (isset($global_ud['cloud']) && is_array($global_ud['cloud'])) {
-                    foreach ($global_ud['cloud'] as $k => $c) {
-                        if (($c['interface'] ?? 'default') !== 'email') {
-                            unset($global_ud['cloud'][$k]);
-                        }
-                    }
-                }
-            }
-            unset($global_ud);
-            
-            // Write back to $GLOBALS to ensure UI builders see the filtered data
-            $GLOBALS['user_details'] = $user_details;
+            $GLOBALS['isMailOnly'] = true;
         }
 
         foreach ($user_details as $ud) {
@@ -71,7 +59,15 @@ $__userConfig ??= null;
 
 if ($__userConfig && (!isset($__userConfig['cloud'][$__key]) || empty($__key)) && !empty($__userConfig['cloud']) && is_array($__userConfig['cloud'])) {
     $__key = array_key_first($__userConfig['cloud']);
-    $GLOBALS['__key'] = $__key;
+    if (!empty($GLOBALS['isMailOnly'])) {
+        foreach ($__userConfig['cloud'] as $k => $c) {
+            if (($c['interface'] ?? 'default') === 'email') {
+                $__key = $k;
+                break;
+            }
+        }
+    } 
+	$GLOBALS['__key'] = $__key;
     $_REQUEST['myCloud_key'] = $__key;
     $_GET['myCloud_key'] = $__key;
     $_POST['myCloud_key'] = $__key;

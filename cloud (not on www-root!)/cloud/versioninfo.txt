@@ -1,3 +1,12 @@
+4.0.261
+	Fix: Main menu visual refinements
+
+4.0.260
+	Improvement: More upload options in the details view
+	Improvement: Improvements for new menu on small screens
+	Improvement: Tabs display vs. Logout button on mobile screens
+	Fix: Help button svg bugfix
+
 4.0.259
 	Fix: Bugfix release
 

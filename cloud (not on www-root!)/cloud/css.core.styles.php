@@ -1831,29 +1831,29 @@
     .ce-floating-item:disabled .myCloudIcon svg, .ce-floating-item:disabled .myCloudIcon svg path { fill: var(--text-disabled) !important; stroke: var(--text-disabled) !important; filter: grayscale(100%); }
 	
     /* --- MS OFFICE STYLE RIBBON TABS (OVERRIDES) --- */
-    .myCloudToolbar.ce-stacked-toolbar { padding: 4px 8px 0px 8px !important; align-items: flex-end !important; gap: 2px !important; }
-    .ce-stacked-toolbar .ce-ribbon-btn { flex-direction: row !important; gap: 6px; height: calc(var(--font-size-base) * 2.2) !important; min-width: auto !important; border-radius: 4px 4px 0 0 !important; margin-inline-end: 2px; padding: 4px 14px !important; background-color: transparent !important; border: 1px solid transparent !important; border-bottom: none !important; transition: all 0.15s ease; }
+    .myCloudToolbar.ce-stacked-toolbar { padding: 4px 8px !important; align-items: center !important; gap: 4px !important; }
+    .ce-stacked-toolbar .ce-ribbon-btn { flex-direction: row !important; gap: 6px; height: calc(var(--font-size-base) * 2.2) !important; min-width: auto !important; border-radius: 4px !important; margin-inline-end: 2px; padding: 4px 14px !important; background-color: transparent !important; border: 1px solid transparent !important; transition: all 0.15s ease; }
     .ce-stacked-toolbar .ce-ribbon-btn .myCloudIcon { margin-bottom: 0 !important; width: calc(var(--font-size-base) * 1.2) !important; height: calc(var(--font-size-base) * 1.2) !important; display: flex !important; justify-content: center; align-items: center; background: transparent !important;}
     .ce-stacked-toolbar .ce-ribbon-btn .myCloudIcon svg { width: 100% !important; height: 100% !important; }
     .ce-stacked-toolbar .ce-ribbon-btn span.ce-ribbon-label { font-size: calc(var(--font-size-base) * 0.9) !important; margin-top: 0 !important; }
     .ce-stacked-toolbar .ce-ribbon-btn svg, .ce-stacked-toolbar .ce-ribbon-btn svg path { fill: var(--ribbon-text) !important; transition: fill 0.15s ease; }
     .ce-stacked-toolbar .ce-ribbon-btn:hover { background: var(--hover-bg-very-light) !important; border-color: transparent !important; }
-	.ce-stacked-toolbar .ce-ribbon-btn.active-parent { background: var(--gray-00) !important; border: 1px solid var(--border-default) !important; border-bottom: 1px solid var(--gray-00) !important; margin-bottom: -1px !important; z-index: 2; }
+	.ce-stacked-toolbar .ce-ribbon-btn.active-parent { background: var(--gray-00) !important; border: 1px solid var(--border-default) !important; margin-bottom: 0 !important; z-index: 2; }
     .ce-stacked-toolbar .ce-ribbon-btn.active-parent span.ce-ribbon-label { color: var(--accent-primary) !important; }
     .ce-stacked-toolbar .ce-ribbon-btn.active-parent svg, .ce-stacked-toolbar .ce-ribbon-btn.active-parent svg path { fill: var(--accent-primary) !important; }
 	.ce-stacked-toolbar .ce-ribbon-btn.active-parent svg[stroke="currentColor"] { stroke: var(--accent-primary) !important; fill: none !important; }
 
     /* Utility Buttons inside Stacked Toolbar (Fav, Settings, Help) */
-    .ce-stacked-toolbar #ceFavoritesBtn, .ce-stacked-toolbar #ceSettingsBtn, .ce-stacked-toolbar #btnHelp { border-radius: 4px !important; margin-bottom: 4px !important; border-bottom: 1px solid transparent !important; height: 2.0em !important; }
-    .ce-stacked-toolbar #ceFavoritesBtn.active-parent, .ce-stacked-toolbar #ceSettingsBtn.active-parent, .ce-stacked-toolbar #btnHelp.active-parent { background: var(--hover-bg-light) !important; border-color: rgba(0, 120, 212, 0.3) !important; margin-bottom: 4px !important; }
+    .ce-stacked-toolbar #ceFavoritesBtn, .ce-stacked-toolbar #ceSettingsBtn, .ce-stacked-toolbar #btnHelp { border-radius: 4px !important; margin-bottom: 0 !important; border: 1px solid transparent !important; height: 2.0em !important; }
+    .ce-stacked-toolbar #ceFavoritesBtn.active-parent, .ce-stacked-toolbar #ceSettingsBtn.active-parent, .ce-stacked-toolbar #btnHelp.active-parent { background: var(--hover-bg-light) !important; border-color: rgba(0, 120, 212, 0.3) !important; margin-bottom: 0 !important; }
     .ce-stacked-toolbar #btnHelp .myCloudIcon { width: 1.2em !important; height: 1.2em !important; margin: 0 !important; }
     .ce-stacked-toolbar #btnHelp .myCloudIcon svg { width: 100% !important; height: 100% !important; min-width: 0 !important; min-height: 0 !important; }
 
     /* Divider alignment for right-bound stacked utilities */
     .ce-stacked-toolbar .ce-stacked-divider {
         height: calc(var(--font-size-base) * 2.0) !important;
-        margin-bottom: 4px !important;
-        align-self: flex-end;
+        margin-bottom: 0 !important;
+        align-self: center;
     }
 
     .ce-stacked-toolbar .ce-ribbon-btn { flex-direction: row !important; gap: 6px; height: 2.2em !important; min-width: auto !important; border-radius: 4px 4px 0 0 !important; margin-inline-end: 2px; padding: 4px 14px !important; background-color: transparent !important; border: 1px solid transparent !important; border-bottom: none !important; transition: all 0.15s ease; }
@@ -1865,7 +1865,7 @@
     /* Lock utility icons to integer pixels to prevent sub-pixel blurring */
 
   /* Active Tab Styling */
-    .ce-ribbon-btn.active-parent { background: var(--gray-00) !important; border: 1px solid var(--border-default) !important; border-bottom: 1px solid var(--gray-00) !important; margin-bottom: -1px !important; z-index: 2; }
+    .ce-ribbon-btn.active-parent { background: var(--gray-00) !important; border: 1px solid var(--border-default) !important; margin-bottom: 0 !important; z-index: 2; }
     .ce-ribbon-btn.active-parent span.ce-ribbon-label { color: var(--accent-primary) !important; }
     .ce-ribbon-btn.active-parent svg, .ce-ribbon-btn.active-parent svg path { fill: var(--accent-primary) !important; }
 
@@ -1895,8 +1895,8 @@
     .ce-stacked-toolbar #btnHelp { 
         height: 2.0em !important; 
         border-radius: 4px !important; 
-        margin-bottom: 4px !important; 
-        border-bottom: 1px solid transparent !important; 
+        margin-bottom: 0 !important; 
+        border: 1px solid transparent !important;
         flex-direction: row !important;
     }
 
@@ -1905,7 +1905,7 @@
     .ce-stacked-toolbar #btnHelp.active-parent { 
         background: var(--hover-bg-light) !important; 
         border-color: rgba(0, 120, 212, 0.3) !important; 
-        margin-bottom: 4px !important; 
+        margin-bottom: 0 !important;
     }
 
     .ce-stacked-toolbar #btnHelp .myCloudIcon { 
@@ -2018,8 +2018,21 @@
     #ceSettingsBtn:hover span.ce-ribbon-label { color: var(--ribbon-text-hover) !important; }
     .ce-settings-reset { background: var(--gray-20)  !important: transparent !important; border: none !important; color: var(--danger) !important; font-size: 13px; font-weight: 500; cursor: pointer; padding: 8px 12px; border-radius: 4px; display: inline-flex; align-items: center; gap: 6px; opacity: 0.9; transition: all 0.2s; text-decoration: none; margin-bottom:12px; }
     .ce-settings-reset:hover { background: rgba(232, 17, 35, 0.05) !important; opacity: 1; text-decoration: underline; }
-    .myCloudCloudSwitcher { display: flex; gap: 4px; padding: 8px 16px 0 16px; background: var(--gray-05); border-bottom: 1px solid var(--border-default); overflow-x: auto; flex-shrink: 0; scrollbar-width: none; -ms-overflow-style: none; user-select: none; -webkit-user-select: none; }
+    .myCloudCloudSwitcher { display: flex; gap: 4px; padding: 8px 16px 0 16px; background: var(--gray-05); border-bottom: 1px solid var(--border-default); overflow: hidden; flex-shrink: 0; user-select: none; -webkit-user-select: none; align-items: flex-end; }
     .myCloudCloudSwitcher::-webkit-scrollbar { display: none; }
+    
+    .cloud-indicator-start, .cloud-indicator-end {
+        position: absolute;
+        top: 0; bottom: 0; width: 24px;
+        pointer-events: none; z-index: 5;
+        opacity: 0; transition: opacity 0.2s ease;
+    }
+    .cloud-indicator-start { inset-inline-start: 0; background: linear-gradient(to right, var(--gray-05) 10%, transparent 100%); }
+    :dir(rtl) .cloud-indicator-start { background: linear-gradient(to left, var(--gray-05) 10%, transparent 100%); }
+    .cloud-indicator-end { inset-inline-end: 0; background: linear-gradient(to left, var(--gray-05) 10%, transparent 100%); }
+    :dir(rtl) .cloud-indicator-end { background: linear-gradient(to right, var(--gray-05) 10%, transparent 100%); }
+	
+
     .ce-cloud-btn { padding: 6px 24px; min-width: 120px; text-align: center; border: 1px solid transparent; background: transparent; color: var(--gray-80); border-radius: 6px 6px 0 0; margin-bottom: -1px; font-size: 13px; font-weight: 500; cursor: pointer; transition: background 0.1s ease, color 0.1s ease; white-space: nowrap; text-transform: capitalize; position: relative; z-index: 1; }
     .ce-cloud-btn:hover { background: var(--hover-bg-very-light); color: var(--text-primary); }
     .ce-cloud-btn.active { background: var(--gray-00); color: var(--accent-primary); font-weight: 600; border-color: var(--border-default); border-bottom-color: var(--gray-00); box-shadow: inset 0 2px 0 var(--accent-primary); z-index: 2; }
@@ -2801,7 +2814,7 @@ ce-dark-mode .myCloudButtons { background-color: transparent !important; }
 
    /* Restore Dark Mode Override for Base Ribbon Button */
    .ce-dark-mode .ce-ribbon-btn.active-parent { background: rgba(96, 205, 255, 0.15) !important; color: var(--accent-primary) !important; border-color: rgba(96, 205, 255, 0.3) !important; }
-   .ce-dark-mode .ce-stacked-toolbar .ce-ribbon-btn.active-parent { background: var(--gray-10) !important; border-color: var(--border-default) !important; border-bottom: 1px solid var(--gray-10) !important; }
+   .ce-dark-mode .ce-stacked-toolbar .ce-ribbon-btn.active-parent { background: var(--gray-10) !important; border-color: var(--border-default) !important; }
    .ce-dark-mode .ce-stacked-toolbar #ceFavoritesBtn.active-parent, .ce-dark-mode .ce-stacked-toolbar #ceSettingsBtn.active-parent, .ce-dark-mode .ce-stacked-toolbar #btnHelp.active-parent { background: rgba(96, 205, 255, 0.15) !important; border-color: rgba(96, 205, 255, 0.3) !important; }
 .ce-dark-mode .ce-floating-item.active-item { color: var(--accent-primary) !important; }
 .ce-dark-mode .ce-floating-item.active-item .myCloudIcon { background-color: rgba(96, 205, 255, 0.15) !important; color: var(--accent-primary) !important; border-color: rgba(96, 205, 255, 0.3) !important; }
@@ -2809,6 +2822,12 @@ ce-dark-mode .myCloudButtons { background-color: transparent !important; }
 .ce-dark-mode .ce-floating-item:disabled .myCloudIcon { border-color: var(--gray-50) !important; }
 .ce-dark-mode .ce-floating-item:disabled span { color: var(--gray-60) !important; }
 .ce-dark-mode .myCloudCloudSwitcher { background: var(--gray-10); border-bottom: 1px solid var(--border-default); }
+
+.ce-dark-mode .cloud-indicator-start { background: linear-gradient(to right, var(--gray-10) 10%, transparent 100%); }
+:dir(rtl) .ce-dark-mode .cloud-indicator-start { background: linear-gradient(to left, var(--gray-10) 10%, transparent 100%); }
+.ce-dark-mode .cloud-indicator-end { background: linear-gradient(to left, var(--gray-10) 10%, transparent 100%); }
+:dir(rtl) .ce-dark-mode .cloud-indicator-end { background: linear-gradient(to right, var(--gray-10) 10%, transparent 100%); }
+
 .ce-dark-mode .ce-cloud-btn { color: var(--text-secondary); }
 .ce-dark-mode .ce-cloud-btn:hover { background: rgba(255,255,255,0.05); color: var(--text-primary); }
 .ce-dark-mode .ce-cloud-btn.active { background: var(--gray-15); color: var(--accent-primary); font-weight: 600; border-color: var(--border-default); border-bottom-color: var(--gray-15); box-shadow: inset 0 2px 0 var(--accent-primary); z-index: 2; }
@@ -2866,6 +2885,10 @@ ce-dark-mode .myCloudButtons { background-color: transparent !important; }
     color: var(--danger, #e81123) !important;
     border-color: transparent !important;
     margin-inline-start: auto;
+    position: sticky;
+    inset-inline-end: 0;
+    background-color: var(--gray-05) !important;
+    z-index: 10;
 }
 .ce-top-logout-btn:hover {
     background-color: rgba(232, 17, 35, 0.1) !important;
@@ -2873,6 +2896,7 @@ ce-dark-mode .myCloudButtons { background-color: transparent !important; }
 }
 .ce-dark-mode .ce-top-logout-btn {
     color: #ff6b6b !important;
+	background-color: var(--gray-10) !important;
 }
 .ce-dark-mode .ce-top-logout-btn:hover {
     background-color: rgba(255, 107, 107, 0.15) !important;

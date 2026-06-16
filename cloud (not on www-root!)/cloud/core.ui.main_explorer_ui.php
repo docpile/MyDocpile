@@ -886,6 +886,24 @@ function myCloudRenderUI() {
         if (typeof myCloudShowBackgroundContextMenu === 'function') myCloudShowBackgroundContextMenu(e);
     };
 
+    // Background Click to Upload (Standard View)
+    details.onmousedown = function(e) {
+        if (e.button === 0) {
+            details.dataset.bgClickX = e.clientX;
+            details.dataset.bgClickY = e.clientY;
+        }
+    };
+    details.onmouseup = function(e) {
+        if (e.button !== 0) return;
+        let dx = Math.abs(e.clientX - (parseFloat(details.dataset.bgClickX) || 0));
+        let dy = Math.abs(e.clientY - (parseFloat(details.dataset.bgClickY) || 0));
+        if (dx > 5 || dy > 5) return; // Abort if it was a marquee drag
+        if (e.target.closest('.myCloudRow, th, .myCloud-breadcrumb-bar, .myCloud-symbol-item, .myCloudToolbar, .myCloud-dropzone, .myCloud-tag-dropdown-menu, .myCloud-tag-dropdown-btn')) return;
+        if (window.myCloudActionAllowed('upload') && !isInsideZip && st.currentDir !== '/.recycle_bin') {
+            if (typeof myCloudTriggerUpload === 'function') myCloudTriggerUpload();
+        }
+    };
+
     myCloudRenderToolbar();
     // [FIX] Restore toolbar visibility after loading sequence
     const tb = document.getElementById('myCloudToolbar');
@@ -1776,7 +1794,18 @@ function createCommanderPane(side, paneState) {
         }
     };
 
-    content.onclick = () => { activate(); content.focus(); };
+
+    content.onclick = (e) => {
+		activate(); 
+        content.focus(); 
+        if (!e.target.closest('.myCloudRow, th, .myCloud-commander-header, .myCloud-tag-dropdown-menu, .myCloud-tag-dropdown-btn')) {
+            if (window.myCloudActionAllowed('upload') && paneState.dir !== '/.recycle_bin') {
+                if (typeof myCloudIsInsideZip === 'function' && !myCloudIsInsideZip(paneState.dir)) {
+                    if (typeof myCloudTriggerUpload === 'function') myCloudTriggerUpload();
+                }
+            }
+        }
+    };
     content.onfocus = () => { activate(); };
 
     content.addEventListener('keydown', (e) => commanderNavKey(e, side, content, paneState));
