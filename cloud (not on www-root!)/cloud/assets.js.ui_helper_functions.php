@@ -415,9 +415,15 @@ function myCloudToggleFontSize(specificLevel = null) {
     if (myCloudState.fontLevel > 5) myCloudState.fontLevel = 5;
     
     const containers = [
+        document.documentElement,
+        document.body,
         document.getElementById('myCloudContainer'),
         document.getElementById('myCloudModalOverlay'),
-        document.getElementById('myCloudPreviewOverlay')
+        document.getElementById('myCloudPreviewOverlay'),
+        document.getElementById('myCloudFloatingMenu'),
+        document.getElementById('myCloudContextMenu'),
+        document.getElementById('myCloudPaletteOverlay'),
+        document.getElementById('myCloudAlertOverlay')
     ];
 
     // Define the 6 steps with smaller increments
@@ -521,8 +527,8 @@ function myCloudRenderCloudSwitcher() {
     const bar = document.getElementById('myCloudCloudSwitcher');
     if (!bar) return;
     
-    // Safety check: Don't render if data is missing or only 1 key exists
-    if (typeof myCloudUserKeys === 'undefined' || !Array.isArray(myCloudUserKeys) || myCloudUserKeys.length <= 1) {
+    // Safety check: Don't render if data is missing or 0 keys exist
+    if (typeof myCloudUserKeys === 'undefined' || !Array.isArray(myCloudUserKeys) || myCloudUserKeys.length === 0) {
 	bar.style.display = 'none';
         return;
     }
@@ -572,6 +578,28 @@ function myCloudRenderCloudSwitcher() {
         
         bar.appendChild(btn);
     });
+
+    const spacer = document.createElement('div');
+    spacer.style.flex = '1';
+    bar.appendChild(spacer);
+
+    const logoutBtn = document.createElement('button');
+    const isCloudOnly = <?php echo !empty($GLOBALS['isCloudOnly']) ? 'true' : 'false'; ?>;
+    const L = typeof myCloud_LANG !== 'undefined' ? myCloud_LANG : {};
+    logoutBtn.className = 'ce-cloud-btn ce-top-logout-btn';
+    
+    if (isCloudOnly) {
+        logoutBtn.innerHTML = '<span style="font-weight:bold;">' + (L.logout || 'Logout') + '</span>';
+        logoutBtn.title = L.logout || 'Logout';
+        logoutBtn.onclick = () => { if(typeof myCloudDoLogout === 'function') myCloudDoLogout(); };
+    } else {
+        logoutBtn.innerHTML = '<span style="font-weight:bold;">' + (L.close || 'Close') + '</span>';
+        logoutBtn.title = L.close || 'Close';
+        logoutBtn.onclick = () => { if(typeof myCloudCloseExplorer === 'function') myCloudCloseExplorer(); };
+    }
+    bar.appendChild(logoutBtn);
+
+
 }
 
 // ============================================================

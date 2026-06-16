@@ -1655,6 +1655,11 @@ class MyCloudServer {
         $searchStartFull = $this->resolve($_POST['dir'] ?? '/');
         if (!$searchStartFull || !is_dir($searchStartFull)) $searchStartFull = $this->cloud_path;
 		
+        $searchGlobal = isset($_POST['search_global']) && $_POST['search_global'] === '1';
+        if ($searchGlobal) {
+            $searchStartFull = $this->cloud_path;
+        }
+
 		$searchPrefix = rtrim($searchStartFull, '/\\') . DIRECTORY_SEPARATOR;
 
         $contentSearch = isset($_POST['content_search']) && $_POST['content_search'] === '1';
@@ -1716,11 +1721,6 @@ class MyCloudServer {
         // 1. RECOLL CONTENT ENGINE EXECUTION
         if ($contentSearch) {
 			
-            // Force full cloud search for index queries
-            $searchStartFull = $this->cloud_path;
-            $searchPrefix = rtrim($searchStartFull, '/\\') . DIRECTORY_SEPARATOR;
-
-
             $recollDir = $this->cloud_path . '.recoll';
             if (is_dir($recollDir) && $query !== '') {
                 // Pipe command specifically targeting the isolated Recoll config. Extract raw file URIs.

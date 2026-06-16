@@ -592,7 +592,7 @@ function _cloudExRenderSettingsContent(panel, activeTab) {
                 renderToggle((myCloud_LANG.set_single_click || 'Single Click Mode') +
                     ' <span style="font-size:10px; color:var(--text-secondary); display:block; margin-top:2px;">' + (myCloud_LANG.set_single_click_hint || 'Cloud style: Click opens, Hover underlines') + '</span>', 
                     'singleClick', conf.singleClick) +
-                renderToggle(myCloud_LANG.set_hide_disabled, 'hideDisabled', conf.hideDisabled) +
+                renderToggle((myCloud_LANG.set_hide_disabled || 'Hide Disabled Items') + ((conf.stackedToolbar && activeTab !== 'phone') ? '' : ''), 'hideDisabled', (conf.stackedToolbar && activeTab !== 'phone') ? false : conf.hideDisabled, false, (conf.stackedToolbar && activeTab !== 'phone')) +
                 renderToggle(myCloud_LANG.set_checkboxes, 'showCheckboxes', conf.singleClick ? true : conf.showCheckboxes, false, conf.singleClick) +
                 renderToggle(myCloud_LANG.set_hover_menu, 'showHoverMenu', conf.showHoverMenu) +
             '</div>' +
@@ -856,6 +856,12 @@ function _cloudExRenderSettingsContent(panel, activeTab) {
                
                 const safeKey = (typeof myCloudState.key !== 'undefined') ? myCloudState.key : '';
                 myCloudState.settings[activeTab].startInCommander[safeKey] = val;
+            } else if (key === 'stackedToolbar') {
+                myCloudState.settings[activeTab][key] = val;
+                if (!val) {
+                    myCloudState.settings[activeTab].hideDisabled = true;
+                }
+                _cloudExRenderSettingsContent(panel, activeTab);
             } else if (key === 'singleClick') {
                 myCloudState.settings[activeTab][key] = val;
                 // Enforce checkboxes if Single Click is ON

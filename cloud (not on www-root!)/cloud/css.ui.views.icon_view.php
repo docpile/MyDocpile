@@ -156,4 +156,12 @@
     .ce-dark-mode .myCloud-symbol-item.selected { background-color: var(--selection-bg-strong); border-color: var(--selection-border); }
     .ce-dark-mode .ce-sym-label { color: var(--text-primary); }
 	
+	/* --- FIX: Force White Text in Gallery Mode (Light Theme Override) --- */
+.is-gallery-interface .ce-sym-label,
+.symbol-dark-container .ce-sym-label,
+.myCloud-symbol-grid.symbol-dark-mode .ce-sym-label {
+    color: #ffffff !important;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8) !important;
+}
+	
 </style> 

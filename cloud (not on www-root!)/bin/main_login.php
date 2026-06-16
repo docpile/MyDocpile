@@ -107,7 +107,7 @@ class Login {
 			   $isCloudOnly, $users, $user_db, $user_details, $email_sender_address, $force_argon2_only,
 			   $login_failures, $login_block_seconds, $brute_force_window, $brute_force_factor,
 			   $global_login_rate_file, $global_login_max_hits, $global_login_window,
-			   $cookie_is_ip_bound, $cloud_beta;
+			   $cookie_is_ip_bound, $cloud_beta, $cloud_path;
 
 		$this->work_dir = $work_dir;
 		

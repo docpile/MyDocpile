@@ -65,6 +65,14 @@
         align-items: center;
         flex-wrap: wrap;
     }
+    .ce-search-row.filters {
+        margin-top: 4px;
+        justify-content: space-between;
+    }
+    .ce-search-row.filters > div {
+        flex: 1 1 auto;
+        justify-content: flex-start;
+    }
     .ce-search-custom-row {
         display: none;
         gap: 8px;
@@ -136,14 +144,14 @@
     }
     .myCloudModal.search-modal .ce-search-row { flex-wrap: wrap !important; }
     .myCloudModal.search-modal .ce-search-row > label { width: 100%; margin-bottom: 2px; }
-    .myCloudModal.search-modal .ce-search-row > #myCloudSearchInput { flex: 1 1 calc(100% - 40px) !important; min-width: 0; }
-    .myCloudModal.search-modal .ce-search-row > #btnSearchHelp { flex-shrink: 0; }
-    .myCloudModal.search-modal .ce-search-row > #myCloudSearchTagBtn,
-    .myCloudModal.search-modal .ce-search-row > #myCloudSearchDate,
-    .myCloudModal.search-modal .ce-search-row > #myCloudSearchSize { flex: 1 1 30%; min-width: 0 !important; width: auto !important; padding: 0 4px !important; font-size: 11px !important; }
-    .myCloudModal.search-modal .ce-search-row > button.ce-search-submit-btn { flex: 1 1 100%; height: 36px !important; margin-top: 4px; }
+    .myCloudModal.search-modal .ce-search-row > #myCloudSearchInput { flex: 1 1 100% !important; min-width: 100%; margin-bottom: 8px !important; }
     .myCloudModal.search-modal .ce-search-row > button.ce-search-reset-btn,
     .myCloudModal.search-modal .ce-search-row > button.ce-search-submit-btn { flex: 1 1 calc(50% - 6px); height: 36px !important; margin-top: 4px; }
+    .myCloudModal.search-modal .ce-search-row.filters select,
+    .myCloudModal.search-modal .ce-search-row.filters button#myCloudSearchTagBtn { flex: 1 1 100% !important; min-width: 100% !important; width: 100% !important; margin-bottom: 5px !important; }
+    .myCloudModal.search-modal .ce-search-row.filters > div { width: 100%; flex-direction: column; align-items: stretch !important; gap: 6px !important; }
+
+
     .ce-search-custom-row { gap: 4px !important; flex-direction: column; align-items: stretch !important; }
     .ce-search-custom-row > input { flex: 1 1 40%; width: 100% !important; }
     .ce-search-custom-row > strong { width: 100% !important; }

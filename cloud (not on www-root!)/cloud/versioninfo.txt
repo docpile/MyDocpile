@@ -1,3 +1,18 @@
+4.0.259
+	Fix: Bugfix release
+
+4.0.258
+	New main version: Real ribbon bar in main cloud
+	Improvement: New logout button
+	Improvement: Cloud tabs also available (but not opened by default) in mail only mode
+	Improvement: In the new ribbon view, 'hide disabled icons' should be switched off
+	Improvement: Faster and more responsive startup animation and skeleton
+	Fix: Gallery mode does not show text labels anymore
+
+
+3.2.257
+	Improvement: Search dialog: More flexibility, more mobile friendliness
+
 3.2.256
 	Fix: Auto-decide about cloud beta did not work as expected
 	Fix: Webmail auto-adding of new addresses to addressbook did not work

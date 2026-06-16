@@ -103,10 +103,15 @@ ob_start();
 <?php 	
 
 $hasEmailInterface = false;
-if (isset($__userConfig['cloud'])) {
-	foreach ($__userConfig['cloud'] as $c) {
-		if (($c['interface'] ?? '') === 'email') { $hasEmailInterface = true; break; }
-	}
+$_tmp_user = $_SESSION['username'] ?? '';
+if (isset($GLOBALS['user_details']) && is_array($GLOBALS['user_details'])) {
+    foreach ($GLOBALS['user_details'] as $ud) {
+        if (isset($ud['name']) && $ud['name'] === $_tmp_user && isset($ud['cloud'])) {
+            foreach ($ud['cloud'] as $c) {
+                if (($c['interface'] ?? '') === 'email') { $hasEmailInterface = true; break 2; }
+            }
+        }
+    }
 }
 
 
@@ -182,22 +187,6 @@ echo '<script src="?myCloud_dynamic_js=core.heartbeat.php&t=' . microtime(true) 
 ?>
 <div id="myCloudContainer" class="myCloudContainer" <?php echo $dirAttr; ?>>
     
-  <?php if (!empty($isCloudOnly)): ?>
-      <div class="myCloud-floating-logout" onclick="myCloudDoLogout()" title="<?php echo $L['logout']; ?>">
-          <svg viewBox="0 0 24 24">
-              <path d="M16 13v-2H7V8l-5 4 5 4v-3h9zM20 3H4c-1.1 0-2 .9-2 2v4h2V5h16v14H4v-4H2v4c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/>
-          </svg>
-          <span class="myCloud-logout-text"><?php echo $L['logout']; ?></span>
-      </div>
-
-    <?php else: ?>
-      <div class="myCloud-floating-logout" onclick="myCloudCloseExplorer()" title="<?php echo $L['close']; ?>">
-          <svg viewBox="0 0 24 24">
-              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 17.59 17.59 13.41 12 19 6.41z"/>
-          </svg>
-          <span class="myCloud-logout-text"><?php echo $L['close']; ?></span>
-      </div>
-  <?php endif; ?>
   <div id="myCloudCloudSwitcher" class="myCloudCloudSwitcher" style="display:none;"></div>
   <div id="myCloudToolbar" class="myCloudToolbar"></div>
   

@@ -13,7 +13,7 @@
  */
 
 ?>
-    <script>
+<script>
     // Dynamically inject required containers using standard string concatenation
     if (!document.getElementById('cx-share-overlay')) {
         var cxHtml = '<div id="cx-share-overlay" onclick="if(event.target===this) cxHide()"></div>' +
@@ -104,209 +104,7 @@
 
             cxRefreshShareList();
 
-            const originalRenderToolbar = window.myCloudRenderToolbar;
-            window.myCloudRenderToolbar = function() {
-                originalRenderToolbar.apply(this, arguments);
-
-                if (typeof window.myCloudActionAllowed === 'function' && window.myCloudActionAllowed('share')) {
-                    const tb = document.getElementById('myCloudToolbar');
-                    if (tb) {
-                        const isStacked = tb.querySelector('.ce-ribbon-btn') !== null;
-
-                        if (isStacked) {
-                            const svgShareRibbon = 
-                            '<svg class="ce-group-svg" viewBox="0 0 70 32">' +
-                                '<path class="ce-grp-icon" d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z" transform="translate(7, 6) scale(0.75)"/>' +
-                                '<path class="ce-grp-icon" d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z" transform="translate(30, 6) scale(0.75)"/>' +
-                                '<path class="ce-grp-arrow" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z" transform="translate(52, 6) scale(0.7)"/>' +
-                            '</svg>';
-
-                            const subActions = [
-                                { label: myCloud_LANG.share_item, icon: myCloudSvg.share, act: 'share', show: true },
-                                { label: myCloud_LANG.share_all, icon: myCloudSvg.shareList, act: 'share-list', show: true }
-                            ];
-
-                            const createRibbon = (label, visualSvg, tooltip) => {
-                                const btn = document.createElement('button');
-                                btn.id = 'cxShareRibbon';
-                                btn.className = 'ce-ribbon-btn';
-                                btn.dataset.cx = 'share-ribbon';
-                                btn.title = tooltip;
-                                btn.innerHTML = visualSvg + '<span class="ce-ribbon-label">' + label + '</span>';
-                                btn.dataset.children = JSON.stringify(['share', 'share-list']);
-
-                                const createBtn = (act) => {
-                                    const item = subActions.find(s => s.act === act);
-                                    const b = document.createElement('button');
-                                    
-                                    let currentLabel = item.label;
-                                    if (act === 'share') {
-                                        const sel = myCloudState.selectedFiles;
-                                        if (sel.length === 1 && window.cxSharedPaths.includes(sel[0])) {
-                                            currentLabel = myCloud_LANG.share_edit;
-                                        }
-                                    }
-                                    
-                                    b.innerHTML = '<span class="myCloudIcon">' + item.icon + '</span><span>' + currentLabel + '</span>';
-                                    
-                                    if (act === 'share') {
-                                        if (typeof myCloudState !== 'undefined' && myCloudState.selectedFiles.length !== 1) {
-                                            b.disabled = true;
-                                        }
-                                    }
-
-                                    b.onclick = (e) => {
-                                        e.stopPropagation();
-                                        if (act === 'share') myCloudAction_Share();
-                                        if (act === 'share-list') window.cxShowAllShares();
-                                        if (typeof myCloudCloseFloatingMenu === 'function') myCloudCloseFloatingMenu();
-                                    };
-                                    return b;
-                                };
-
-                                btn.onmouseenter = () => {
-                                    if (btn.disabled) return;
-                                    if (window.myCloudMenuTimer) clearTimeout(window.myCloudMenuTimer);
-                                    const existing = document.getElementById('myCloudFloatingMenu');
-                                    if (existing && existing.dataset.owner === btn.innerHTML && existing.dataset.pinned === 'true') return;
-                                    if (typeof myCloudShowFloatingMenu === 'function') myCloudShowFloatingMenu(btn, ['share', 'share-list'], createBtn, false);
-                                };
-
-                                btn.onmouseleave = () => {
-                                    const m = document.getElementById('myCloudFloatingMenu');
-                                    if (m && m.dataset.pinned === 'true') return;
-                                    if (typeof myCloudCloseFloatingMenu === 'function') window.myCloudMenuTimer = setTimeout(() => { myCloudCloseFloatingMenu(); }, 300);
-                                };
-                                
-                                btn.onclick = (e) => {
-                                    e.stopPropagation();
-                                    if (btn.disabled) return;
-                                    if (window.myCloudMenuTimer) clearTimeout(window.myCloudMenuTimer);
-                                    const existing = document.getElementById('myCloudFloatingMenu');
-                                    const isMyMenu = existing && existing.dataset.owner === btn.innerHTML;
-                                    if (isMyMenu) {
-                                        if (existing.dataset.pinned === 'true' && typeof myCloudCloseFloatingMenu === 'function') myCloudCloseFloatingMenu();
-                                        else existing.dataset.pinned = 'true';
-                                    } else {
-                                        if (typeof myCloudShowFloatingMenu === 'function') myCloudShowFloatingMenu(btn, ['share', 'share-list'], createBtn, true);
-                                    }
-                                };
-                                return btn;
-                            };
-
-                            const shareRibbon = createRibbon(myCloud_LANG.share_btn, svgShareRibbon, myCloud_LANG.share_manage);
-                            const settingsBtn = document.getElementById('ceSettingsBtn');
-                            
-                            if (settingsBtn) {
-                                const divider = settingsBtn.previousElementSibling; 
-                                if (divider) {
-                                    tb.insertBefore(shareRibbon, divider);
-                                } else {
-                                    tb.insertBefore(shareRibbon, settingsBtn);
-                                }
-                            } else {
-                                tb.appendChild(shareRibbon);
-                            }
-
-                        } else {
-                            const uploadBtn = tb.querySelector('button[data-action="upload"]');
-                            const insertPoint = uploadBtn ? uploadBtn.nextSibling : null;
-
-                            const sep = document.createElement('div'); sep.className = 'myCloudDivider'; sep.dataset.cx = 'share';
-                            const btn = document.createElement('button');
-                            btn.dataset.act = 'share'; btn.dataset.action = 'share'; btn.type = "button";
-                            btn.innerHTML = '<span class="myCloudIcon" style="display:flex;align-items:center;justify-content:center;width:24px;height:24px;font-size:24px;">' + myCloudSvg.share + '</span><span style="font-size:10px;margin-top:4px;">' + myCloud_LANG.share_btn + '</span>';
-                            btn.onclick = (e) => { e.preventDefault(); e.stopPropagation(); myCloudAction_Share(); return false; };
-                            btn.disabled = true; btn.style.opacity = '0.5';
-
-                            const btnList = document.createElement('button');
-                            btnList.dataset.act = 'share-list'; btnList.type = "button";
-                            btnList.innerHTML = '<span class="myCloudIcon" style="display:flex;align-items:center;justify-content:center;width:24px;height:24px;font-size:24px;">' + myCloudSvg.shareList + '</span><span style="font-size:10px;margin-top:4px;">' + myCloud_LANG.share_all + '</span>';
-                            btnList.onclick = (e) => { e.preventDefault(); e.stopPropagation(); window.cxShowAllShares(); return false; };
-
-                            if (insertPoint) {
-                                tb.insertBefore(sep, insertPoint);
-                                tb.insertBefore(btn, sep.nextSibling);
-                                tb.insertBefore(btnList, btn.nextSibling);
-                            } else {
-                                tb.appendChild(sep); tb.appendChild(btn); tb.appendChild(btnList);
-                            }
-                        }
-                        
-                        if (typeof window.myCloudUpdateToolbarState === 'function') window.myCloudUpdateToolbarState();
-                    }
-                }
-            };
-
-            const oldRen = window.myCloudRenderUI;
-            window.myCloudRenderUI = function() {
-                oldRen.apply(this, arguments);
-                if (window.cxSharedPaths.length > 0) {
-                    document.querySelectorAll('.myCloudRow').forEach(row => {
-                        if (window.cxSharedPaths.includes(row.dataset.fullpath)) {
-                            row.classList.add('cx-shared-file');
-                        }
-                    });
-                }
-            };
-
-            const oldUpdateState = window.myCloudUpdateToolbarState;
-            window.myCloudUpdateToolbarState = function() {
-                if (oldUpdateState) oldUpdateState.apply(this, arguments);
-                if (typeof window.myCloudActionAllowed === 'function' && window.myCloudActionAllowed('share')) {
-                    const sel = myCloudState.selectedFiles;
-                    const isShared = (sel.length === 1 && window.cxSharedPaths.includes(sel[0]));
-                    const shareLabel = isShared ? myCloud_LANG.share_edit : myCloud_LANG.share_item;
-                    const flatLabel = isShared ? myCloud_LANG.share_edit : myCloud_LANG.share_btn;
-
-                    const btn = document.querySelector('button[data-act="share"]');
-                    if (btn && typeof myCloudState !== 'undefined') {
-                        const isMulti = sel.length !== 1;
-                        btn.disabled = isMulti;
-                        btn.style.opacity = btn.disabled ? '0.4' : '1';
-                        const span = btn.querySelector('span:last-child');
-                        if (span) span.textContent = flatLabel;
-                    }
-                    
-                    const ribbon = document.getElementById('cxShareRibbon');
-                    if (ribbon) {
-                        ribbon.disabled = false;
-                        ribbon.style.opacity = '1';
-                        ribbon.classList.remove('ce-force-active'); 
-                        
-                        const openMenu = document.getElementById('myCloudFloatingMenu');
-                        if (openMenu) {
-                            const shareItemBtn = Array.from(openMenu.querySelectorAll('button')).find(b => b.innerHTML.includes(myCloudSvg.share));
-                            if (shareItemBtn) {
-                                if (sel.length !== 1) {
-                                    shareItemBtn.disabled = true;
-                                } else {
-                                    shareItemBtn.disabled = false;
-                                }
-                                const span = shareItemBtn.querySelector('span:last-child');
-                                if (span) span.textContent = shareLabel;
-                            }
-                        }
-                    }
-                }
-            };
-
-            if (window.myCloudShowContextMenu) {
-                const originalShowCtx = window.myCloudShowContextMenu;
-                window.myCloudShowContextMenu = function(e, item, isTree = false) {
-                    originalShowCtx(e, item, isTree);
-                    if (isTree) return;
-                    const menu = document.querySelector('.myCloudContextMenu');
-                    if (!menu || myCloudState.selectedFiles.length > 1 || !window.myCloudActionAllowed('share')) return;
-                    
-                    const div = document.createElement('div');
-                    div.className = 'myCloudContextItem';
-                    div.innerHTML = '<span class="myCloudIcon" style="width:20px; height:20px; margin-right:12px; font-size:18px; display:inline-flex; align-items:center; justify-content:center;">' + myCloudSvg.share + '</span> ' + myCloud_LANG.share_btn;
-                    div.onclick = function(ev) { ev.preventDefault(); ev.stopPropagation(); menu.remove(); myCloudAction_Share(item.name); };
-                    
-                    if (menu.lastChild) menu.insertBefore(div, menu.lastChild); else menu.appendChild(div);
-                };
-            }
+            // Tell the core engine to rebuild the toolbar matrices now that the functions exist
             if (typeof myCloudRenderToolbar === 'function') myCloudRenderToolbar();
         }
         
@@ -318,6 +116,7 @@
                     if(resp && resp.status === 'OK') {
                         window.cxSharedPaths = resp.data.map(s => s.path);
                         if (typeof myCloudRenderUI === 'function') myCloudRenderUI();
+                        if (typeof myCloudUpdateToolbarState === 'function') myCloudUpdateToolbarState();
                     }
                 }).catch(()=>{});
         };
@@ -662,7 +461,7 @@
             });
         };
 
-window.cxCreate = function(path, autoEmail = false) {
+        window.cxCreate = function(path, autoEmail = false) {
             const btn = document.getElementById('cxSaveBtn');
             var temp = document.createElement("textarea");
             temp.innerHTML = path;
@@ -775,5 +574,19 @@ window.cxCreate = function(path, autoEmail = false) {
                 }
             }
         });     
+
+        // Keep the harmless visual decorator
+        const oldRen = window.myCloudRenderUI;
+        window.myCloudRenderUI = function() {
+            if (oldRen) oldRen.apply(this, arguments);
+            if (window.cxSharedPaths.length > 0) {
+                document.querySelectorAll('.myCloudRow').forEach(row => {
+                    if (window.cxSharedPaths.includes(row.dataset.fullpath)) {
+                        row.classList.add('cx-shared-file');
+                    }
+                });
+            }
+        };
+
     })();
     </script>

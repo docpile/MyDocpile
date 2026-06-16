@@ -2930,7 +2930,7 @@ function myCloudHandleEnterAction(i, ext, isContainer) {
 
 window.myCloudRenderSkeletons = function(container) {
     const isGrid = myCloudState.viewMode === 'symbol';
-    let html = '';
+    let html = '<div class="myCloud-breadcrumb-bar" style="opacity:0.4;"><div class="ce-skeleton ce-skeleton-text" style="width:150px; height:14px; margin: 8px 0;"></div></div>';
     if (isGrid) {
         const devKey = typeof myCloudGetCurrentDeviceKey === 'function' ? myCloudGetCurrentDeviceKey() : 'desktop';
         const size = (myCloudState.settings && myCloudState.settings[devKey] && myCloudState.settings[devKey].symbolSize) ? myCloudState.settings[devKey].symbolSize : 'medium';
@@ -2944,11 +2944,11 @@ window.myCloudRenderSkeletons = function(container) {
         }
         html += '</div>';
     } else {
-        html += '<table class="myCloudTable" style="width:100%; opacity:0.5;"><thead><tr><th></th><th></th><th>Name</th><th>Size</th><th>Date</th></tr></thead><tbody>';
+        html += '<div class="myCloudTableContainer"><table class="myCloudTable" style="width:100%; opacity:0.5;"><thead><tr><th></th><th></th><th>Name</th><th>Size</th><th>Date</th></tr></thead><tbody>';
         for(let i=0; i<10; i++) {
             html += `<tr class="myCloudRow"><td class="ce-col-check"></td><td class="ce-col-icon"><div class="ce-skeleton ce-skeleton-icon" style="width:24px;height:24px; margin:0 auto;"></div></td><td><div class="ce-skeleton ce-skeleton-text" style="width:${Math.random()*40+30}%"></div></td><td><div class="ce-skeleton ce-skeleton-text" style="width:40px; float:right;"></div></td><td><div class="ce-skeleton ce-skeleton-text" style="width:80px;"></div></td></tr>`;
         }
-        html += '</tbody></table>';
+        html += '</tbody></table></div>';
     }
     container.innerHTML = html;
 };

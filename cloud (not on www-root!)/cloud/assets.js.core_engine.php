@@ -507,7 +507,22 @@ window.myCloudGetFastThumbUrl = function(path) {
 // Starts the Explorer logic.
 // Handles auth check, settings load, and initial data fetch.
 async function myCloudStartExplorer(key = null) {
-    if (key === 'all') { myCloudIsMultiCloudMode = true; key = (typeof myCloudUserKeys !== 'undefined' && myCloudUserKeys.length > 0) ? myCloudUserKeys[0] : ''; }
+    if (key === 'all') { 
+        myCloudIsMultiCloudMode = true; 
+        let defaultKey = '';
+        if (typeof myCloudUserKeys !== 'undefined' && myCloudUserKeys.length > 0) {
+            defaultKey = myCloudUserKeys[0];
+            if (window.myCloudIsMailOnly && typeof myCloudCloudConfig !== 'undefined') {
+                for (let k of myCloudUserKeys) {
+                    if (myCloudCloudConfig[k] && myCloudCloudConfig[k].interface === 'email') {
+                        defaultKey = k;
+                        break;
+                    }
+                }
+            }
+        }
+        key = defaultKey; 
+    }
     if (!key) key = (typeof myCloudUserKeys !== 'undefined' && myCloudUserKeys.length > 0) ? myCloudUserKeys[0] : '';
 
     myCloudState.isInitializing = true;
@@ -526,9 +541,17 @@ async function myCloudStartExplorer(key = null) {
 	
 	myCloudShowLoading();
 
+    const container = document.getElementById('myCloudContainer');
+    const body = document.querySelector('.myCloudBody');
+    const tree = document.querySelector('.myCloudTree');
+    const details = document.querySelector('.myCloudDetails');
+    const resizer = document.querySelector('.myCloudResizer');
+    const tb = document.getElementById('myCloudToolbar');
+    const btnTree = document.getElementById('btnToggleTree');
+
     // Force Exit Commander Mode before switching context
     if (typeof myCloudState !== 'undefined' && myCloudState.isCommanderMode) {
-        const body = document.querySelector('.myCloudBody');
+       
         document.querySelectorAll('.myCloud-commander-pane, .myCloud-commander-resizer-container').forEach(el => el.remove());
         if (body) {
             body.classList.remove('commander-mode');
@@ -536,9 +559,6 @@ async function myCloudStartExplorer(key = null) {
             for(let i = 1; i < resizers.length; i++) resizers[i].remove();
         }
         myCloudState.isCommanderMode = false;
-        const tree = document.querySelector('.myCloudTree');
-        const details = document.querySelector('.myCloudDetails');
-        const resizer = document.querySelector('.myCloudResizer');
         if (tree) tree.style.display = '';
         if (details) details.style.display = '';
         if (resizer) resizer.style.display = '';
@@ -552,9 +572,7 @@ async function myCloudStartExplorer(key = null) {
         return; 
     }
 
-    const container = document.getElementById('myCloudContainer');
-    const body = document.querySelector('.myCloudBody');
-    const isAlreadyOpen = (container.style.display && container.style.display !== 'none');
+    const isAlreadyOpen = (container && container.style.display && container.style.display !== 'none');
 
     if (isAlreadyOpen && body) { body.style.transition = 'none'; body.style.opacity = '0'; body.classList.remove('visible'); }
 
@@ -571,11 +589,7 @@ async function myCloudStartExplorer(key = null) {
 	if (switcher) {
         myCloudRenderCloudSwitcher();
         document.querySelectorAll('.ce-cloud-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.key === key));
-        if (typeof myCloudUserKeys !== 'undefined' && myCloudUserKeys.length > 1) {
             switcher.style.display = 'flex';
-        } else {
-            switcher.style.display = 'none';
-        }
     }	
     const toolbar = document.getElementById('myCloudToolbar');
     if (toolbar) {
@@ -583,7 +597,7 @@ async function myCloudStartExplorer(key = null) {
         else toolbar.classList.remove('gallery-hidden');
     }
 
-    // --- THE BULLETPROOF VIRTUAL APP BYPASS ---
+	// --- THE BULLETPROOF VIRTUAL APP BYPASS ---
     // If the interface is email, we completely skip all file-system API calls
     const isVirtualApp = (myCloudState.interface === 'email');
 
@@ -620,7 +634,6 @@ async function myCloudStartExplorer(key = null) {
 		myCloudTreeVisible = myCloudState.settings[devKey].treeOpen;
     }
     
-    const tree = document.querySelector('.myCloudTree'), resizer = document.querySelector('.myCloudResizer'), btnTree = document.getElementById('btnToggleTree');
     if (myCloudTreeVisible && !isVirtualApp) {
         if (tree) tree.style.display = ''; if (resizer) resizer.style.display = '';
         if (btnTree) { btnTree.classList.add('tree-on'); btnTree.classList.remove('tree-off'); }
@@ -648,6 +661,47 @@ async function myCloudStartExplorer(key = null) {
     }
     
 	myCloudState.currentDir = initialPath;
+
+    // --- INSTANT LOAD & SKELETON INJECTION ---
+    if (container && !isAlreadyOpen) {
+        container.style.display = 'flex';
+        container.classList.remove('ce-anim-close');
+        container.classList.add('ce-anim-open');
+    }
+    if (body) {
+        body.style.transition = 'none';
+        body.style.opacity = '1';
+        body.classList.add('visible');
+    }
+
+    if (!isVirtualApp) {
+        if (typeof myCloudRestoreSidebarSize === 'function') myCloudRestoreSidebarSize();
+        
+        if (typeof window.myCloudRenderSkeletons === 'function') {
+            const detailsPane = document.querySelector('.myCloudDetails');
+            if (detailsPane) window.myCloudRenderSkeletons(detailsPane);
+            
+            const treeEl = document.querySelector('.myCloudTree');
+            if (myCloudTreeVisible && treeEl) {
+                let treeSkel = '<ul class="myCloudTreeList" style="padding:15px; opacity:0.5; pointer-events:none; overflow:hidden;">';
+                for(let i=0; i<8; i++) {
+                    let w = Math.floor(Math.random() * 40) + 40;
+                    treeSkel += '<li style="display:flex; align-items:center; gap:8px; padding:6px 0;"><div class="ce-skeleton ce-skeleton-icon" style="width:20px; height:20px; flex-shrink:0;"></div><div class="ce-skeleton ce-skeleton-text" style="width:' + w + '%; height:12px;"></div></li>';
+                }
+                treeSkel += '</ul>';
+                treeEl.innerHTML = treeSkel;
+            }
+        }
+        
+        const tb = document.getElementById('myCloudToolbar');
+        if (tb) {
+            tb.style.display = 'flex';
+            tb.style.opacity = '1';
+            tb.innerHTML = '<div class="ce-skeleton" style="width:200px; height:32px; margin:6px; opacity:0.3;"></div>';
+        }
+    } else if (!isAlreadyOpen) {
+        myCloudShowLoading();
+    }
 
     if (!isVirtualApp) {
         await myCloudFetchDirectory('/', 3, true);
@@ -678,18 +732,17 @@ async function myCloudStartExplorer(key = null) {
 
     if (body) {
         myCloudHideLoading();
-        if (!isAlreadyOpen) { 
-            container.style.display = 'flex';
-            void container.offsetWidth; 
-            container.classList.remove('ce-anim-close'); 
-            container.classList.add('ce-anim-open'); 
-            body.classList.add('visible');
-            setTimeout(() => { container.classList.remove('ce-anim-open'); body.style.transition = ''; body.style.opacity = ''; }, 800); 
-        } else { 
-            requestAnimationFrame(() => { void body.offsetWidth; body.style.transition = ''; body.style.opacity = ''; body.classList.add('visible'); }); 
-        }
+        requestAnimationFrame(() => {
+            body.style.transition = 'opacity 0.3s ease-in';
+            body.style.opacity = '1';
+            if (!isAlreadyOpen) {
+                setTimeout(() => { container.classList.remove('ce-anim-open'); body.style.transition = ''; }, 800);
+            } else {
+                setTimeout(() => { body.style.transition = ''; }, 300);
+            }
+        });
     }
-    const details = document.querySelector('.myCloudDetails'); 
+
     if (details && !isVirtualApp) { 
         details.focus(); 
         if (typeof myCloudResetListCursor === 'function') myCloudResetListCursor(); 

@@ -463,11 +463,11 @@
     /* Animation Classes */
     #myCloudContainer.ce-anim-open {
         display: flex !important;
-        animation: ceFadeInScale 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        animation: ceFadeInScale 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
     #myCloudContainer.ce-anim-close {
         display: flex !important;
-        animation: ceFadeOutScale 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        animation: ceFadeOutScale 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
    
     .myCloudBody {
@@ -1556,13 +1556,13 @@
         box-shadow: 0 24px 48px rgba(0, 0, 0, 0.18), 0 8px 16px rgba(0,0,0,0.08);
         display: flex;
         flex-direction: column;
-        animation: ceFadeInScale 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        animation: ceFadeInScale 0.25s cubic-bezier(0.16, 1, 0.3, 1);
         transform-origin: center center;
         animation-fill-mode: forwards;
         pointer-events: auto;
     }
     .myCloudModal.closing {
-        animation: ceFadeOutScale 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        animation: ceFadeOutScale 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
 	
 	.myCloudOverlay.closing {
@@ -1816,73 +1816,189 @@
     .ce-sym-xlarge .myCloudIcon svg { width: 140px !important; height: 140px !important; }
     .ce-sym-xlarge .ce-sym-label { font-size: 15px; -webkit-line-clamp: 3; }
 	
+/* --- FLAT BUTTON LEGACY (For Desktop without Ribbons) --- */
+    .ce-floating-item { display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; min-width: 68px !important; height: 62px !important; padding: 4px 8px !important; border: 1px solid var(--border-medium) !important; border-radius: 14px !important; background: transparent !important; color: var(--gray-90) !important; cursor: pointer; transition: all 0.2s ease; }
+    .ce-floating-item:hover { background: var(--hover-bg-light) !important; transform: scale(1.05); border-color: rgba(0, 0, 0, 0.25) !important; z-index: 10; }
+    .ce-floating-item:hover .myCloudIcon svg path, .ce-floating-item:hover .myCloudIcon svg rect { fill: var(--gray-60) !important; stroke: var(--gray-60) !important; }
+    .ce-floating-item .myCloudIcon { width: 28px !important; height: 28px !important; margin-bottom: 4px !important; margin-right: 0 !important; background: transparent !important; }
+    .ce-floating-item .myCloudIcon svg { width: 24px !important; height: 24px !important; fill: currentColor !important; }
+    .ce-floating-item span:last-child { font-size: 11px !important; line-height: 1.1; text-align: center; color: inherit; font-weight: 500; margin-top: 0 !important; }
+    .ce-floating-item:hover span:last-child { color: var(--text-primary) !important; }
+    .ce-floating-item.ce-force-active { background-color: transparent !important; border-color: transparent !important; color: var(--accent-primary) !important; }
+    .ce-floating-item:disabled { opacity: 0.3 !important; cursor: not-allowed; background-color: transparent !important; }
+    .ce-floating-item:disabled span { color: var(--text-disabled) !important; }
+    .ce-floating-item:disabled .myCloudIcon { background-color: transparent !important; border-color: var(--gray-30) !important; }
+    .ce-floating-item:disabled .myCloudIcon svg, .ce-floating-item:disabled .myCloudIcon svg path { fill: var(--text-disabled) !important; stroke: var(--text-disabled) !important; filter: grayscale(100%); }
+	
+    /* --- MS OFFICE STYLE RIBBON TABS (OVERRIDES) --- */
+    .myCloudToolbar.ce-stacked-toolbar { padding: 4px 8px 0px 8px !important; align-items: flex-end !important; gap: 2px !important; }
+    .ce-stacked-toolbar .ce-ribbon-btn { flex-direction: row !important; gap: 6px; height: calc(var(--font-size-base) * 2.2) !important; min-width: auto !important; border-radius: 4px 4px 0 0 !important; margin-inline-end: 2px; padding: 4px 14px !important; background-color: transparent !important; border: 1px solid transparent !important; border-bottom: none !important; transition: all 0.15s ease; }
+    .ce-stacked-toolbar .ce-ribbon-btn .myCloudIcon { margin-bottom: 0 !important; width: calc(var(--font-size-base) * 1.2) !important; height: calc(var(--font-size-base) * 1.2) !important; display: flex !important; justify-content: center; align-items: center; background: transparent !important;}
+    .ce-stacked-toolbar .ce-ribbon-btn .myCloudIcon svg { width: 100% !important; height: 100% !important; }
+    .ce-stacked-toolbar .ce-ribbon-btn span.ce-ribbon-label { font-size: calc(var(--font-size-base) * 0.9) !important; margin-top: 0 !important; }
+    .ce-stacked-toolbar .ce-ribbon-btn svg, .ce-stacked-toolbar .ce-ribbon-btn svg path { fill: var(--ribbon-text) !important; transition: fill 0.15s ease; }
+    .ce-stacked-toolbar .ce-ribbon-btn:hover { background: var(--hover-bg-very-light) !important; border-color: transparent !important; }
+	.ce-stacked-toolbar .ce-ribbon-btn.active-parent { background: var(--gray-00) !important; border: 1px solid var(--border-default) !important; border-bottom: 1px solid var(--gray-00) !important; margin-bottom: -1px !important; z-index: 2; }
+    .ce-stacked-toolbar .ce-ribbon-btn.active-parent span.ce-ribbon-label { color: var(--accent-primary) !important; }
+    .ce-stacked-toolbar .ce-ribbon-btn.active-parent svg, .ce-stacked-toolbar .ce-ribbon-btn.active-parent svg path { fill: var(--accent-primary) !important; }
+	.ce-stacked-toolbar .ce-ribbon-btn.active-parent svg[stroke="currentColor"] { stroke: var(--accent-primary) !important; fill: none !important; }
+
+    /* Utility Buttons inside Stacked Toolbar (Fav, Settings, Help) */
+    .ce-stacked-toolbar #ceFavoritesBtn, .ce-stacked-toolbar #ceSettingsBtn, .ce-stacked-toolbar #btnHelp { border-radius: 4px !important; margin-bottom: 4px !important; border-bottom: 1px solid transparent !important; height: 2.0em !important; }
+    .ce-stacked-toolbar #ceFavoritesBtn.active-parent, .ce-stacked-toolbar #ceSettingsBtn.active-parent, .ce-stacked-toolbar #btnHelp.active-parent { background: var(--hover-bg-light) !important; border-color: rgba(0, 120, 212, 0.3) !important; margin-bottom: 4px !important; }
+    .ce-stacked-toolbar #btnHelp .myCloudIcon { width: 1.2em !important; height: 1.2em !important; margin: 0 !important; }
+    .ce-stacked-toolbar #btnHelp .myCloudIcon svg { width: 100% !important; height: 100% !important; min-width: 0 !important; min-height: 0 !important; }
+
+    /* Divider alignment for right-bound stacked utilities */
+    .ce-stacked-toolbar .ce-stacked-divider {
+        height: calc(var(--font-size-base) * 2.0) !important;
+        margin-bottom: 4px !important;
+        align-self: flex-end;
+    }
+
+    .ce-stacked-toolbar .ce-ribbon-btn { flex-direction: row !important; gap: 6px; height: 2.2em !important; min-width: auto !important; border-radius: 4px 4px 0 0 !important; margin-inline-end: 2px; padding: 4px 14px !important; background-color: transparent !important; border: 1px solid transparent !important; border-bottom: none !important; transition: all 0.15s ease; }
+    .ce-stacked-toolbar .ce-ribbon-btn .myCloudIcon { margin-bottom: 0 !important; width: 1.2em !important; height: 1.2em !important; display: flex !important; justify-content: center; align-items: center; background: transparent !important;}
+    .ce-stacked-toolbar .ce-ribbon-btn span.ce-ribbon-label { font-size: 1.1em !important; margin-top: 0 !important; }
+    
+    /* Utility Buttons inside Stacked Toolbar (Fav, Settings, Help) */
+
+    /* Lock utility icons to integer pixels to prevent sub-pixel blurring */
+
+  /* Active Tab Styling */
+    .ce-ribbon-btn.active-parent { background: var(--gray-00) !important; border: 1px solid var(--border-default) !important; border-bottom: 1px solid var(--gray-00) !important; margin-bottom: -1px !important; z-index: 2; }
+    .ce-ribbon-btn.active-parent span.ce-ribbon-label { color: var(--accent-primary) !important; }
+    .ce-ribbon-btn.active-parent svg, .ce-ribbon-btn.active-parent svg path { fill: var(--accent-primary) !important; }
 
 
+    /* Fix Stroke-based SVGs (Settings, Help) turning white on hover due to global toolbar CSS */
+    .ce-stacked-toolbar #ceSettingsBtn svg, .ce-stacked-toolbar #ceSettingsBtn svg *, 
+	.ce-stacked-toolbar #btnHelp svg, .ce-stacked-toolbar #btnHelp svg * { 
+        fill: none !important; stroke: var(--ribbon-text) !important; 
+     }
+	 .ce-stacked-toolbar #ceSettingsBtn:hover svg, .ce-stacked-toolbar #ceSettingsBtn:hover svg *, 
+    .ce-stacked-toolbar #btnHelp:hover svg, .ce-stacked-toolbar #btnHelp:hover svg * { stroke: var(--ribbon-text-hover) !important; fill: none !important; }
+    .ce-stacked-toolbar #ceSettingsBtn.active-parent svg, .ce-stacked-toolbar #ceSettingsBtn.active-parent svg *, 
+    .ce-stacked-toolbar #btnHelp.active-parent svg, .ce-stacked-toolbar #btnHelp.active-parent svg * { stroke: var(--accent-primary) !important; fill: none !important; }
 
-    .ce-ribbon-btn { display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: flex-start !important; gap: 0; height: 58px !important; min-width: 80px !important; border-radius: 6px !important; margin-inline-end: 6px; padding: 0 0 7px 0 !important; background-color: transparent !important; border: 1px solid rgba(0, 0, 0, 0.12) !important; cursor: pointer; position: relative; transition: all 0.2s ease; }
- .ce-ribbon-btn .myCloudIcon {
-     margin-bottom: -4px !important;
- }
- .ce-ribbon-btn span {
-     line-height: 1 !important;
-     margin-top: 0 !important;
- }
- /* [RESTORED] Gold/Olive Theme for Ribbon Buttons */
- .ce-ribbon-btn svg path.ce-grp-icon,
- .ce-ribbon-btn svg path.ce-grp-arrow {
-  fill: var(--ribbon-text) !important;
-  transition: fill 0.2s ease;
- }
- .ce-ribbon-btn span.ce-ribbon-label {
-  color: var(--ribbon-text) !important;
-  font-weight: 500 !important;
-  transition: color 0.2s ease;
- }
- .ce-ribbon-btn:hover svg path.ce-grp-icon,
- .ce-ribbon-btn:hover svg path.ce-grp-arrow {
-  fill: var(--ribbon-text-hover) !important;
- }
- .ce-ribbon-btn:hover span.ce-ribbon-label {
-  color: var(--ribbon-text-hover) !important;
- }
-.ce-ribbon-btn:hover { background: var(--hover-bg-very-light) !important; border-color: rgba(0,0,0,0.1) !important; }
-    .ce-ribbon-btn.active-parent { background: var(--hover-bg-light) !important; color: var(--accent-primary) !important; border-color: rgba(0, 120, 212, 0.3) !important; }
-    .ce-ribbon-btn.active-parent .myCloudIcon { color: var(--accent-primary) !important; }
+    /* --- UTILITY BUTTONS (Fav, Settings, Help) --- */
+    /* 1. LEGACY MODE: Force 58px height using IDs to guarantee they beat any leftover CSS */
+    #ceFavoritesBtn, #ceSettingsBtn, #btnHelp { 
+        height: 58px !important; 
+        border-radius: 6px !important; 
+        margin-bottom: 0 !important; 
+        flex-direction: column !important;
+    }
+
+    /* 2. STACKED MODE: Dynamic EM scaling */
+    .ce-stacked-toolbar #ceFavoritesBtn, 
+    .ce-stacked-toolbar #ceSettingsBtn, 
+    .ce-stacked-toolbar #btnHelp { 
+        height: 2.0em !important; 
+        border-radius: 4px !important; 
+        margin-bottom: 4px !important; 
+        border-bottom: 1px solid transparent !important; 
+        flex-direction: row !important;
+    }
+
+    .ce-stacked-toolbar #ceFavoritesBtn.active-parent, 
+    .ce-stacked-toolbar #ceSettingsBtn.active-parent, 
+    .ce-stacked-toolbar #btnHelp.active-parent { 
+        background: var(--hover-bg-light) !important; 
+        border-color: rgba(0, 120, 212, 0.3) !important; 
+        margin-bottom: 4px !important; 
+    }
+
+    .ce-stacked-toolbar #btnHelp .myCloudIcon { 
+        width: 1.2em !important; 
+        height: 1.2em !important; 
+        margin: 0 !important; 
+    }
+	
+	
     @keyframes ceRibbonIn { from { opacity: 0; transform: scale(0.8) translateY(-10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
     @keyframes ceRibbonOut { from { opacity: 1; transform: scale(1) translateY(0); } to { opacity: 0; transform: scale(0.8) translateY(-10px); } }
     .ce-floating-menu { position: fixed; z-index: 20000; background: var(--gray-00); border: 1px solid var(--border-medium); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18); padding: 6px 12px; display: flex; flex-direction: row; gap: 6px; border-radius: 18px 18px 18px 0; transform-origin: top center; animation: ceRibbonIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
     :dir(rtl) .ce-floating-menu { border-radius: 18px 18px 0 18px; }
     .ce-floating-menu.closing { animation: ceRibbonOut 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards; pointer-events: none; }
+
+    /* --- MS OFFICE STYLE RIBBON SUBMENUS --- */
+    .ce-ribbon-popup-container { display: flex; flex-direction: row; padding: 4px; gap: 8px; }
+    .ce-ribbon-sub-col { display: flex; flex-direction: column; gap: 4px; min-width: 140px; }
+    .ce-ribbon-sub-header { font-size: calc(var(--font-size-base) * 0.75); font-weight: 600; text-transform: uppercase; color: var(--ribbon-text); background: var(--gray-10); border: none; padding: 3px 8px; border-radius: 4px; text-align: left; margin-bottom: 4px; box-shadow: none; }
+    :dir(rtl) .ce-ribbon-sub-header { text-align: right; }
+    .ce-ribbon-sub-divider { width: 1px; background: var(--border-default); margin: 0 4px; flex-shrink: 0; }
+    .ce-ribbon-sub-h-divider { width: 100%; height: 1px; background-color: var(--border-default); margin: 2px 0; align-self: center; }
+    .ce-ribbon-sub-row { display: flex; flex-direction: row; gap: 4px; width: 100%; justify-content: flex-start; }
+    
+    .ce-ribbon-sub-btn { display: flex; align-items: center; justify-content: flex-start; background: transparent !important; border: 1px solid transparent !important; border-radius: 4px !important; cursor: pointer; color: var(--gray-90) !important; min-height: 2.4em !important; height: auto !important; padding: 4px 8px !important; transition: all 0.15s ease; flex: 1; }
+    .ce-ribbon-sub-btn:hover:not(:disabled) { background: var(--hover-bg-light) !important; border-color: rgba(0,0,0,0.1) !important; transform: scale(1.02); z-index: 10; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+    .ce-ribbon-sub-btn.ce-force-active { background: var(--hover-bg-medium) !important; color: var(--accent-primary) !important; }
+    .ce-ribbon-sub-btn:disabled { opacity: 0.4 !important; cursor: not-allowed; }
+    
+    .ce-ribbon-sub-btn .myCloudIcon { width: 1.6em !important; height: 1.6em !important; margin-right: 8px !important; margin-bottom: 0 !important; flex-shrink: 0; background: transparent !important; display: flex; align-items: center; justify-content: center; }
+    .ce-ribbon-sub-btn .myCloudIcon svg { width: 1.3em !important; height: 1.3em !important; fill: currentColor !important; }
+    
+    .ce-ribbon-sub-btn span.ce-btn-text { font-size: 1.1em !important; font-weight: 500; white-space: nowrap; line-height: 1.2; margin-top: 0 !important; }
+    
+    /* Sizes */
+    .ce-btn-type-full { min-width: 130px; }
+    .ce-btn-type-half { min-width: 65px; }
+    .ce-btn-type-icon { flex: 0 0 32px !important; max-width: 32px !important; justify-content: center !important; padding: 4px !important; }
+    .ce-btn-type-icon .myCloudIcon { margin-right: 0 !important; }
+
+    /* Forced Ribbon Hover Icon Fills */
+    .ce-ribbon-sub-btn:hover:not(:disabled) .myCloudIcon svg,
+    .ce-ribbon-sub-btn:hover:not(:disabled) .myCloudIcon svg path { fill: var(--text-primary) !important; stroke: var(--text-primary) !important; }
+
+    /* --- FLAT BUTTON LEGACY (For Desktop without Ribbons) --- */
     .ce-floating-item { display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; min-width: 68px !important; height: 62px !important; padding: 4px 8px !important; border: 1px solid var(--border-medium) !important; border-radius: 14px !important; background: transparent !important; color: var(--gray-90) !important; cursor: pointer; transition: all 0.2s ease; }
-	.ce-floating-item:hover {
-	background: var(--hover-bg-light) !important; 
-    transform: scale(1.05);
-    border-color: rgba(0, 0, 0, 0.25) !important;
-    z-index: 10;
-}
-    /* --- FORCED RIBBON BAR HOVER BEHAVIOR --- */
-    .ce-floating-item:hover .myCloudIcon svg path,
-    .ce-floating-item:hover .myCloudIcon svg rect,
-    .ce-floating-item:hover .myCloudIcon svg circle,
-    .ce-floating-item:hover .myCloudIcon svg polyline {
-        fill: var(--gray-60) !important;
-        stroke: var(--gray-60) !important;
-    }
-     .ce-floating-item .myCloudIcon { width: 28px !important; height: 28px !important; margin-bottom: 4px !important; margin-right: 0 !important; background: transparent !important; }
+    .ce-floating-item:hover { background: var(--hover-bg-light) !important; transform: scale(1.05); border-color: rgba(0, 0, 0, 0.25) !important; z-index: 10; }
+    .ce-floating-item:hover .myCloudIcon svg path, .ce-floating-item:hover .myCloudIcon svg rect { fill: var(--gray-60) !important; stroke: var(--gray-60) !important; }
+    .ce-floating-item .myCloudIcon { width: 28px !important; height: 28px !important; margin-bottom: 4px !important; margin-right: 0 !important; background: transparent !important; }
     .ce-floating-item .myCloudIcon svg { width: 24px !important; height: 24px !important; fill: currentColor !important; }
     .ce-floating-item span:last-child { font-size: 11px !important; line-height: 1.1; text-align: center; color: inherit; font-weight: 500; }
-.ce-floating-item:hover span:last-child {
-        color: var(--text-primary) !important;
-    }
-    .ce-floating-item.active-item { background-color: transparent !important; border-color: transparent !important; color: var(--accent-primary) !important; }
-    .ce-floating-item.active-item .myCloudIcon {
-        background-color: transparent !important;
-        border: none !important;
-     }
+    .ce-floating-item:hover span:last-child { color: var(--text-primary) !important; }
+    .ce-floating-item.ce-force-active { background-color: transparent !important; border-color: transparent !important; color: var(--accent-primary) !important; }
     .ce-floating-item:disabled { opacity: 0.3 !important; cursor: not-allowed; background-color: transparent !important; }
     .ce-floating-item:disabled span { color: var(--text-disabled) !important; }
     .ce-floating-item:disabled .myCloudIcon { background-color: transparent !important; border-color: var(--gray-30) !important; }
     .ce-floating-item:disabled .myCloudIcon svg, .ce-floating-item:disabled .myCloudIcon svg path { fill: var(--text-disabled) !important; stroke: var(--text-disabled) !important; filter: grayscale(100%); }
+
+
+/* --- FIX: Allow Ribbon Dropdown Columns & Buttons to Expand --- */
+.ce-ribbon-sub-col {
+    min-width: max-content !important;
+}
+
+.ce-ribbon-sub-btn {
+    overflow: visible !important;
+}
+
+.ce-ribbon-sub-btn span.ce-btn-text {
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: nowrap !important;
+}
+
+.ce-btn-type-half {
+    min-width: max-content !important;
+    flex: 1 1 auto !important;
+}
+
+   /* --- PROGRESSIVE COLLAPSE TO ICON-ONLY WORKSPACE --- */
+   @media (max-width: 1024px) {
+       .ce-stacked-toolbar #btnHelp span.ce-ribbon-label { display: none !important; }
+       .ce-stacked-toolbar #btnHelp .myCloudIcon { margin-right: 0 !important; }
+   }
+   @media (max-width: 920px) {
+       .ce-stacked-toolbar #ceSettingsBtn span.ce-ribbon-label { display: none !important; }
+       .ce-stacked-toolbar #ceSettingsBtn .myCloudIcon { margin-right: 0 !important; }
+   }
+   @media (max-width: 840px) {
+       .ce-stacked-toolbar #ceFavoritesBtn span.ce-ribbon-label { display: none !important; }
+       .ce-stacked-toolbar #ceFavoritesBtn .myCloudIcon { margin-right: 0 !important; }
+   }
+
     /* myCloudVer Modal */
 	.myCloudVer-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); display: flex; align-items: center; justify-content: center; z-index: 99999; backdrop-filter: blur(4px); }
 	.myCloudVer-modal { background: var(--gray-00); color: var(--text-primary); width: 850px; max-width: 95vw; border-radius: 8px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25); border: 1px solid var(--border-medium); font-family: "Segoe UI Variable Text", "Segoe UI", sans-serif; display: flex; flex-direction: column; animation: myCloudVerFadeIn 0.2s ease-out; }
@@ -2598,6 +2714,11 @@ border: 1px solid var(--border-default) !important;
 .ce-dark-mode .ce-email-btn svg path {
     fill: var(--ribbon-text) !important;
 }
+.ce-dark-mode .ce-stacked-toolbar #ceSettingsBtn svg, .ce-dark-mode .ce-stacked-toolbar #ceSettingsBtn svg *,
+.ce-dark-mode .ce-stacked-toolbar #btnHelp svg, .ce-dark-mode .ce-stacked-toolbar #btnHelp svg * {
+    stroke: var(--ribbon-text) !important;
+    fill: none !important;
+}
 .ce-dark-mode .ce-ribbon-btn svg[fill="none"] path,
 .ce-dark-mode .ce-floating-item svg[fill="none"] path {
     fill: none !important;
@@ -2616,6 +2737,12 @@ border: 1px solid var(--border-default) !important;
 .ce-dark-mode .ce-floating-item:not(:disabled):hover svg path {
     fill: var(--ribbon-text-hover) !important;
 }
+.ce-dark-mode .ce-stacked-toolbar #ceSettingsBtn:not(:disabled):hover svg, .ce-dark-mode .ce-stacked-toolbar #ceSettingsBtn:not(:disabled):hover svg *,
+.ce-dark-mode .ce-stacked-toolbar #btnHelp:not(:disabled):hover svg, .ce-dark-mode .ce-stacked-toolbar #btnHelp:not(:disabled):hover svg * {
+    stroke: var(--ribbon-text-hover) !important;
+    fill: none !important;
+}
+
 .ce-dark-mode .ce-ribbon-btn:not(:disabled):hover span.ce-ribbon-label,
 .ce-dark-mode .ce-floating-item:not(:disabled):hover span:last-child {
     color: var(--ribbon-text-hover) !important;
@@ -2667,7 +2794,15 @@ ce-dark-mode .myCloudButtons { background-color: transparent !important; }
 .ce-dark-mode .ce-ribbon-handle { background-color: var(--gray-15); border-color: var(--gray-50); color: var(--text-secondary); box-shadow: none; }
 .ce-floating-menu.ce-dark-mode, .ce-dark-mode .ce-floating-menu { background: var(--gray-10); border-color: var(--gray-50); color: var(--text-primary); }
 .ce-dark-mode .ce-floating-item:hover { background: var(--gray-20) !important; border-color: var(--gray-40) !important; }
-.ce-dark-mode .ce-ribbon-btn.active-parent { background: rgba(96, 205, 255, 0.15) !important; color: var(--accent-primary) !important; border-color: rgba(96, 205, 255, 0.3) !important; }
+
+    .ce-dark-mode .ce-ribbon-sub-header { background: var(--gray-15) !important; border: none !important; }
+    .ce-dark-mode .ce-ribbon-sub-btn { color: var(--text-primary) !important; }
+    .ce-dark-mode .ce-ribbon-sub-btn:hover:not(:disabled) { background: var(--hover-bg-medium) !important; border-color: var(--border-medium) !important; }
+
+   /* Restore Dark Mode Override for Base Ribbon Button */
+   .ce-dark-mode .ce-ribbon-btn.active-parent { background: rgba(96, 205, 255, 0.15) !important; color: var(--accent-primary) !important; border-color: rgba(96, 205, 255, 0.3) !important; }
+   .ce-dark-mode .ce-stacked-toolbar .ce-ribbon-btn.active-parent { background: var(--gray-10) !important; border-color: var(--border-default) !important; border-bottom: 1px solid var(--gray-10) !important; }
+   .ce-dark-mode .ce-stacked-toolbar #ceFavoritesBtn.active-parent, .ce-dark-mode .ce-stacked-toolbar #ceSettingsBtn.active-parent, .ce-dark-mode .ce-stacked-toolbar #btnHelp.active-parent { background: rgba(96, 205, 255, 0.15) !important; border-color: rgba(96, 205, 255, 0.3) !important; }
 .ce-dark-mode .ce-floating-item.active-item { color: var(--accent-primary) !important; }
 .ce-dark-mode .ce-floating-item.active-item .myCloudIcon { background-color: rgba(96, 205, 255, 0.15) !important; color: var(--accent-primary) !important; border-color: rgba(96, 205, 255, 0.3) !important; }
 .ce-dark-mode .ce-floating-item:disabled .myCloudIcon svg { fill: var(--gray-60) !important; stroke: var(--gray-60) !important; }
@@ -2702,8 +2837,6 @@ ce-dark-mode .myCloudButtons { background-color: transparent !important; }
 .ce-dark-mode .myCloudTreeList li > div { color: var(--text-primary) !important; }
 .ce-dark-mode .myCloudTreeList li.selectedFolder > div { color: var(--text-primary) !important; }
 .ce-dark-mode .ce-ribbon-btn span.ce-ribbon-label { color: var(--ribbon-text) !important; }
-.ce-dark-mode .myCloud-floating-logout { background: rgba(255, 255, 255, 0.25) !important; border-color: rgba(255, 255, 255, 0.3) !important; color: #ffffff !important; box-shadow: 0 2px 8px rgba(0,0,0,0.5) !important; }
-.ce-dark-mode .myCloud-floating-logout:hover { background: var(--danger-hover) !important; border-color: #ffffff !important; color: #ffffff !important; }
 .ce-dark-mode .myCloud-breadcrumb-bar { background: var(--gray-05) !important; }
 .ce-dark-mode .myCloudClose:hover { color: var(--gray-00) !important; }
 .ce-dark-mode .myCloudProgressPopup { background: var(--gray-10) !important; color: var(--text-primary) !important; }
@@ -2729,6 +2862,23 @@ ce-dark-mode .myCloudButtons { background-color: transparent !important; }
 .ce-dark-mode .myCloudVer-btn-primary { color: #ffffff !important; }
 
 
+.ce-top-logout-btn {
+    color: var(--danger, #e81123) !important;
+    border-color: transparent !important;
+    margin-inline-start: auto;
+}
+.ce-top-logout-btn:hover {
+    background-color: rgba(232, 17, 35, 0.1) !important;
+    color: var(--danger, #e81123) !important;
+}
+.ce-dark-mode .ce-top-logout-btn {
+    color: #ff6b6b !important;
+}
+.ce-dark-mode .ce-top-logout-btn:hover {
+    background-color: rgba(255, 107, 107, 0.15) !important;
+    color: #ff6b6b !important;
+}
+
 /* #myCloudModalOverlay { z-index: 99999 !important; } */
 
 /* --- GLOBAL OVERLAY HIERARCHY --- */
@@ -2742,5 +2892,4 @@ ce-dark-mode .myCloudButtons { background-color: transparent !important; }
      z-index: 9200;
  }
 
- 
-</style> 
+/style> 

@@ -78,7 +78,7 @@ function myCloudAction_Search() {
 
     // Maintain persistent search state
     if (!myCloudState.searchParams) {
-        myCloudState.searchParams = { query: '', date: 'all', dateStart: '', dateEnd: '', size: 'all', sizeMin: '', sizeMax: '', tag: 'all', useIndex: true };
+        myCloudState.searchParams = { query: '', date: 'all', dateStart: '', dateEnd: '', size: 'all', sizeMin: '', sizeMax: '', tag: 'all', useIndex: true, global: false };
     }
     myCloudSearchSelection = null;
 
@@ -105,12 +105,16 @@ function myCloudAction_Search() {
         let contentToggle = '';
         if (hasIndex) {
             // Start disabled & unchecked since the search field starts empty
-            contentToggle = '<label id="myCloudSearchContentLabel" style="display:flex; align-items:center; gap:6px; margin-right:15px; cursor:default; font-size:13px; color:var(--text-primary); opacity:0.5;">' +
+            contentToggle = '<label id="myCloudSearchContentLabel" style="display:flex; align-items:center; gap:6px; margin-right:15px; cursor:default; font-size:13px; color:var(--text-primary); opacity:0.5; white-space:nowrap;">' +
                             '<input type="checkbox" id="myCloudSearchContent" class="myCloudCheckbox" style="margin:0;" onchange="window.myCloudIndexWanted = this.checked;" disabled> ' +
-                            (typeof myCloud_LANG !== 'undefined' && myCloud_LANG.use_index ? myCloud_LANG.use_index : 'Use Index') +
+                            (typeof myCloud_LANG !== 'undefined' && myCloud_LANG.use_index ? myCloud_LANG.use_index : 'Use Full-Text Index') +
                             '</label>';
         }
 		
+        let globalToggle = '<label style="display:flex; align-items:center; gap:6px; margin-right:15px; cursor:pointer; font-size:13px; color:var(--text-primary); white-space:nowrap;">' +
+                           '<input type="checkbox" id="myCloudSearchGlobal" class="myCloudCheckbox" style="margin:0;"> ' +
+                           (typeof myCloud_LANG !== 'undefined' && myCloud_LANG.search_global ? myCloud_LANG.search_global : 'Search entire cloud') +
+                           '</label>';
 
         let globalTag = myCloudState.activeTagFilter;
         let tagBtnHtml = '<button id="myCloudSearchTagBtn" class="myCloudInlineInput" data-value="' + (globalTag ? globalTag : 'all') + '" style="width:auto; min-width:115px; height:28px; margin:0 !important; cursor:pointer; padding: 0 10px; display:inline-flex; align-items:center; justify-content:space-between; gap:6px; background:var(--gray-00);" ' + 
@@ -129,44 +133,51 @@ function myCloudAction_Search() {
             '</div>' +
         '</div>' +
         '<div class="myCloudModalBody ce-flex-column" style="padding:0; flex:1; overflow:hidden;">' +
-            '<div class="ce-search-controls">' +
-                '<div class="ce-search-row">' +
-                    contentToggle +
+            '<div class="ce-search-controls" style="display:flex; flex-direction:column; gap:10px;">' +
+                '<div class="ce-search-row" style="flex-wrap:nowrap;">' +
                     '<input type="text" id="myCloudSearchInput" class="myCloudInlineInput" ' +
-                           'placeholder="' + myCloud_LANG.search_ph + '" style="flex:1; height:28px; margin:0 !important;" autocomplete="off" oninput="window.myCloudUpdateIndexCb()">' +
-                    '<button id="btnSearchHelp" onclick="window.myCloudShowSearchHelp(event, this)" style="height:28px; width:28px; border-radius:4px; border:1px solid var(--border-medium); background:var(--gray-05); color:var(--text-secondary); cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-weight:bold; margin-left:2px; margin-right:2px;" title="Syntax Help">?</button>' +
-                    tagBtnHtml +
-                    '<select id="myCloudSearchDate" class="myCloudInlineInput" ' +
-                            'style="width:115px; height:28px; margin:0 !important; cursor:pointer;" ' +
-                            'onchange="myCloudToggleSearchOptions()" autocomplete="off">' +
-							'<option value="all" selected>' + (typeof myCloud_LANG !== 'undefined' && myCloud_LANG.date_any ? myCloud_LANG.date_any : 'Any time') + '</option>' +
-                        '<option value="1h">' + myCloud_LANG.date_1h + '</option>' +
-                        '<option value="4h">' + myCloud_LANG.date_4h + '</option>' +
-                        '<option value="24h">' + myCloud_LANG.date_24h + '</option>' +
-                        '<option value="week">' + myCloud_LANG.date_week + '</option>' +
-                        '<option value="month">' + myCloud_LANG.date_month + '</option>' +
-                        '<option value="3months">' + myCloud_LANG.date_3m + '</option>' +
-                        '<option value="year">' + myCloud_LANG.date_year + '</option>' +
-                        '<option value="custom">' + myCloud_LANG.date_custom + '</option>' +
-               '</select>' +
-                    '<select id="myCloudSearchSize" class="myCloudInlineInput" ' +
-                            'style="width:115px; height:28px; margin:0 !important; cursor:pointer;" ' +
-                            'onchange="myCloudToggleSearchOptions()" autocomplete="off">' +
-                        '<option value="all" selected>' + myCloud_LANG.size_any + '</option>' +
-                        '<option value="small">' + myCloud_LANG.size_small + '</option>' +
-                        '<option value="medium">' + myCloud_LANG.size_medium + '</option>' +
-                        '<option value="large">' + myCloud_LANG.size_large + '</option>' +
-                        '<option value="huge">' + myCloud_LANG.size_huge + '</option>' +
-                        '<option value="custom">' + myCloud_LANG.size_custom + '</option>' +
-                    '</select>' +
-                        '<button onclick="window.myCloudResetSearch()" class="ce-btn-action ce-search-reset-btn" style="height:28px; padding:0 12px; border-radius:2px; font-size:13px; display:inline-flex; align-items:center; justify-content:center; background:transparent; border:1px solid var(--border-medium); color:var(--text-primary); cursor:pointer; margin-right:6px;">' +
-                            (typeof myCloud_LANG !== 'undefined' && myCloud_LANG.reset ? myCloud_LANG.reset : 'Reset') +
-                        '</button>' +
+                           'placeholder="' + myCloud_LANG.search_ph + '" style="flex:1; height:30px; margin:0 !important;" autocomplete="off" oninput="window.myCloudUpdateIndexCb()">' +
+                    '<button id="btnSearchHelp" onclick="window.myCloudShowSearchHelp(event, this)" style="height:30px; width:30px; border-radius:4px; border:1px solid var(--border-medium); background:var(--gray-05); color:var(--text-secondary); cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-weight:bold; margin-left:4px; margin-right:4px;" title="Syntax Help">?</button>' +
+                    '<button onclick="window.myCloudResetSearch()" class="ce-btn-action ce-search-reset-btn" style="height:30px; padding:0 14px; border-radius:2px; font-size:13px; display:inline-flex; align-items:center; justify-content:center; background:transparent; border:1px solid var(--border-medium); color:var(--text-primary); cursor:pointer; margin-right:6px;">' +
+                         (typeof myCloud_LANG !== 'undefined' && myCloud_LANG.reset ? myCloud_LANG.reset : 'Reset') +
+                    '</button>' +
                     '<button onclick="myCloudPerformSearch()" ' +
                             'class="ce-btn-action ce-btn-confirm ce-search-submit-btn" ' +
-                            'style="height:28px; padding:0 12px; border-radius:2px; font-size:13px; display:inline-flex; align-items:center; justify-content:center;">' +
+                            'style="height:30px; padding:0 18px; border-radius:2px; font-size:13px; display:inline-flex; align-items:center; justify-content:center;">' +
                         myCloud_LANG.search_btn +
                     '</button>' +
+                '</div>' +
+                '<div class="ce-search-row filters" style="flex-wrap:wrap; row-gap:10px; justify-content:space-between;">' +
+                    '<div style="display:flex; align-items:center; gap:5px; flex-wrap:wrap;">' +
+                        contentToggle +
+                        globalToggle +
+                    '</div>' +
+                    '<div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">' +
+                        tagBtnHtml +
+                        '<select id="myCloudSearchDate" class="myCloudInlineInput" ' +
+                                'style="width:auto; min-width:115px; height:28px; margin:0 !important; cursor:pointer; padding: 0 10px; line-height: 26px; box-sizing: border-box;" ' +
+                                'onchange="myCloudToggleSearchOptions()" autocomplete="off">' +
+							'<option value="all" selected>' + (typeof myCloud_LANG !== 'undefined' && myCloud_LANG.date_any ? myCloud_LANG.date_any : 'Any time') + '</option>' +
+                            '<option value="1h">' + myCloud_LANG.date_1h + '</option>' +
+                            '<option value="4h">' + myCloud_LANG.date_4h + '</option>' +
+                            '<option value="24h">' + myCloud_LANG.date_24h + '</option>' +
+                            '<option value="week">' + myCloud_LANG.date_week + '</option>' +
+                            '<option value="month">' + myCloud_LANG.date_month + '</option>' +
+                            '<option value="3months">' + myCloud_LANG.date_3m + '</option>' +
+                            '<option value="year">' + myCloud_LANG.date_year + '</option>' +
+                            '<option value="custom">' + myCloud_LANG.date_custom + '</option>' +
+                        '</select>' +
+                        '<select id="myCloudSearchSize" class="myCloudInlineInput" ' +
+                                'style="width:auto; min-width:115px; height:28px; margin:0 !important; cursor:pointer; padding: 0 10px; line-height: 26px; box-sizing: border-box;" ' +
+                                'onchange="myCloudToggleSearchOptions()" autocomplete="off">' +
+                            '<option value="all" selected>' + myCloud_LANG.size_any + '</option>' +
+                            '<option value="small">' + myCloud_LANG.size_small + '</option>' +
+                            '<option value="medium">' + myCloud_LANG.size_medium + '</option>' +
+                            '<option value="large">' + myCloud_LANG.size_large + '</option>' +
+                            '<option value="huge">' + myCloud_LANG.size_huge + '</option>' +
+                            '<option value="custom">' + myCloud_LANG.size_custom + '</option>' +
+                        '</select>' +
+                    '</div>' +
                 '</div>' +
                 '<div id="myCloudRowDate" class="ce-search-custom-row">' +
                     '<strong style="width:40px;">' + myCloud_LANG.col_date + ':</strong>' +
@@ -225,6 +236,9 @@ function myCloudAction_Search() {
         document.getElementById('myCloudSearchSize').value = sParams.size;
         document.getElementById('myCloudSizeMin').value = sParams.sizeMin;
         document.getElementById('myCloudSizeMax').value = sParams.sizeMax;
+
+        const globalCb = document.getElementById('myCloudSearchGlobal');
+        if (globalCb) globalCb.checked = sParams.global;
 
         const tagBtn = document.getElementById('myCloudSearchTagBtn');
         if (tagBtn && !globalTag) {
@@ -336,6 +350,124 @@ function myCloudAction_Search() {
     }).catch(() => {});
 }
 
+// Collects search parameters and sends request to server.
+// Updates UI with loading state and then results.
+function myCloudPerformSearch() {
+    const query = document.getElementById('myCloudSearchInput').value.trim();
+    const dRange = document.getElementById('myCloudSearchDate').value;
+    const sRange = document.getElementById('myCloudSearchSize').value;
+    const contentCb = document.getElementById('myCloudSearchContent');
+    const globalCb = document.getElementById('myCloudSearchGlobal');
+    
+    const tagBtn = document.getElementById('myCloudSearchTagBtn');
+    const tagFilter = tagBtn ? (tagBtn.dataset.value || 'all') : 'all';
+    
+    // Explicitly enforce file system search if query is blank
+    const useIndex = (query !== '' && contentCb && contentCb.checked) ? '1' : '0';
+
+    if (!query && (dRange === 'all' || dRange === 'custom') && sRange === 'all' && tagFilter === 'all' && useIndex === '0') return;
+
+    // Save persistent params
+    myCloudState.searchParams = {
+        query: query,
+        date: dRange,
+        dateStart: document.getElementById('myCloudDateStart').value,
+        dateEnd: document.getElementById('myCloudDateEnd').value,
+        size: sRange,
+        sizeMin: document.getElementById('myCloudSizeMin').value,
+        sizeMax: document.getElementById('myCloudSizeMax').value,
+        tag: tagFilter,
+        useIndex: contentCb ? contentCb.checked : false,
+        global: globalCb ? globalCb.checked : false
+    };
+
+    const container = document.getElementById('myCloudSearchResults');
+    container.innerHTML = 
+    '<div class="myCloud-loading-container" style="padding:40px 0; color:var(--text-secondary);">' +
+        '<div class="myCloud-spinner dark"></div>' +
+        '<div>' + myCloud_LANG.searching + '</div>' +
+    '</div>';
+
+    const statusRight = document.getElementById('myCloudSearchStatusRight');
+    if (statusRight) statusRight.textContent = '';
+    const statusLeft = document.getElementById('myCloudSearchStatusLeft');
+    if (statusLeft) statusLeft.textContent = '';
+
+    const params = new URLSearchParams({
+        myCloud_action: 'search',
+        myCloud_key: myCloudState.key,
+        myCloud_token: myCloudCsrfToken,
+        query: query,
+        dir: myCloudState.currentDir,
+        content_search: useIndex,
+        search_global: (globalCb && globalCb.checked) ? '1' : '0',
+        
+        // Date Params
+        date_range: dRange,
+        custom_date_start: document.getElementById('myCloudDateStart').value,
+        custom_date_end:   document.getElementById('myCloudDateEnd').value,
+
+        // Size Params
+        size_range: sRange,
+        custom_size_min: document.getElementById('myCloudSizeMin').value,
+        custom_size_max: document.getElementById('myCloudSizeMax').value,
+        tag_filter: tagFilter
+    });
+
+    fetch('', { method: 'POST', body: params })
+        .then(myCloudCheckResponse)
+        .then(resp => {
+            if (resp.status === 'OK') {
+                myCloudState.searchResults = resp.data;
+                myCloudRenderSearchResultsTable(); 
+            } else {
+                container.innerHTML = 
+                '<div class="ce-flex-center" style="padding:20px; color:var(--danger); height:100%;">' +
+                    myCloud_LANG.error_prefix + ': ' + resp.msg +
+                '</div>';
+            }
+        })
+        .catch(err => {
+            container.innerHTML = '<div class="ce-flex-center" style="height:100%;">' + myCloud_LANG.request_failed + '</div>';
+        });
+}
+
+// Completely resets the search state and re-renders the empty dialog
+window.myCloudResetSearch = function() {
+    myCloudState.searchParams = { query: '', date: 'all', dateStart: '', dateEnd: '', size: 'all', sizeMin: '', sizeMax: '', tag: 'all', useIndex: true, global: false };
+    myCloudState.searchResults = [];
+    myCloudSearchSelection = null;
+    
+    document.getElementById('myCloudSearchInput').value = '';
+    document.getElementById('myCloudSearchDate').value = 'all';
+    document.getElementById('myCloudDateStart').value = '';
+    document.getElementById('myCloudDateEnd').value = '';
+    document.getElementById('myCloudSearchSize').value = 'all';
+    document.getElementById('myCloudSizeMin').value = '';
+    document.getElementById('myCloudSizeMax').value = '';
+    const globalCb = document.getElementById('myCloudSearchGlobal');
+    if (globalCb) globalCb.checked = false;
+    
+    const tagBtn = document.getElementById('myCloudSearchTagBtn');
+    if (tagBtn) {
+        tagBtn.dataset.value = 'all';
+        const plainLabel = typeof myCloud_LANG !== 'undefined' && myCloud_LANG.tag_any ? myCloud_LANG.tag_any : 'Any Tag';
+        document.getElementById('myCloudSearchTagLabel').innerHTML = plainLabel;
+    }
+    
+    window.myCloudIndexWanted = true;
+    if (typeof window.myCloudUpdateIndexCb === 'function') window.myCloudUpdateIndexCb();
+    myCloudToggleSearchOptions();
+    
+    const container = document.getElementById('myCloudSearchResults');
+    if (container) {
+        container.innerHTML = '<div class="ce-flex-center" style="padding:20px; color:var(--text-secondary); height:100%;">' + (typeof myCloud_LANG !== 'undefined' && myCloud_LANG.enter_criteria ? myCloud_LANG.enter_criteria : 'Enter search criteria') + '</div>';
+    }
+    myCloudUpdateSearchToolbar();
+    document.getElementById('myCloudSearchInput').focus();
+};
+
+
 // Displays an XXL tooltip explaining advanced search syntax.
 // Auto-closes when clicking outside.
 window.myCloudShowSearchHelp = function(e, btn) {
@@ -387,117 +519,6 @@ window.myCloudShowSearchHelp = function(e, btn) {
 };
 
 
-// Collects search parameters and sends request to server.
-// Updates UI with loading state and then results.
-function myCloudPerformSearch() {
-    const query = document.getElementById('myCloudSearchInput').value.trim();
-    const dRange = document.getElementById('myCloudSearchDate').value;
-    const sRange = document.getElementById('myCloudSearchSize').value;
-    const contentCb = document.getElementById('myCloudSearchContent');
-    
-    const tagBtn = document.getElementById('myCloudSearchTagBtn');
-    const tagFilter = tagBtn ? (tagBtn.dataset.value || 'all') : 'all';
-    
-    // Explicitly enforce file system search if query is blank
-    const useIndex = (query !== '' && contentCb && contentCb.checked) ? '1' : '0';
-
-    if (!query && (dRange === 'all' || dRange === 'custom') && sRange === 'all' && tagFilter === 'all' && useIndex === '0') return;
-
-    // Save persistent params
-    myCloudState.searchParams = {
-        query: query,
-        date: dRange,
-        dateStart: document.getElementById('myCloudDateStart').value,
-        dateEnd: document.getElementById('myCloudDateEnd').value,
-        size: sRange,
-        sizeMin: document.getElementById('myCloudSizeMin').value,
-        sizeMax: document.getElementById('myCloudSizeMax').value,
-        tag: tagFilter,
-        useIndex: contentCb ? contentCb.checked : false
-    };
-
-    const container = document.getElementById('myCloudSearchResults');
-    container.innerHTML = 
-    '<div class="myCloud-loading-container" style="padding:40px 0; color:var(--text-secondary);">' +
-        '<div class="myCloud-spinner dark"></div>' +
-        '<div>' + myCloud_LANG.searching + '</div>' +
-    '</div>';
-
-    const statusRight = document.getElementById('myCloudSearchStatusRight');
-    if (statusRight) statusRight.textContent = '';
-    const statusLeft = document.getElementById('myCloudSearchStatusLeft');
-    if (statusLeft) statusLeft.textContent = '';
-
-    const params = new URLSearchParams({
-        myCloud_action: 'search',
-        myCloud_key: myCloudState.key,
-        myCloud_token: myCloudCsrfToken,
-        query: query,
-        dir: myCloudState.currentDir,
-        content_search: useIndex,
-        
-        // Date Params
-        date_range: dRange,
-        custom_date_start: document.getElementById('myCloudDateStart').value,
-        custom_date_end:   document.getElementById('myCloudDateEnd').value,
-
-        // Size Params
-        size_range: sRange,
-        custom_size_min: document.getElementById('myCloudSizeMin').value,
-         custom_size_max: document.getElementById('myCloudSizeMax').value,
-         tag_filter: tagFilter
-    });
-
-    fetch('', { method: 'POST', body: params })
-        .then(myCloudCheckResponse)
-        .then(resp => {
-            if (resp.status === 'OK') {
-                myCloudState.searchResults = resp.data;
-                myCloudRenderSearchResultsTable(); 
-            } else {
-                container.innerHTML = 
-                '<div class="ce-flex-center" style="padding:20px; color:var(--danger); height:100%;">' +
-                    myCloud_LANG.error_prefix + ': ' + resp.msg +
-                '</div>';
-            }
-        })
-        .catch(err => {
-            container.innerHTML = '<div class="ce-flex-center" style="height:100%;">' + myCloud_LANG.request_failed + '</div>';
-        });
-}
-
-// Completely resets the search state and re-renders the empty dialog
-window.myCloudResetSearch = function() {
-    myCloudState.searchParams = { query: '', date: 'all', dateStart: '', dateEnd: '', size: 'all', sizeMin: '', sizeMax: '', tag: 'all', useIndex: true };
-    myCloudState.searchResults = [];
-    myCloudSearchSelection = null;
-    
-    document.getElementById('myCloudSearchInput').value = '';
-    document.getElementById('myCloudSearchDate').value = 'all';
-    document.getElementById('myCloudDateStart').value = '';
-    document.getElementById('myCloudDateEnd').value = '';
-    document.getElementById('myCloudSearchSize').value = 'all';
-    document.getElementById('myCloudSizeMin').value = '';
-    document.getElementById('myCloudSizeMax').value = '';
-    
-    const tagBtn = document.getElementById('myCloudSearchTagBtn');
-    if (tagBtn) {
-        tagBtn.dataset.value = 'all';
-        const plainLabel = typeof myCloud_LANG !== 'undefined' && myCloud_LANG.tag_any ? myCloud_LANG.tag_any : 'Any Tag';
-        document.getElementById('myCloudSearchTagLabel').innerHTML = plainLabel;
-    }
-    
-    window.myCloudIndexWanted = true;
-    if (typeof window.myCloudUpdateIndexCb === 'function') window.myCloudUpdateIndexCb();
-    myCloudToggleSearchOptions();
-    
-    const container = document.getElementById('myCloudSearchResults');
-    if (container) {
-        container.innerHTML = '<div class="ce-flex-center" style="padding:20px; color:var(--text-secondary); height:100%;">' + (typeof myCloud_LANG !== 'undefined' && myCloud_LANG.enter_criteria ? myCloud_LANG.enter_criteria : 'Enter search criteria') + '</div>';
-    }
-    myCloudUpdateSearchToolbar();
-    document.getElementById('myCloudSearchInput').focus();
-};
 
 // Toggles visibility of custom date/size inputs.
 // Triggered by dropdown changes.

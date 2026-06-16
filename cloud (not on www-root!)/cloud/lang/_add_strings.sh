@@ -5,7 +5,7 @@
 # CONFIGURATION
 # ==============================================================================
 
-TARGET_ANCHOR="link_expires"
+TARGET_ANCHOR="toggle_folders"
 
 # ==============================================================================
 # ARRAYS
@@ -13,34 +13,41 @@ TARGET_ANCHOR="link_expires"
 
 # 2. The Keys
 KEYS=(
-	"resend"
-	"rebuild_cache"
-	"toggle_folders"
+	"search_global"
+	"last_indexed"
+	"use_index"
+	"home"
+	"transfer"
+	"create"
+	"organize"
+	"modes"
+	"tools"
+	"utilities"
+	"admin"
 )
 
 declare -A TRANSLATIONS
 
-TRANSLATIONS[en]="Resend|Reload all mails|Toggle Folders"
-TRANSLATIONS[de]="Erneut senden|Alle E-Mails neu laden|Ordner umschalten"
-TRANSLATIONS[es]="Reenviar|Recargar todos los correos|Alternar carpetas"
-TRANSLATIONS[fr]="Renvoyer|Recharger tous les e-mails|Basculer les dossiers"
-TRANSLATIONS[it]="Invia di nuovo|Ricarica tutte le email|Alterna cartelle"
-TRANSLATIONS[pt]="Reenviar|Recarregar todos os e-mails|Alternar pastas"
-TRANSLATIONS[ru]="Отправить снова|Перезагрузить все письма|Переключить папки"
-TRANSLATIONS[tr]="Yeniden Gönder|Tüm postaları yeniden yükle|Klasörleri aç/kapat"
-TRANSLATIONS[zh-cn]="重新发送|重新 载所有邮件|切换文件夹"
-TRANSLATIONS[ja]="再送|すべてのメールを再読み込み|フォルダーの切り替え"
-TRANSLATIONS[ko]="재 송|모  메일 다시 불러오기|폴더  환"
-TRANSLATIONS[ar]="إعادة إرسال|إعادة تحميل جميع الرسائل|تبديل المجلدات"
-TRANSLATIONS[fa]="ارسال مجدد|بارگذاری مجدد تمام ایمیل‌ها|تغییر وضعیت پوشه‌ها"
-TRANSLATIONS[hi]="पुनः भेजें|सभी मेल को पुनः लोड करें|फोल्डर्स टॉगल करें"
-TRANSLATIONS[vi]="Gửi lại|Tải lại tất cả email|Chuyển đổi thư mục"
-TRANSLATIONS[uk]="Надіслати знову|Перезавантажити всі листи|Перемикання папок"
-TRANSLATIONS[bar]="Noamoi schicka|Alle E-Mails neu lodn|Ordner umschoidn"
-TRANSLATIONS[hes]="Nochemal schigge|Alle E-Mails neu lade|Ordner umschalte"
-TRANSLATIONS[lb]="Nach eng Kéier schécken|All E-Maile nei lueden|Ordner wiesselen"
-TRANSLATIONS[pcm]="Send am again|Reload all mails|Toggle folders"
-
+TRANSLATIONS[en]="Search entire cloud|Last updated:|Use Full-Text Index|Home|Transfer|Create & Edit|Organize|Workspaces|Tools|Utilities|Admin"
+TRANSLATIONS[de]="Gesamte Cloud durchsuchen|Zuletzt aktualisiert:|Volltextindex verwenden|Start|Übertragen|Erstellen & Bearbeiten|Organisieren|Arbeitsbereiche|Werkzeuge|Dienstprogramme|Admin"
+TRANSLATIONS[es]="Buscar en toda la nube|Última actualización:|Usar índice de texto completo|Inicio|Transferir|Crear y editar|Organizar|Espacios de trabajo|Herramientas|Utilidades|Admin"
+TRANSLATIONS[fr]="Rechercher dans tout le cloud|Dernière mise   jour :|Utiliser l'indexation plein texte|Accueil|Transférer|Créer et modifier|Organiser|Espaces de travail|Outils|Utilitaires|Admin"
+TRANSLATIONS[it]="Cerca in tutto il cloud|Ultimo aggiornamento:|Usa indice full-text|Home|Trasferisci|Crea e Modifica|Organizza|Aree di lavoro|Strumenti|Utilit |Amministratore"
+TRANSLATIONS[pt]="Pesquisar em toda a nuvem|Última atualização:|Usar índice de texto completo|Início|Transferir|Criar e Editar|Organizar|Espaços de trabalho|Ferramentas|Utilitários|Admin"
+TRANSLATIONS[ru]="Искать по всему облаку|Последнее обновление:|Использовать полнотекстовый индекс|Главная|Передача|Создать и изменить|Организовать| абочие области|Инструменты|Утилиты|Админ"
+TRANSLATIONS[tr]="Tüm bulutta ara|Son güncelleme:|Tam Metin Dizinini Kullan|Ana Sayfa|Aktar|Oluştur ve Düzenle|Düzenle|Çalışma Alanları|Araçlar|İzlenceler|Yönetici"
+TRANSLATIONS[zh-cn]="搜索整个云端|最后更新：|使用全文索引|主页| 输|创建与编辑|组织|工作区|工具|实用程序|管理员"
+TRANSLATIONS[ja]="クラウド全体を検索|最終更新：|フルテキストインデックスを使用|ホー |転送|作成と編集|整理|ワークスペース|ツール|ユーティリティ|管理"
+TRANSLATIONS[ko]="클라우드  체 검색|마지막 업데이트:| 체 텍스트 색인 사용|홈| 송|만들기 및 편집| 리|작업 공간|도구| 틸리티|관리자"
+TRANSLATIONS[ar]="البحث في السحابة بأكملها|آخر تحديث:|استخدام فهرس النص الكامل|الرئيسية|نقل|إنشاء وتعديل|تنظيم|مساحات العمل|أدوات|أدوات مساعدة|إدارة"
+TRANSLATIONS[fa]="جستجو در کل ابری|آخرین بروزرسانی:|استفاده از نمایه متن کامل|خانه|انتقال|ایجاد و ویرایش|سازماندهی|فضاهای کاری|ابزارها|برنامه‌های کاربردی|مدیریت"
+TRANSLATIONS[hi]="पूरे क्लाउड में खोजें|अंतिम अपडेट:|पूर्ण-पा  अनुक्रमणिका का उपयोग करें|होम|ट्रांसफर|बनाएं और संपादित करें|व्यवस्थित करें|कार्यस्थान|उपकरण|उपयोगिताएँ|व्यवस्थापक"
+TRANSLATIONS[vi]="Tìm kiếm to n bộ đám mây|Cập nhật lần cuối:|Sử dụng chỉ mục to n văn|Trang chủ|Chuyển giao|Tạo & Chỉnh sửa|Tổ chức|Không gian l m việc|Công cụ|Tiện ích|Quản trị viên"
+TRANSLATIONS[uk]="Шукати по всій хмарі|Останнє оновлення:|Використовувати повнотекстовий індекс|Головна|Передача|Створити та редагувати|Організувати| обочі області|Інструменти|Утиліти|Адмін"
+TRANSLATIONS[bar]="Ganze Cloud durchsuacha|Zletzt aktualisiert:|Volltextindex heanema|Start|Übertrong|Erstein & Bearbatn|Organisiern|Arbatsbereiche|Werkzeig|Dienstprogramme|Admin"
+TRANSLATIONS[hes]="Ganze Cloud durschsuche|Zuletzt aktualisiert:|Volltextindex nutze|Start|Überdraache|Erstelle & Bearweide|Organisiere|Arbeidsbereische|Werkszeusch|Dienstprogramme|Admin"
+TRANSLATIONS[lb]="Ganz Cloud duerchsichen|Zulescht aktualiséiert:|Volltextindex benotzen|Start|Iwwerdroen|Erstellen & Änneren|Organiséieren|Aarbechtsberäicher|Handwierksgeschir|Déngschtprogrammer|Admin"
+TRANSLATIONS[pcm]="Search entire cloud|Last updated:|Use Full-Text Index|Home|Transfer|Create & Edit|Organize|Workspaces|Tools|Utilities|Admin"
 
 #
 #

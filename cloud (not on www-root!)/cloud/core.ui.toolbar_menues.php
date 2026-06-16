@@ -11,6 +11,12 @@
  */
 ?><script>
 
+if (typeof myCloudSvg !== 'undefined') {
+    if (!myCloudSvg.share) myCloudSvg.share = '<svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>';
+    if (!myCloudSvg.share_list) myCloudSvg.share_list = '<svg viewBox="0 0 24 24"><path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/></svg>';
+    if (!myCloudSvg.help) myCloudSvg.help = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>';
+}
+
 function getActionStatus(action) {
     const st = myCloudState;
     let disabled = false, hidden = false, active = false;
@@ -31,6 +37,8 @@ function getActionStatus(action) {
     if (action === 'toggle_tree') matrixKey = 'treeview_button';
     if (action === 'view_toggle') matrixKey = 'iconview_button';
     if (action === 'change_vault_pwd' || action === 'fix_encryption') matrixKey = 'encrypt';
+	if (action === 'share' || action === 'share_list') matrixKey = 'share';
+	if (action === 'help') matrixKey = 'help';
 
     // 2. Centralized Matrix Enforcement (Instantly hides restricted buttons)
     // Exception: encrypt_dir has dynamic visibility to allow unlocking existing vaults for everyone
@@ -61,6 +69,18 @@ function getActionStatus(action) {
 	const isCurrentDirEncrypted = typeof myCloudCrypto !== 'undefined' && myCloudCrypto.isDirEncrypted(st.currentDir);
 	
     switch (action) {
+        case 'share':
+            if (typeof window.myCloudAction_Share !== 'function') return { disabled: true, hidden: true, active: false };
+            disabled = (selCount !== 1);
+            break;
+        case 'share_list':
+            if (typeof window.cxShowAllShares !== 'function') return { disabled: true, hidden: true, active: false };
+            disabled = false;
+            break;
+        case 'help':
+            if (typeof window.myCloudOpenHelp !== 'function') return { disabled: true, hidden: true, active: false };
+            disabled = false;
+            break;
 		case 'search':
 			disabled = isCurrentDirEncrypted;
 			hidden = isCurrentDirEncrypted;
@@ -139,8 +159,10 @@ function myCloudUpdateToolbarState() {
 
     const devKey = typeof myCloudGetCurrentDeviceKey === 'function' ? myCloudGetCurrentDeviceKey() : 'desktop';
     const config = (myCloudState.settings && myCloudState.settings[devKey]) ? myCloudState.settings[devKey] : {};
-    const hideDisabled = config.hideDisabled === true;
-
+    const toolbarEl = document.getElementById('myCloudToolbar');
+    const isStacked = toolbarEl && toolbarEl.classList.contains('ce-stacked-toolbar');
+    const hideDisabled = config.hideDisabled === true && (!isStacked || devKey === 'phone');
+	
     // Update Standard Buttons
     document.querySelectorAll('.myCloudToolbar > button[data-action]').forEach(function(btn) {
         const status = getActionStatus(btn.dataset.action);
@@ -169,6 +191,17 @@ function myCloudUpdateToolbarState() {
                 } else {
                     labelSpan.textContent = typeof myCloud_LANG !== 'undefined' && myCloud_LANG.encrypt_short ? myCloud_LANG.encrypt_short : 'Encrypt';
 				}
+            }
+        }
+    });
+
+    // Dynamic labeling for share
+    document.querySelectorAll('.myCloudToolbar button[data-action="share"], .ce-floating-item[data-action="share"], .ce-ribbon-sub-btn[data-action="share"]').forEach(function(btn) {
+        if (typeof window.cxSharedPaths !== 'undefined' && myCloudState.selectedFiles.length === 1) {
+            const isShared = window.cxSharedPaths.includes(myCloudState.selectedFiles[0]);
+            const labelSpan = btn.classList.contains('ce-ribbon-sub-btn') ? btn.querySelector('.ce-btn-text') : btn.querySelector('span:last-child');
+            if (labelSpan) {
+                labelSpan.textContent = isShared ? (typeof myCloud_LANG !== 'undefined' && myCloud_LANG.share_edit ? myCloud_LANG.share_edit : 'Edit Share') : (typeof myCloud_LANG !== 'undefined' && myCloud_LANG.share_item ? myCloud_LANG.share_item : 'Share');
             }
         }
     });
@@ -211,7 +244,7 @@ function myCloudUpdateToolbarState() {
     // Update Floating Menu if open
     const openMenu = document.getElementById('myCloudFloatingMenu');
     if (openMenu) {
-        openMenu.querySelectorAll('.ce-floating-item').forEach(function(btn) {
+        openMenu.querySelectorAll('.ce-ribbon-sub-btn, .ce-floating-item').forEach(function(btn) {
             const action = btn.dataset.action;
             if (action) {
                 const status = getActionStatus(action);
@@ -227,8 +260,6 @@ function myCloudUpdateToolbarState() {
             }
         });
         
-        const visibleItems = Array.from(openMenu.children).filter(function(el) { return el.style.display !== 'none'; });
-        if (visibleItems.length === 0 || (visibleItems.length === 1 && visibleItems[0].classList.contains('ce-ribbon-handle'))) myCloudCloseFloatingMenu();
     }
 
     // Update Gallery Toggle Availability
@@ -276,7 +307,8 @@ function myCloudUpdateToolbarState() {
 
 // Renders the floating ribbon menu for grouped actions.
 // Handles positioning, pinning, and item creation.
-function myCloudShowFloatingMenu(btn, items, createBtnFn, pinned) {
+// Expects `tabData` which contains the columns and rows configuration.
+function myCloudShowFloatingMenu(btn, tabData, createBtnFn, pinned) {
     if (typeof pinned === 'undefined') pinned = false;
     const existing = document.getElementById('myCloudFloatingMenu');
     
@@ -306,31 +338,73 @@ function myCloudShowFloatingMenu(btn, items, createBtnFn, pinned) {
         }, 300);
     };
 
-    let visibleCount = 0;
-
     const devKey = typeof myCloudGetCurrentDeviceKey === 'function' ? myCloudGetCurrentDeviceKey() : 'desktop';
     const config = (myCloudState.settings && myCloudState.settings[devKey]) ? myCloudState.settings[devKey] : {};
-    const hideDisabled = config.hideDisabled === true;
+    const toolbarEl = document.getElementById('myCloudToolbar');
+    const isStacked = toolbarEl && toolbarEl.classList.contains('ce-stacked-toolbar');
+    const hideDisabled = config.hideDisabled === true && (!isStacked || devKey === 'phone');
 
-    items.forEach(function(act) {
-        const status = getActionStatus(act);
-        if (status.hidden || (hideDisabled && status.disabled)) return;
+    const container = document.createElement('div');
+    container.className = 'ce-ribbon-popup-container';
+    let visibleCols = 0;
 
-        const itemBtn = createBtnFn(act);
-        itemBtn.classList.add('ce-floating-item');
-        itemBtn.dataset.action = act; 
-        itemBtn.disabled = status.disabled;
+    tabData.columns.forEach((col) => {
+        const colDiv = document.createElement('div');
+        colDiv.className = 'ce-ribbon-sub-col';
 
-        if (status.active && !status.disabled) {
-            itemBtn.classList.add('ce-force-active');
+        const header = document.createElement('div');
+        header.className = 'ce-ribbon-sub-header';
+        header.textContent = col.label;
+        colDiv.appendChild(header);
+
+        let visibleRows = 0;
+        col.rows.forEach(row => {
+            const rowDiv = document.createElement('div');
+            rowDiv.className = 'ce-ribbon-sub-row';
+            let visibleItems = 0;
+
+            row.forEach(itemConfig => {
+                if (itemConfig.type === 'divider') {
+                    const hDiv = document.createElement('div');
+                    hDiv.className = 'ce-ribbon-sub-h-divider';
+                    rowDiv.appendChild(hDiv);
+                    visibleItems++;
+                    return;
+                }
+                const act = itemConfig.act;
+                const status = getActionStatus(act);
+                if (status.hidden || (hideDisabled && status.disabled)) return;
+
+                const itemBtn = createBtnFn(act, itemConfig.type);
+                itemBtn.classList.add('ce-ribbon-sub-btn');
+                itemBtn.classList.add('ce-btn-type-' + itemConfig.type);
+                itemBtn.dataset.action = act;
+                itemBtn.disabled = status.disabled;
+                if (status.active && !status.disabled) itemBtn.classList.add('ce-force-active');
+
+                rowDiv.appendChild(itemBtn);
+                visibleItems++;
+            });
+
+            if (visibleItems > 0) {
+                colDiv.appendChild(rowDiv);
+                visibleRows++;
+            }
+        });
+
+        if (visibleRows > 0) {
+            if (visibleCols > 0) {
+                const divider = document.createElement('div');
+                divider.className = 'ce-ribbon-sub-divider';
+                container.appendChild(divider);
+            }
+            container.appendChild(colDiv);
+            visibleCols++;
         }
-
-        itemBtn.style.display = 'flex';
-        visibleCount++;
-        menu.appendChild(itemBtn);
     });
 
-    if (visibleCount === 0) return;
+    if (visibleCols === 0) return;
+    menu.appendChild(container);
 
     const handle = document.createElement('div');
     handle.className = 'ce-ribbon-handle';
@@ -449,34 +523,6 @@ function myCloudRenderToolbar() {
     
     toolbar.style.display = 'none';
 
-    const svgGroupTools = 
-    '<svg class="ce-group-svg" viewBox="0 0 70 32">' +
-       '<path class="ce-grp-icon" d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" transform="translate(7, 6) scale(0.75)"/>' +
-       '<path class="ce-grp-icon" d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" transform="translate(30, 6) scale(0.75)"/>' +
-       '<path class="ce-grp-arrow" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z" transform="translate(52, 6) scale(0.7)"/>' +
-    '</svg>';
-
-    const svgGroupEdit = 
-    '<svg class="ce-group-svg" viewBox="0 0 70 32">' +
-        '<path class="ce-grp-icon" d="M20 6h-8l-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-1 8h-3v3h-2v-3h-3v-2h3V9h2v3h3v2z" transform="translate(7, 6) scale(0.75)"/>' +
-        '<path class="ce-grp-icon" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" transform="translate(30, 6) scale(0.75)"/>' +
-        '<path class="ce-grp-arrow" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z" transform="translate(52, 6) scale(0.7)"/>' +
-    '</svg>';
-    
-    const svgGroupSelection = 
-    '<svg class="ce-group-svg" viewBox="0 0 70 32">' +
-        '<path class="ce-grp-icon" d="M18 7l-1.41-1.41-6.34 6.34 1.41 1.41L18 7zm4.24-1.41L11.66 16.17 7.48 12l-1.41 1.41L11.66 19l12-12-1.42-1.41zM.41 13.41L6 19l1.41-1.41L1.83 12 .41 13.41z" transform="translate(7, 6) scale(0.75)"/>' +
-        '<path class="ce-grp-icon" d="M14 12c0-1.1-.9-2-2-2s-2 .9-2 2 .9 2 2 2 2-.9 2-2zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" transform="translate(30, 6) scale(0.75)"/>' +
-        '<path class="ce-grp-arrow" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z" transform="translate(52, 6) scale(0.7)"/>' +
-    '</svg>';
-
-    const svgGroupActions = 
-    '<svg class="ce-group-svg" viewBox="0 0 70 32">' +
-        '<path class="ce-grp-icon" d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" transform="translate(7, 6) scale(0.75)"/>' +
-        '<path class="ce-grp-icon" d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" transform="translate(30, 6) scale(0.75)"/>' +
-        '<path class="ce-grp-arrow" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z" transform="translate(52, 6) scale(0.7)"/>' +
-    '</svg>';
-
     const svgFavoritesRibbon = 
     '<svg class="ce-group-svg" viewBox="0 0 50 32">' +
         '<path class="ce-grp-icon" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" transform="translate(15, 5) scale(0.9)"/>' +
@@ -531,6 +577,8 @@ function myCloudRenderToolbar() {
         newfile: myCloud_LANG.new_file || 'New File',
         encrypt_dir: myCloud_LANG.encrypt_short || 'Encrypt',
         change_vault_pwd: myCloud_LANG.change_vault_pwd || 'Change Vault Password',
+        share: myCloud_LANG.share_item || 'Share',
+        share_list: myCloud_LANG.share_all || 'Manage Shares',
         fix_encryption: myCloud_LANG.fix_encryption || 'Fix Encryption',
         copy: myCloud_LANG.copy,
         move: myCloud_LANG.move,
@@ -549,7 +597,7 @@ function myCloudRenderToolbar() {
         pdf_stack_menu: myCloud_LANG.pdf_stack || 'Stack PDFs'
     };
 
-    const createBtn = function(action) {
+    const createBtn = function(action, type = 'flat') {
         const btn = document.createElement('button');
         let label = translations[action] || action;
         
@@ -569,7 +617,17 @@ function myCloudRenderToolbar() {
 		if (action === 'change_vault_pwd') iconHtml = '<svg viewBox="0 0 24 24" style="fill:currentColor;"><path d="M2 16v2c2.78 0 5.42-.94 7.6-2.58l-1.5-1.5C6.46 15.19 4.3 16 2 16zm6.83-3.66l2.12-2.12c-1.63-1.63-3.8-2.54-6.04-2.54v2c1.78 0 3.48.71 4.75 1.98l-1.5 1.5 3.33 3.33L13.83 13l-1.5-1.5c-1.15 1.15-2.6 1.83-4.16 1.83v-2c1.02 0 1.99-.44 2.66-1.16zM20 4H4c-1.1 0-2 .9-2 2v4h2V6h16v12h-8v2h8c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2z"/></svg>';
         if (action === 'fix_encryption') iconHtml = '<svg viewBox="0 0 24 24" style="fill:currentColor;"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>';
 
-        btn.innerHTML = '<span class="myCloudIcon">' + iconHtml + '</span><span>' + label + '</span>';
+        if (type === 'icon') {
+            btn.innerHTML = '<span class="myCloudIcon">' + iconHtml + '</span>';
+            btn.title = label;
+        } else if (type === 'flat') {
+            btn.innerHTML = '<span class="myCloudIcon">' + iconHtml + '</span><span>' + label + '</span>';
+            btn.title = label;
+        } else {
+            btn.innerHTML = '<span class="myCloudIcon">' + iconHtml + '</span><span class="ce-btn-text">' + label + '</span>';
+            btn.title = label;
+        }
+
         btn.dataset.action = action;
         
         if (action === 'toggle_tree') {
@@ -598,12 +656,21 @@ function myCloudRenderToolbar() {
         return btn;
     };
 
-    const createRibbon = function(label, visualSvg, subActions, tooltip, customRenderer) {
+    const createRibbon = function(tabData, tooltip, customRenderer) {
         const btn = document.createElement('button');
         btn.className = 'ce-ribbon-btn'; 
         btn.title = tooltip; 
-        btn.innerHTML = visualSvg + '<span class="ce-ribbon-label">' + label + '</span>';
-        btn.dataset.children = JSON.stringify(subActions);
+        btn.innerHTML = '<span class="ce-ribbon-label">' + tabData.label + '</span>';
+        window.myCloudRibbonData = window.myCloudRibbonData || {};
+        window.myCloudRibbonData[tabData.id] = tabData;
+        btn.dataset.tabId = tabData.id;
+        
+        // Maintain backward compatibility for the state updater logic
+        let flatActions = [];
+        tabData.columns.forEach(c => c.rows.forEach(r => r.forEach(i => {
+            if (i.act) flatActions.push(i.act);
+        })));
+        btn.dataset.children = JSON.stringify(flatActions);
 
         btn.onmouseenter = function() {
             if (btn.disabled) return;
@@ -612,8 +679,8 @@ function myCloudRenderToolbar() {
             const existing = document.getElementById('myCloudFloatingMenu');
             if (existing && existing.dataset.owner === btn.innerHTML && existing.dataset.pinned === 'true') return;
             
-            myCloudShowFloatingMenu(btn, subActions, customRenderer || createBtn, false);
-        };
+            myCloudShowFloatingMenu(btn, window.myCloudRibbonData[btn.dataset.tabId], customRenderer || createBtn, false);
+    };
 
         btn.onmouseleave = function() {
             const m = document.getElementById('myCloudFloatingMenu');
@@ -633,93 +700,221 @@ function myCloudRenderToolbar() {
                 if (existing.dataset.pinned === 'true') myCloudCloseFloatingMenu();
                 else existing.dataset.pinned = 'true';
             } else {
-                myCloudShowFloatingMenu(btn, subActions, customRenderer || createBtn, true);
+                myCloudShowFloatingMenu(btn, window.myCloudRibbonData[btn.dataset.tabId], customRenderer || createBtn, true);
             }
         };
         return btn;
     };
 
-    if (isStacked) {
-        if (toolsActions.length > 0) {
-            toolbar.appendChild(createRibbon(
-                myCloud_LANG.view, 
-                svgGroupTools, 
-                toolsActions, 
-                myCloud_LANG.ribbon_view_tooltip
-            ));
-        }
-        
-        if (editActions.length > 0) {
-            toolbar.appendChild(createRibbon(
-                myCloud_LANG.edit,
-                svgGroupEdit, 
-                editActions, 
-                myCloud_LANG.ribbon_edit_tooltip
-            ));
-        }
-        
-        if (selectionActions.length > 0) {
-            toolbar.appendChild(createRibbon(
-                myCloud_LANG.selection, 
-                svgGroupSelection,
-                selectionActions,
-                myCloud_LANG.ribbon_select_tooltip,
-                function(act) {
-                    const btn = createBtn(act);
-                    const map = { 
-                        select_all: myCloud_LANG.all, 
-                        invert_selection: myCloud_LANG.invert, 
-                        clear_selection: myCloud_LANG.clear 
-                    };
-                    if (map[act]) btn.querySelector('span:last-child').textContent = map[act];
-                    return btn;
+    // FULL HIERARCHICAL RIBBON STRUCTURE
+    // FULL HIERARCHICAL RIBBON STRUCTURE
+    const ribbonTabs = [
+        {
+            id: 'tab_home',
+            label: myCloud_LANG.actions || 'Actions',
+            tooltip: myCloud_LANG.ribbon_edit_tooltip || 'Actions',
+            columns: [
+                {
+                    label: myCloud_LANG.open || 'Open',
+                    rows: [
+                        [{ act: 'preview', type: 'full' }], 
+                        [{ act: 'edit_file', type: 'full' }],
+                        [{ act: 'print', type: 'full' }], 
+                        [{ type: 'divider' }],
+                        [{ act: 'pdf_stack_menu', type: 'full' }]
+                    ]
+                },
+                {
+                    label: myCloud_LANG.file_actions || 'File Actions',
+                    rows: [
+                        [{ act: 'search', type: 'full' }],
+                        [{ type: 'divider' }],
+                        [{ act: 'rename', type: 'half' }, { act: 'copy', type: 'half' }],
+                        [{ act: 'move', type: 'half' }, { act: 'delete', type: 'half' }],
+                        [{ act: 'duplicate', type: 'full' }]
+                    ]
+                },
+                {
+                    label: myCloud_LANG.transfer || 'Transfer',
+                    rows: [
+                        [{ act: 'upload', type: 'full' }],
+                        [{ act: 'download', type: 'full' }]
+                    ]
+                },
+                {
+                    label: myCloud_LANG.new || 'New',
+                    rows: [
+                        [{ act: 'newfolder', type: 'full' }], 
+                        [{ act: 'newfile', type: 'full' }]
+                    ]
                 }
-            ));
+            ]
+        },
+        {
+            id: 'tab_view',
+            label: myCloud_LANG.view || 'View',
+            tooltip: myCloud_LANG.ribbon_view_tooltip || 'View',
+            columns: [
+                {
+                    label: myCloud_LANG.selection || 'Selection',
+                    rows: [
+                        [{ act: 'select_all', type: 'full' }],
+                        [{ act: 'clear_selection', type: 'full' }], 
+                        [{ act: 'invert_selection', type: 'full' }]
+                    ]
+                },
+                {
+                    label: myCloud_LANG.layout || 'Layout',
+                    rows: [
+                        [{ act: 'view_toggle', type: 'full' }],
+                        [{ act: 'toggle_tree', type: 'full' }]
+                    ]
+                },
+                {
+                    label: myCloud_LANG.modes || 'Workspaces',
+                    rows: [
+                        [{ act: 'commander_toggle', type: 'full' }],
+                        [{ act: 'office_toggle', type: 'full' }]
+                    ]
+                },
+                {
+                    label: myCloud_LANG.view || 'View',
+                    rows: [
+                        [{ act: 'refresh', type: 'full' }]
+                    ]
+                }
+            ]
+        },
+        {
+            id: 'tab_share',
+            label: myCloud_LANG.share_btn || 'Share',
+            tooltip: myCloud_LANG.share_btn || 'Share',
+            columns: [
+                {
+                    label: myCloud_LANG.share_btn || 'Share',
+                    rows: [
+                        [{ act: 'share', type: 'full' }],
+                        [{ act: 'share_list', type: 'full' }]
+                    ]
+                }
+            ]
+        },
+        {
+            id: 'tab_security',
+            label: myCloud_LANG.security || 'Security',
+            tooltip: myCloud_LANG.security || 'Security',
+            columns: [
+                {
+                    label: myCloud_LANG.security || 'Security',
+                    rows: [
+                        [{ act: 'encrypt_dir', type: 'full' }],
+                        [{ act: 'change_vault_pwd', type: 'full' }],
+                        [{ act: 'fix_encryption', type: 'full' }]
+                    ]
+                }
+            ]
         }
-        
-        if (actionActions.length > 0) {
-            toolbar.appendChild(createRibbon(
-                myCloud_LANG.actions,
-                svgGroupActions,
-                actionActions,
-                myCloud_LANG.ribbon_actions_tooltip
-            ));
-        }
-        
-    } else {
-        let needsDivider = false;
-        if (toolsActions.length > 0) {
-            toolsActions.forEach(function(a) { toolbar.appendChild(createBtn(a)); });
-            needsDivider = true;
-        }
-        
-        if (editActions.length > 0) {
-            if (needsDivider) { const d = document.createElement('div'); d.className = 'myCloudDivider'; toolbar.appendChild(d); }
-            editActions.forEach(function(a) { toolbar.appendChild(createBtn(a)); });
-            needsDivider = true;
-        }
-        
-        if (selectionActions.length > 0) {
-            if (needsDivider) { const d = document.createElement('div'); d.className = 'myCloudDivider'; toolbar.appendChild(d); }
-            selectionActions.forEach(function(a) { toolbar.appendChild(createBtn(a)); });
-            needsDivider = true;
-        }
+    ];
 
-        if (standardActions.length > 0) {
-            if (needsDivider) { const d = document.createElement('div'); d.className = 'myCloudDivider'; toolbar.appendChild(d); }
-            standardActions.forEach(function(a) { toolbar.appendChild(createBtn(a)); });
+    // Dynamically inject Terminal for Admins as its own tab (since the old Tools tab was repurposed)
+    if (typeof myCloudUserRole !== 'undefined' && myCloudUserRole === 'admin_mode' && window.myCloudActionAllowed('terminal')) {
+        ribbonTabs.push({
+            id: 'tab_admin',
+            label: 'Admin',
+            tooltip: 'Admin Tools',
+            columns: [
+                {
+                    label: 'System',
+                    rows: [[{ act: 'terminal', type: 'full' }]]
+                }
+            ]
+        });
+    }
+
+    // Dynamically inject Terminal for Admins into the Tools tab
+    if (typeof myCloudUserRole !== 'undefined' && myCloudUserRole === 'admin_mode' && window.myCloudActionAllowed('terminal')) {
+        const toolsTab = ribbonTabs.find(t => t.id === 'tab_tools');
+        if (toolsTab) {
+            toolsTab.columns.push({
+                label: 'Admin',
+                rows: [[{ act: 'terminal', type: 'full' }]]
+            });
         }
     }
 
-    const divEnd = document.createElement('div'); divEnd.className = 'myCloudDivider';
-    toolbar.appendChild(divEnd);
+    if (myCloudUserRole === 'admin_mode' && window.myCloudActionAllowed('terminal')) {
+        const toolsTab = ribbonTabs.find(t => t.id === 'tab_tools');
+        if (toolsTab) {
+            toolsTab.columns.push({
+                label: myCloud_LANG.admin || 'Admin',
+                rows: [[{ act: 'terminal', type: 'full' }]]
+            });
+        }
+    }
+
+
+    if (isStacked) {
+        toolbar.classList.add('ce-stacked-toolbar');
+		ribbonTabs.forEach(tab => {
+            let hasVisible = false;
+            tab.columns.forEach(col => {
+                col.rows.forEach(row => {
+                    row.forEach(item => {
+                        if (item.act) {
+                            const status = getActionStatus(item.act);
+                            if (!status.hidden && window.myCloudActionAllowed(item.act)) hasVisible = true;
+                        }
+                    });
+                });
+            });
+            if (hasVisible) {
+                toolbar.appendChild(createRibbon(tab, tab.tooltip, createBtn));
+            }
+        });
+        
+    } else {
+        toolbar.classList.remove('ce-stacked-toolbar');
+		let needsDivider = false;
+        ribbonTabs.forEach(tab => {
+            let tabHasItems = false;
+            if (needsDivider) { const d = document.createElement('div'); d.className = 'myCloudDivider'; toolbar.appendChild(d); needsDivider = false; }
+
+            tab.columns.forEach(col => {
+                col.rows.forEach(row => {
+                    row.forEach(item => {
+                        if (item.type === 'divider') {
+                            if (tabHasItems) needsDivider = true;
+                            return;
+                        }
+                        const status = getActionStatus(item.act);
+                        if (!status.hidden && window.myCloudActionAllowed(item.act)) {
+                            if (needsDivider) {
+                                const d = document.createElement('div');
+                                d.className = 'myCloudDivider';
+                                toolbar.appendChild(d);
+                                needsDivider = false;
+                            }
+                            toolbar.appendChild(createBtn(item.act, 'flat'));
+                            tabHasItems = true;
+                        }
+                    });
+                });
+            });
+            if (tabHasItems) needsDivider = true;
+        });
+    }
 
     // --- FAVORITES BUTTON ---
     const btnFav = document.createElement('button');
     btnFav.id = 'ceFavoritesBtn';
-    btnFav.className = 'ce-ribbon-btn';
     btnFav.title = myCloud_LANG.fav_title;
-    btnFav.innerHTML = svgFavoritesRibbon + '<span class="ce-ribbon-label">' + myCloud_LANG.fav_title + '</span>';
+    if (isStacked) {
+        btnFav.className = 'ce-ribbon-btn';
+        btnFav.innerHTML = '<span class="myCloudIcon">' + (myCloudSvg.star_filled || myCloudSvg.star || '★') + '</span><span class="ce-ribbon-label">' + myCloud_LANG.fav_title + '</span>';
+    } else {
+        btnFav.className = 'ce-ribbon-btn';
+        btnFav.innerHTML = svgFavoritesRibbon + '<span class="ce-ribbon-label">' + myCloud_LANG.fav_title + '</span>';
+    }
     
     btnFav.onclick = function(e) {
         e.stopPropagation();
@@ -740,17 +935,27 @@ function myCloudRenderToolbar() {
        }, 300);
     };
 
-    if (window.myCloudActionAllowed('fav_toggle')) {
-        toolbar.appendChild(btnFav);
+    window._ceTempFavBtn = null;
+	if (window.myCloudActionAllowed('fav_toggle')) {
+        window._ceTempFavBtn = btnFav;
     }
     
     if (window.myCloudActionAllowed('settings')) {
         const btnSet = document.createElement('button');
         btnSet.id = 'ceSettingsBtn';
-        btnSet.className = 'ce-ribbon-btn'; 
         btnSet.dataset.action = 'settings';
         btnSet.title = myCloud_LANG.options;
-        btnSet.innerHTML = svgSettingsRibbon + '<span class="ce-ribbon-label">' + myCloud_LANG.options + '</span>';
+        const svgSettingsRibbon = 
+        '<svg class="ce-group-svg" viewBox="0 0 50 32">' +
+            '<path class="ce-grp-icon" d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" transform="translate(13, 5) scale(0.9)"/>' +
+        '</svg>';
+		if (isStacked) {
+            btnSet.className = 'ce-ribbon-btn';
+            btnSet.innerHTML = '<span class="myCloudIcon"><svg viewBox="0 0 24 24"><polygon points="14 2 18 6 7 17 3 17 3 13 14 2"></polygon><line x1="3" y1="22" x2="21" y2="22"></line></svg></span><span class="ce-ribbon-label">' + myCloud_LANG.options + '</span>';
+        } else {
+            btnSet.className = 'ce-ribbon-btn';
+            btnSet.innerHTML = svgSettingsRibbon + '<span class="ce-ribbon-label">' + myCloud_LANG.options + '</span>';
+        }
         
         btnSet.onclick = function(e) { 
             e.stopPropagation(); 
@@ -758,8 +963,52 @@ function myCloudRenderToolbar() {
             myCloudShowSettings(); 
         };
     
-        toolbar.appendChild(btnSet);
+        window._ceTempSettingsBtn = btnSet;
     }
+
+    // --- HELP BUTTON ---
+    window._ceTempHelpBtn = null;
+	if (window.myCloudActionAllowed('help') && typeof window.myCloudOpenHelp === 'function') {
+        const btnHelp = document.createElement('button');
+        btnHelp.id = 'btnHelp';
+        btnHelp.dataset.action = 'help';
+        btnHelp.title = myCloud_LANG.help_tooltip || 'Help';
+if (isStacked) {
+            btnHelp.className = 'ce-ribbon-btn';
+            btnHelp.innerHTML = '<span class="myCloudIcon" style="width: 24px !important; height: 24px !important;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg></span><span class="ce-ribbon-label">' + (myCloud_LANG.help_btn || 'Help') + '</span>';
+		} else {
+            btnHelp.className = 'ce-ribbon-btn';
+            btnHelp.innerHTML = '<div class="myCloudIcon" style="width:34px; height:34px; margin-bottom:-2px;"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/></svg></div><span class="ce-ribbon-label">' + (myCloud_LANG.help_btn || 'Help') + '</span>';
+		}
+        
+        btnHelp.onclick = function(e) { 
+            e.stopPropagation(); 
+            if (window.myCloudMenuTimer) clearTimeout(window.myCloudMenuTimer);
+            window.myCloudOpenHelp(); 
+        };
+    
+        window._ceTempHelpBtn = btnHelp;
+    }
+
+    // Append utility buttons with a flex spacer if stacked
+    if (isStacked) {
+        const spacer = document.createElement('div');
+        spacer.style.flex = '1';
+        toolbar.appendChild(spacer);
+        if (window._ceTempFavBtn || window._ceTempSettingsBtn || window._ceTempHelpBtn) {
+            const divEnd = document.createElement('div'); divEnd.className = 'myCloudDivider ce-stacked-divider';
+            toolbar.appendChild(divEnd);
+        }
+    } else {
+        const divEnd = document.createElement('div'); divEnd.className = 'myCloudDivider';
+        toolbar.appendChild(divEnd);
+    }
+	if (window._ceTempFavBtn) toolbar.appendChild(window._ceTempFavBtn);
+    if (window._ceTempSettingsBtn) toolbar.appendChild(window._ceTempSettingsBtn);
+    if (window._ceTempHelpBtn) toolbar.appendChild(window._ceTempHelpBtn);
+    delete window._ceTempFavBtn;
+	delete window._ceTempSettingsBtn;
+    delete window._ceTempHelpBtn;
 
     myCloudUpdateToolbarState();
     // Show toolbar only after building is fully complete and state is updated
@@ -790,6 +1039,7 @@ function myCloudHandleToolbarClick(action) {
     if (action === 'toggle_tree') matrixKey = 'treeview_button';
     if (action === 'view_toggle') matrixKey = 'iconview_button';
     if (action === 'change_vault_pwd' || action === 'fix_encryption') matrixKey = 'encrypt';
+	if (action === 'share' || action === 'share_list') matrixKey = 'share';
 
     if (action !== 'encrypt_dir' && !window.myCloudActionAllowed(matrixKey)) return;
     if (action === 'office_toggle' && !window.myCloudActionAllowed('preview')) return;
@@ -838,6 +1088,8 @@ function myCloudHandleToolbarClick(action) {
         case 'move': myCloudAction_CopyMove(true); break;
         case 'upload': myCloudTriggerUpload(); break;
 		case 'select_all': myCloudAction_SelectAll(); break;
+        case 'share': if (typeof window.myCloudAction_Share === 'function') window.myCloudAction_Share(); break;
+        case 'share_list': if (typeof window.cxShowAllShares === 'function') window.cxShowAllShares(); break;
 		case 'terminal': myCloudToggleTerminal(); break;
         case 'invert_selection': myCloudAction_InvertSelection(); break;
         case 'clear_selection': myCloudAction_ClearSelection(); break;
@@ -2294,6 +2546,7 @@ function myCloudShowContextMenu(e, item, isTree) {
         { label: myCloud_LANG.pdf_tools || 'PDF Toolkit...', icon: '<svg viewBox="0 0 24 24"><path d="M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z" fill="currentColor"/></svg>', act: 'pdf_toolkit', show: ext === 'pdf' && !isMulti && !isRecycleBin && window.myCloudActionAllowed('pdf_tools') && !isInsideZip },
         { label: myCloud_LANG.pdf_combine_images || 'Combine to PDF', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><circle cx="10" cy="13" r="2"/><polyline points="6 17 11 12 18 19"/></svg>', act: 'pdf_combine_images', show: isMulti && st.selectedFiles.every(f => { const px = f.toLowerCase().split('.').pop(); return px === 'jpg' || px === 'jpeg' || px === 'png'; }) && !isRecycleBin && window.myCloudActionAllowed('pdf_combine_images') && !isInsideZip },
         
+        { label: myCloud_LANG.share_btn || 'Share', icon: myCloudSvg.share || '', act: 'share', show: !isMulti && !isInsideZip && !isRecycleBin && typeof window.myCloudAction_Share === 'function' && window.myCloudActionAllowed('share') },
         { label: myCloud_LANG.edit || 'Edit', icon: myCloudSvg.edit_file, act: 'edit_file', show: isEditable && !isMulti && !isRecycleBin && window.myCloudActionAllowed('edit_file') },
         { label: myCloud_LANG.preview, icon: myCloudSvg.preview, act: 'preview', show: isPreviewable && !isMulti && !isRecycleBin && window.myCloudActionAllowed('preview') },
         { label: myCloud_LANG.print || 'Print', icon: '<svg viewBox="0 0 24 24" style="fill:#444"><path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-2-9H7v3h10V3z"/></svg>', act: 'print', show: (isPrintable || allStackable) && !isRecycleBin && window.myCloudActionAllowed('print') },
@@ -2335,6 +2588,9 @@ function myCloudShowContextMenu(e, item, isTree) {
             case 'duplicate': myCloudAction_Duplicate(item.name); break;
 			case 'encrypt_dir': myCloudAction_EncryptPrompt(item.name); break;
 			case 'change_vault_pwd': myCloudAction_ChangeVaultPassword(item.name); break;
+			case 'help': if (typeof window.myCloudOpenHelp === 'function') window.myCloudOpenHelp(); break;
+            case 'share': if(typeof window.myCloudAction_Share === 'function') window.myCloudAction_Share(item.name); break;
+            case 'share_list': if(typeof window.cxShowAllShares === 'function') window.cxShowAllShares(); break;
             case 'rename':   myCloudAction_Rename(); break;
             case 'permissions': if(typeof myCloudAction_Permissions === 'function') myCloudAction_Permissions(); break;
             case 'copy':     myCloudAction_CopyMove(false); break;

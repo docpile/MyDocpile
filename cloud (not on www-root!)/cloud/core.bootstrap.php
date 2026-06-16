@@ -126,7 +126,10 @@ window.addEventListener('beforeinstallprompt', (e) => {
  // [CONFIG] OAuth Fixed Redirect URI override
  window.myCloudOAuthDomain = <?php echo !empty($GLOBALS['cloud_oauth_my_domain']) ? json_encode($GLOBALS['cloud_oauth_my_domain']) : 'null'; ?>;
 
- // Inject Full Config map
+ // [CONFIG] Mail Only mode flag
+ window.myCloudIsMailOnly = <?php echo (!empty($isMailOnly) || !empty($GLOBALS['isMailOnly'])) ? 'true' : 'false'; ?>;
+
+// Inject Full Config map
  const myCloudCloudConfig = <?php echo json_encode($userCloudData); ?>;
 
  // Global click listener to hide context menu
