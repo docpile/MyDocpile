@@ -189,6 +189,8 @@ function detect_php_binary() {
     msg_info "Detecting correct PHP executable for version $PHP_VERSION..."
     if command -v plesk >/dev/null 2>&1; then
         PHP_BIN="/opt/plesk/php/$PHP_VERSION/bin/php"
+    elif [ -d "/usr/local/ispconfig" ] && [ -x "/opt/php-$PHP_VERSION/bin/php" ]; then
+        PHP_BIN="/opt/php-$PHP_VERSION/bin/php"
     else
         if command -v "php$PHP_VERSION" >/dev/null 2>&1; then
             PHP_BIN=$(command -v "php$PHP_VERSION")
@@ -255,6 +257,18 @@ function gather_configuration() {
         wwwuser=${DETECTED_USER:-$main_domain}
         DETECTED_USER=${wwwuser:-$DEFAULT_USER}
         DETECTED_GROUP=${DETECTED_GROUP:-$DEFAULT_GROUP}
+
+    elif [ -d "/usr/local/ispconfig" ]; then
+        msg_info "ISPConfig detected."
+        DEFAULT_WWW="/var/www/$main_domain/web"
+        if [ -d "$DEFAULT_WWW" ]; then
+            DETECTED_USER=$(stat -c '%U' "$DEFAULT_WWW" 2>/dev/null)
+            DETECTED_GROUP=$(stat -c '%G' "$DEFAULT_WWW" 2>/dev/null)
+        else
+            msg_warn "Web directory not found at $DEFAULT_WWW. Assuming defaults."
+            DETECTED_USER=$DEFAULT_USER
+            DETECTED_GROUP=$DEFAULT_GROUP
+        fi
 
     else
         msg_info "Assuming standard Linux environment."
