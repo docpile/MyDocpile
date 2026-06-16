@@ -218,11 +218,11 @@ The system expects several config.php variables to be defined. Most of them are 
 
     `git clone https://github.com/docpile/MyDocpile.git`
    
-6. then execute the file install.sh:
+6. then execute the file install.sh (the script already knows Plesk and ISPconfig installations and tries to prefill your respective paths, users and groups for you):
 
     `cd ./MyDocpile`
 
-     `bash ./install.sh`
+    `bash ./install.sh`
 
 7. Follow the on-screen instructions. 
 8. Add the open_basedir as requested by the installation and restart PHP.
