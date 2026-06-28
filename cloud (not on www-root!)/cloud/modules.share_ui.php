@@ -145,9 +145,9 @@
                     
                     const link = (typeof cloud_share_url !== 'undefined' ? cloud_share_url : (location.protocol + '//' + location.host + location.pathname)) + '?cloudshare=' + (existing ? existing.guid : '');
                     if (existing) {
-                        cxRenderManage(fullPath, link, existing.guid, existing.expires, existing.has_pass, existing.permission || 'read', isDir, existing.max_downloads || 0, false, existing.alias || '');
+                        cxRenderManage(fullPath, link, existing.guid, existing.expires, existing.has_pass, existing.permission || 'read', isDir, existing.max_downloads || 0, false, existing.alias || '', existing.readme_pos || 'bottom');
                     } else {
-                        cxRenderManage(fullPath, '', null, 'Never', false, 'read', isDir, 0, false, '');
+                        cxRenderManage(fullPath, '', null, 'Never', false, 'read', isDir, 0, false, '', 'bottom');
                     }
                 }).catch((err) => { 
                     console.error("Share Fetch Error:", err);
@@ -195,7 +195,7 @@
                             '<td style="text-align:center">' + (s.has_pass ? '<span class="cx-color-muted" style="display:inline-flex; align-items:center;" title="' + (myCloud_LANG.share_password || 'Password') + '"><div style="width:16px; height:16px;">' + myCloudSvg.lock + '</div></span>' : '<span style="color:var(--border-strong, #ddd); font-size:16px;">&minus;</span>') + '</td>' +
                             '<td style="text-align:right; white-space:nowrap;">' +
                                  '<button class="cx-action-btn" style="display:inline-flex; margin-right:10px; vertical-align:middle; width: 20px; height: 20px; padding-top: none; margin-top: -11px !important;  " title="' + (myCloud_LANG.share_link_standard || 'Link') + '" onclick="cxCopyLink(\'' + safe(fullLink) + '\')">' + myCloudSvg.copy + '</button>' +
-                                 '<button class="cx-list-icon-btn cx-edit-btn" title="Edit" onclick="cxRenderManage(\'' + safe(s.name) + '\', \'' + safe(fullLink) + '\', \'' + safe(s.guid) + '\', \'' + safe(s.expires) + '\', ' + s.has_pass + ', \'' + safe(s.permission) + '\', ' + (s.is_dir ? 'true' : 'false') + ', ' + s.max_downloads + ', true, \'' + safe(s.alias||'') + '\')">' + myCloudSvg.edit + '</button>' +
+                                 '<button class="cx-list-icon-btn cx-edit-btn" title="Edit" onclick="cxRenderManage(\'' + safe(s.name) + '\', \'' + safe(fullLink) + '\', \'' + safe(s.guid) + '\', \'' + safe(s.expires) + '\', ' + s.has_pass + ', \'' + safe(s.permission) + '\', ' + (s.is_dir ? 'true' : 'false') + ', ' + s.max_downloads + ', true, \'' + safe(s.alias||'') + '\', \'' + safe(s.readme_pos||'bottom') + '\')">' + myCloudSvg.edit + '</button>' +
                                  '<button class="cx-list-icon-btn cx-del-btn" title="Delete" onclick="cxDelete(\'' + safe(s.guid) + '\', true)">' + myCloudSvg.trash + '</button>' +
                             '</td>' +
                         '</tr>';
@@ -266,7 +266,7 @@
             }
         };
 
-        window.cxRenderManage = function(name, link, guid = null, currentExpires = 'Never', hasPassword = false, currentPermission = 'read', isDir = false, maxDownloads = 0, fromList = false, customName = '') {
+        window.cxRenderManage = function(name, link, guid = null, currentExpires = 'Never', hasPassword = false, currentPermission = 'read', isDir = false, maxDownloads = 0, fromList = false, customName = '', readmePos = 'bottom') {
             const isNew = !guid;
             const directLink = link ? link + (link.includes('?') ? '&' : '?') + 'direct=1' : '';
             const today = new Date().toISOString().split('T')[0];
@@ -353,6 +353,15 @@
                             '</select>' +
                             permHelp +
                         '</div>' +
+                        (isDir ? 
+                        '<div class="cx-share-group">' +
+                            '<label>README.md Display</label>' +
+                            '<select id="cxReadmePos" class="cx-share-input">' +
+                                '<option value="bottom" ' + (readmePos === 'bottom' ? 'selected' : '') + '>Bottom of file list (Default)</option>' +
+                                '<option value="top" ' + (readmePos === 'top' ? 'selected' : '') + '>Top of file list</option>' +
+                                '<option value="hidden" ' + (readmePos === 'hidden' ? 'selected' : '') + '>Hidden</option>' +
+                            '</select>' +
+                        '</div>' : '') +
                         '<div class="cx-share-group">' +
                             '<label>' + myCloud_LANG.share_password + ' ' + (hasPassword ? '<span class="cx-color-red">(' + myCloud_LANG.share_pass_protected + ')</span>' : '') + '</label>' +
                             '<input type="text" id="cxPass" class="cx-share-input" ' +
@@ -427,6 +436,7 @@
             const perm = document.getElementById('cxPermission').value;
             const pass = document.getElementById('cxPass').value.trim();
             const maxDL = document.getElementById('cxMaxDL').value;
+            const readmePos = document.getElementById('cxReadmePos') ? document.getElementById('cxReadmePos').value : 'bottom';
             const hasExisting = document.getElementById('cxHasExistingPass')?.value === '1';
             const fromList = document.getElementById('cxFromList')?.value === '1';
 
@@ -444,7 +454,8 @@
                 expire_date: document.getElementById('cxCustomDate').value,
                 max_downloads: maxDL,
                 password: pass,
-                permission: perm
+                permission: perm,
+                readme_pos: readmePos
             }, function(res) {
                 cxSetLoading(btn, false);
                 if(res.status === 'OK') {
@@ -469,6 +480,7 @@
             var perm = document.getElementById('cxPermission').value;
             var pass = document.getElementById('cxPass').value.trim();
             var maxDL = document.getElementById('cxMaxDL').value;
+            var readmePos = document.getElementById('cxReadmePos') ? document.getElementById('cxReadmePos').value : 'bottom';
             
             if ((perm === 'modify' || perm === 'upload') && !pass) {
                 cxAlert(myCloud_LANG.share_security_title, myCloud_LANG.share_security_msg);
@@ -484,7 +496,8 @@
                 expire_date: document.getElementById('cxCustomDate').value,
                 max_downloads: maxDL,
                 password: pass,
-                permission: perm
+                permission: perm,
+                readme_pos: readmePos
             }, function(res) {
                 cxSetLoading(btn, false);
                 if(res.status === 'OK') {
@@ -495,7 +508,7 @@
                         cxShareViaEmail(displayName, res.link);
                     } else {
                         cxToast(myCloud_LANG.share_copied);
-                        cxRenderManage(decodedPath.split('/').pop(), res.link, res.guid, res.expires || 'Never', !!res.password, res.permission || 'read', false, res.max_downloads);
+                        cxRenderManage(decodedPath.split('/').pop(), res.link, res.guid, res.expires || 'Never', !!res.password, res.permission || 'read', false, res.max_downloads, false, res.alias || '', res.readme_pos || 'bottom');
                     }
                 } else {
                     cxAlert(myCloud_LANG.error_lbl, res.msg);

@@ -3247,6 +3247,7 @@ class MyCloudServer {
                     'is_dir' => is_dir($storedPath),
                     'downloads' => $s['downloads'] ?? 0,
                     'max_downloads' => $s['max_downloads'] ?? 0,
+                    'readme_pos' => $s['readme_pos'] ?? 0,
                     'alias' => $s['name'] ?? ''
                 ];
             }
@@ -3299,6 +3300,7 @@ class MyCloudServer {
             'password' => ($pass ? password_hash($pass, PASSWORD_DEFAULT) : null),
             'permission' => $permVal,
             'max_downloads' => $maxDownloads,
+            'readme_pos' => in_array($_POST['readme_pos'] ?? '', ['top', 'bottom', 'hidden']) ? $_POST['readme_pos'] : 'bottom',
             'downloads' => 0,
             'name' => !empty($_POST['name']) ? trim($_POST['name']) : null
         ];
@@ -3317,6 +3319,7 @@ class MyCloudServer {
             'guid' => $guid,
             'expires' => $expiry ? date('Y-m-d', $expiry) : 'Never',
             'max_downloads' => $maxDownloads,
+            'readme_pos' => in_array($_POST['readme_pos'] ?? '', ['top', 'bottom', 'hidden']) ? $_POST['readme_pos'] : 'bottom',
             'downloads' => 0
         ]);
     }
@@ -3360,6 +3363,9 @@ class MyCloudServer {
             $shares[$guid]['max_downloads'] = max(0, (int)$_POST['max_downloads']);
         }
 
+        if (isset($_POST['readme_pos'])) {
+            $shares[$guid]['readme_pos'] = in_array($_POST['readme_pos'], ['top', 'bottom', 'hidden']) ? $_POST['readme_pos'] : 'bottom';
+        }
         if (isset($_POST['name'])) {
             $v = trim($_POST['name']);
             if ($v === '') unset($shares[$guid]['name']); else $shares[$guid]['name'] = $v;

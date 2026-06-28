@@ -1,3 +1,11 @@
+4.0.263
+	Improvement: Public shares can now also contain a readme.md, displayed either at the beginning or the end of the file list
+	Improvement: Download as ZIP also for larger files possible (up to 5 GB)
+	Fix: Several hotfixes for public shares
+
+4.0.262
+	Improvement: Public shares preview arrows for the next/previous element
+
 4.0.261
 	Fix: Main menu visual refinements
 

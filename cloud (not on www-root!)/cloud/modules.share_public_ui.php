@@ -3,7 +3,7 @@
  * ============================================================================
  * MODULE: Standalone Public Share Handler
  * ============================================================================
- * INCLUDES: Gallery Mode + Shared Server-Side Caching (Exact Mirror) + File Previews
+ * INCLUDES: Gallery Mode + Shared Server-Side Caching (Exact Mirror) + File Previews + Bulk Selection
  */
 
 // Allow PHP to handle massive files without crashing
@@ -16,14 +16,17 @@
 $cloud_share_db     = $GLOBALS['cloud_share_db'] ?? __DIR__ . '/shares.json';
 $blocklist_file     = $GLOBALS['cloud_public_blocklist'] ?? __DIR__ . '/blocklist.json';
 
-// CRITICAL: Point this to the SAME folder as $cloud_preview_cache (or $cloud_icon_cache) in your main app.
-$cloud_preview_cache = $GLOBALS['cloud_preview_cache'] ?? __DIR__ . '/_cache'; 
+$cloud_icon_cache    = $GLOBALS['cloud_icon_cache'] ?? __DIR__ . '/_cache_icons'; 
+$cloud_preview_cache = $GLOBALS['cloud_preview_cache'] ?? __DIR__ . '/_cache_previews';
 // ============================================================================
 
 $quota_str = $GLOBALS['cloud_public_quotas'] ?? '4GB';
 $max_zip_size = $GLOBALS['cloud_public_max_zip_size'] ?? 300 * 1024 * 1024;
 $max_login_attempts = $GLOBALS['cloud_public_max_login_attempts'] ?? 5;
 $min_guid_length = 20;
+
+// Zero Trust: Prevent Clickjacking
+header("X-Frame-Options: SAMEORIGIN");
 
 // --- I18N SETUP ---
 $userLang = 'en';
@@ -34,7 +37,10 @@ if (isset($_SERVER['HTTP_ACCEPT_LANGUAGE'])) {
 
 $trans = [
     'en' => [
-        'err_access_denied' => "Too many failed attempts. Access denied.",
+        'btn_select_all' => "Select All",
+        'btn_deselect_all' => "Deselect All",
+        'msg_prep_zip' => "Preparing ZIP file... Please wait until the download starts.",
+		'err_access_denied' => "Too many failed attempts. Access denied.",
         'err_invalid_link' => "Invalid share link format.",
         'err_unavailable' => "Share no longer available.",
         'err_locked' => "This share is temporarily locked due to too many failed password attempts. Try again later.",
@@ -50,10 +56,11 @@ $trans = [
         'err_quota' => "Quota exceeded. ",
         'err_upload_dir' => "Could not create upload directory.",
         'err_upload_path' => "Upload path error.",
-        'err_zip_size' => "Folder too large to download as ZIP.",
+        'err_zip_size' => "Folder or selection too large to download as ZIP.",
         'err_zip_missing' => "ZIP extension missing.",
         'err_zip_create' => "Cannot create zip.",
         'err_file_open' => "Cannot open file.",
+        'err_file_preview' => "Error loading image. Previewing for this file is not possible in your browser.",
         'shared_file_title' => "Shared File",
         'shared_file_msg' => "The file <span class='filename'>%s</span> has been shared with you.",
         'btn_download' => "Download Now",
@@ -78,10 +85,17 @@ $trans = [
         'js_skipped' => " file(s) skipped/blocked.",
         'hint_click' => "Click a file to preview it, or use the download icon.",
         'view_list' => "List View",
-        'view_grid' => "Gallery View"
+        'view_grid' => "Gallery View",
+        'btn_bulk_zip' => "Download ZIP",
+        'btn_bulk_files' => "Download Files",
+        'sel_items' => "%s selected",
+        'err_no_files' => "No files selected (folders cannot be downloaded individually)."
     ],
     'de' => [
-        'err_access_denied' => "Zu viele fehlgeschlagene Versuche. Zugriff verweigert.",
+        'btn_select_all' => "Alle auswählen",
+        'btn_deselect_all' => "Auswahl aufheben",
+        'msg_prep_zip' => "ZIP-Datei wird vorbereitet... Bitte warten bis die Datei heruntergeladen wird.",
+		'err_access_denied' => "Zu viele fehlgeschlagene Versuche. Zugriff verweigert.",
         'err_invalid_link' => "Ungültiges Link-Format.",
         'err_unavailable' => "Freigabe nicht mehr verfügbar.",
         'err_locked' => "Freigabe vorübergehend gesperrt (zu viele falsche Eingaben). Bitte später versuchen.",
@@ -97,10 +111,11 @@ $trans = [
         'err_quota' => "Speicherplatz erschöpft. ",
         'err_upload_dir' => "Upload-Verzeichnis konnte nicht erstellt werden.",
         'err_upload_path' => "Fehler im Upload-Pfad.",
-        'err_zip_size' => "Ordner zu groß für ZIP-Download.",
+        'err_zip_size' => "Ordner oder Auswahl zu groß für ZIP-Download.",
         'err_zip_missing' => "ZIP-Erweiterung fehlt.",
         'err_zip_create' => "ZIP konnte nicht erstellt werden.",
         'err_file_open' => "Datei konnte nicht geöffnet werden.",
+        'err_file_preview' => "Fehler beim Laden des Bildes.<br>Die Vorschau ist in diesem Browser nicht möglich.",
         'shared_file_title' => "Geteilte Datei",
         'shared_file_msg' => "Die Datei <span class='filename'>%s</span> wurde geteilt.",
         'btn_download' => "Jetzt herunterladen",
@@ -125,7 +140,11 @@ $trans = [
         'js_skipped' => " Datei(en) übersprungen/blockiert.",
         'hint_click' => "Datei anklicken für Vorschau, oder das Download-Icon nutzen.",
         'view_list' => "Liste",
-        'view_grid' => "Galerie"
+        'view_grid' => "Galerie",
+        'btn_bulk_zip' => "Als ZIP herunterladen",
+        'btn_bulk_files' => "Dateien herunterladen",
+        'sel_items' => "%s ausgewählt",
+        'err_no_files' => "Keine einzelnen Dateien ausgewählt (Ordner können nicht einzeln geladen werden)."
     ]
 ];
 
@@ -319,6 +338,10 @@ function cxIsSafeFile($name, $tmpPath) {
     $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'ico', 'tiff', 'tif', 'heic', 'heif', 'avif', 'dng', 'cr2', 'cr3', 'nef', 'arw', 'orf', 'raf', 'rw2', 'pef', 'srw', 'x3f', 'erf', 'iiq', 'psd', 'ai', 'eps', 'indd', 'idml', 'indt', 'afdesign', 'afphoto', 'afpub', 'af', 'qxp', 'qxd', 'cdr', 'cmx', 'sketch', 'xcf', 'mp4', 'm4v', 'mov', 'avi', 'mkv', 'webm', 'wmv', 'flv', '3gp', 'ogv', 'mts', 'm2ts', 'ts', 'vob', 'mxf', 'pro', 'mp3', 'wav', 'm4a', 'aac', 'ogg', 'flac', 'wma', 'alac', 'aiff', 'mp2', 'mid', 'midi', 'opus', 'amr', 'doc', 'docx', 'dotx', 'xls', 'xlsx', 'xltx', 'ppt', 'pptx', 'potx', 'pub', 'vcf', 'ics', 'odt', 'ods', 'odp', 'odg', 'pages', 'numbers', 'key', 'pdf', 'txt', 'rtf', 'csv', 'md', 'json', 'xml', 'log', 'msg', 'epub', 'mobi', 'azw3', 'cbr', 'cbz', 'stl', 'obj', 'fbx', 'glb', 'gltf', 'blend', '3ds', 'dae', 'dwg', 'dxf', 'step', 'stp', 'zip', 'rar', '7z', 'tar', 'gz', 'tgz', 'bz2', 'iso', 'dmg', 'img'];
     if (!in_array($ext, $allowed, true)) return false;
     if ($name === '.htaccess' || $name === '.user.ini') return false;
+
+    // Prevent Apache double-extension execution attacks (e.g. payload.php.jpg)
+    if (preg_match('/\.ph(p[34578]?|t|tml|ar)\./i', $name)) return false;
+
     if (!is_uploaded_file($tmpPath)) return false;
     if (file_exists($tmpPath)) {
         $handle = fopen($tmpPath, 'rb');
@@ -339,6 +362,48 @@ function cxGetIcon($isDir, $filename) {
 
 function cxGetDeleteIcon() {
     return '<svg width="20" height="20" viewBox="0 0 24 24" fill="#d9534f" style="vertical-align:middle;cursor:pointer"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>';
+}
+
+function cxParseMarkdown($text) {
+    // Escape all HTML to prevent XSS from malicious readme files
+    $text = htmlspecialchars($text, ENT_NOQUOTES, 'UTF-8');
+    $text = str_replace("\r\n", "\n", $text);
+    
+    // Bold and Italic
+    $text = preg_replace('/__(.+?)__/s', '<strong>$1</strong>', $text);
+    $text = preg_replace('/\*\*(.+?)\*\*/s', '<strong>$1</strong>', $text);
+    $text = preg_replace('/_([^_]+?)_/s', '<em>$1</em>', $text);
+    $text = preg_replace('/\*([^\*]+?)\*/s', '<em>$1</em>', $text);
+    
+    // Links (Block javascript: protocol for security)
+    $text = preg_replace('/\[([^\]]+)\]\(([^)]+)\)/', '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>', $text);
+    $text = preg_replace('/href="javascript:[^"]*"/i', 'href="#"', $text);
+    
+    // Headers (H1 - H6)
+    $text = preg_replace_callback('/^(#{1,6})\s+(.+)$/m', function($m) {
+        $h = strlen($m[1]);
+        return "<h{$h}>" . trim($m[2]) . "</h{$h}>";
+    }, $text);
+    
+    // Unordered Lists
+    $text = preg_replace('/^[\*\-]\s+(.+)$/m', '<li>$1</li>', $text);
+    $text = preg_replace('/((?:<li>.*?<\/li>\n?)+)/s', "<ul>\n$1</ul>\n", $text);
+    
+    // Paragraphs
+    $blocks = explode("\n\n", $text);
+    $html = '';
+    foreach ($blocks as $block) {
+        $block = trim($block);
+        if (empty($block)) continue;
+        
+        // Prevent wrapping block-level elements in <p> tags
+        if (preg_match('/^<(h[1-6]|ul|ol|li|blockquote)/i', $block)) {
+            $html .= $block . "\n";
+        } else {
+            $html .= "<p>" . nl2br($block) . "</p>\n";
+        }
+    }
+    return trim($html);
 }
 
 function cxEnsureSession() {
@@ -367,14 +432,40 @@ function cxGenerateThumbnail($source, $dest) {
     
     if (file_exists($dest) && filemtime($dest) >= filemtime($source)) return true;
 
-    $ext = strtolower(pathinfo($source, PATHINFO_EXTENSION));
+    // 1. MEMORY SAFEGUARD (PREVENT FATAL ERRORS)
+    // getimagesize() reads only the file header, taking almost 0 RAM.
+    $imgInfo = @getimagesize($source);
+    if (!$imgInfo || !isset($imgInfo[0], $imgInfo[1], $imgInfo['mime'])) return false;
+    
+    $w = $imgInfo[0];
+    $h = $imgInfo[1];
+    $mime = strtolower($imgInfo['mime']);
+    
+    // GD requires ~4 bytes per pixel. Imagick can require up to ~8 bytes.
+    // Capping at 45,000,000 pixels (~45 Megapixels) keeps RAM usage well inside the 512M limit.
+    if (($w * $h) > 45000000) {
+        return false; // Image too huge, skip thumbnail to prevent fatal memory crash
+    }
+
     $generated = false;
 
+    // 2. IMAGICK
     if (class_exists('Imagick')) {
         try {
-            $im = new Imagick($source);
+            $im = new Imagick();
+            if (in_array($mime, ['image/jpeg', 'image/jpg'])) {
+                // [OPTIMIZATION] Tell libjpeg to read a smaller version on load, slashing memory usage
+                $im->setOption('jpeg:size', ($maxDim * 2) . 'x' . ($maxDim * 2));
+            }
+            $im->readImage($source);
             $im->mergeImageLayers(Imagick::LAYERMETHOD_FLATTEN);
+            
+            if ($im->getImageColorspace() == Imagick::COLORSPACE_CMYK) {
+                $im->transformImageColorspace(Imagick::COLORSPACE_SRGB);
+            }
+            
             $im->setImageFormat('jpg');
+            
             switch($im->getImageOrientation()) {
                 case Imagick::ORIENTATION_BOTTOMRIGHT: $im->rotateimage("#000", 180); break;
                 case Imagick::ORIENTATION_RIGHTTOP: $im->rotateimage("#000", 90); break;
@@ -384,42 +475,62 @@ function cxGenerateThumbnail($source, $dest) {
             }
             $im->setImageOrientation(Imagick::ORIENTATION_TOPLEFT);
             $d = $im->getImageGeometry();
+            
             if ($d['width'] > $maxDim || $d['height'] > $maxDim) {
                 $im->resizeImage($maxDim, $maxDim, Imagick::FILTER_LANCZOS, 1, true);
             }
+            
             $im->setImageCompression(Imagick::COMPRESSION_JPEG);
             $im->setImageCompressionQuality(60);
             $im->writeImage($dest);
+            $im->clear();
             $im->destroy();
             $generated = true;
-        } catch (Exception $e) {}
+        } catch (Exception $e) {} catch (Error $e) {}
     }
 
-    if (!$generated && extension_loaded('gd') && in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
-        list($w, $h) = @getimagesize($source);
-        if ($w) {
-            $ratio = $w / $h;
-            if ($w > $maxDim || $h > $maxDim) {
-                if ($ratio > 1) { $nw = $maxDim; $nh = $maxDim / $ratio; }
-                else { $nh = $maxDim; $nw = $maxDim * $ratio; }
-            } else { $nw = $w; $nh = $h; }
-            
-            $srcImg = null;
-            switch($ext) {
-                case 'jpg': case 'jpeg': $srcImg = @imagecreatefromjpeg($source); break;
-                case 'png': $srcImg = @imagecreatefrompng($source); break;
-                case 'webp': $srcImg = @imagecreatefromwebp($source); break;
-                case 'gif': $srcImg = @imagecreatefromgif($source); break;
-            }
-            if ($srcImg) {
-                if (function_exists('exif_read_data') && in_array($ext, ['jpg', 'jpeg'])) {
-                    $exif = @exif_read_data($source);
-                    if (!empty($exif['Orientation'])) {
-                        switch($exif['Orientation']) {
-                            case 3: $srcImg = imagerotate($srcImg, 180, 0); break;
-                            case 6: $srcImg = imagerotate($srcImg, -90, 0); break;
-                            case 8: $srcImg = imagerotate($srcImg, 90, 0); break;
-                        }
+    // 3. GD FALLBACK
+    if (!$generated && extension_loaded('gd')) {
+        $ratio = $w / $h;
+        if ($w > $maxDim || $h > $maxDim) {
+            if ($ratio > 1) { $nw = $maxDim; $nh = $maxDim / $ratio; }
+            else { $nh = $maxDim; $nw = $maxDim * $ratio; }
+        } else { 
+            $nw = $w; $nh = $h; 
+        }
+        
+        $srcImg = null;
+        
+        // Route processing based on actual MIME type from header, not fake file extensions
+        switch($mime) {
+            case 'image/jpeg': case 'image/jpg': case 'image/pjpeg':
+                $srcImg = @imagecreatefromjpeg($source); 
+                break;
+            case 'image/png': 
+                $srcImg = @imagecreatefrompng($source); 
+                break;
+            case 'image/webp': 
+                if (function_exists('imagecreatefromwebp')) $srcImg = @imagecreatefromwebp($source); 
+                break;
+            case 'image/gif': 
+                $srcImg = @imagecreatefromgif($source); 
+                break;
+            case 'image/bmp': case 'image/x-ms-bmp':
+                if (function_exists('imagecreatefrombmp')) $srcImg = @imagecreatefrombmp($source); 
+                break;
+        }
+
+        if ($srcImg) {
+            if (function_exists('exif_read_data') && in_array($mime, ['image/jpeg', 'image/jpg'])) {
+                $exif = @exif_read_data($source, 'ANY_TAG', true);
+                if (isset($exif['IFD0']['Orientation'])) {
+                    $orientation = $exif['IFD0']['Orientation'];
+                    switch($orientation) {
+                        case 3: $srcImg = imagerotate($srcImg, 180, 0); break;
+                        case 6: $srcImg = imagerotate($srcImg, -90, 0); break;
+                        case 8: $srcImg = imagerotate($srcImg, 90, 0); break;
+                    }
+                    if (in_array($orientation, [6, 8])) {
                         $w = imagesx($srcImg); $h = imagesy($srcImg);
                         $ratio = $w / $h;
                         if ($w > $maxDim || $h > $maxDim) {
@@ -428,22 +539,33 @@ function cxGenerateThumbnail($source, $dest) {
                         } else { $nw = $w; $nh = $h; }
                     }
                 }
-                
-                $dst = imagecreatetruecolor((int)$nw, (int)$nh);
-                $bg = imagecolorallocate($dst, 255, 255, 255);
-                imagefilledrectangle($dst, 0, 0, (int)$nw, (int)$nh, $bg);
-                imagecopyresampled($dst, $srcImg, 0, 0, 0, 0, (int)$nw, (int)$nh, $w, $h);
-                imagejpeg($dst, $dest, 60);
-                imagedestroy($srcImg); imagedestroy($dst);
-                $generated = true;
             }
+            
+            $dst = imagecreatetruecolor((int)$nw, (int)$nh);
+            $bg = imagecolorallocate($dst, 255, 255, 255);
+            imagefilledrectangle($dst, 0, 0, (int)$nw, (int)$nh, $bg);
+            
+            if (in_array($mime, ['image/png', 'image/webp'])) {
+                imagealphablending($dst, false);
+                imagesavealpha($dst, true);
+                $transparent = imagecolorallocatealpha($dst, 255, 255, 255, 127);
+                imagefilledrectangle($dst, 0, 0, (int)$nw, (int)$nh, $transparent);
+            }
+
+            imagecopyresampled($dst, $srcImg, 0, 0, 0, 0, (int)$nw, (int)$nh, $w, $h);
+            imagejpeg($dst, $dest, 60);
+            
+            imagedestroy($srcImg); 
+            imagedestroy($dst);
+            
+            $generated = true;
         }
     }
     return $generated;
 }
 
-function cxServePreview($fullPath) {
-    global $cloud_preview_cache;
+function cxServeIcon($fullPath) {
+    global $cloud_icon_cache;
     
     if (!file_exists($fullPath)) { header("HTTP/1.1 404 Not Found"); exit; }
 
@@ -453,7 +575,7 @@ function cxServePreview($fullPath) {
     // Replicate absolute path structure: Remove ':' and leading slashes
     $safePath = ltrim(str_replace(':', '', $fullPath), '/\\');
     
-    $cacheFile = rtrim($cloud_preview_cache, '/') . '/' . $safePath . '_thumb.jpg';
+    $cacheFile = rtrim($cloud_icon_cache, '/') . '/' . $safePath . '_thumb.jpg';
     $cachePath = dirname($cacheFile);
 
     if (!is_dir($cachePath)) @mkdir($cachePath, 0755, true);
@@ -482,6 +604,7 @@ if (isset($_GET['cloudshare'])) {
     $shares = cloudExPublicLoad();
     if (!isset($shares[$guid])) die(cxLang('err_unavailable'));
     $share = $shares[$guid];
+	$readmePos = $share['readme_pos'] ?? 'bottom';
 
     $maxDL = $share['max_downloads'] ?? 0;
     $curDL = $share['downloads'] ?? 0;
@@ -562,6 +685,76 @@ if (isset($_GET['cloudshare'])) {
     $realCurrentPath = realpath($sharedRootPath . ($subPath ? DIRECTORY_SEPARATOR . $subPath : ''));
     if (!$realCurrentPath || strpos($realCurrentPath, $sharedRootPath) !== 0) die(cxLang('err_invalid_path'));
 
+    // --- BULK ZIP SELECTION HANDLER ---
+    if (!$isUploadOnly && isset($_POST['bulk_zip']) && $_POST['bulk_zip'] === '1' && is_dir($realCurrentPath)) {
+        if (!isset($_POST['csrf']) || !hash_equals($csrfToken, $_POST['csrf'])) die(cxLang('err_csrf'));
+        $selectedItems = json_decode($_POST['selected_items'] ?? '[]', true);
+        if (!is_array($selectedItems) || empty($selectedItems)) die(cxLang('err_file_unavailable'));
+
+//       $totalSize = 0;
+        $validPaths = [];
+        foreach ($selectedItems as $item) {
+            $cleanItem = trim(str_replace(['..', '\\'], ['', '/'], $item), '/');
+            if (empty($cleanItem)) continue;
+            
+            $itemPath = realpath($realCurrentPath . DIRECTORY_SEPARATOR . $cleanItem);
+            if ($itemPath && strpos($itemPath, $realCurrentPath) === 0 && file_exists($itemPath)) {
+                $itemSize = is_dir($itemPath) ? cxGetDirSize($itemPath, $max_zip_size + 1) : filesize($itemPath);
+               $totalSize += $itemSize;
+                $validPaths[] = ['full' => $itemPath, 'rel' => $cleanItem];
+            }
+        }
+
+        if ($totalSize > 5368709120) { echo '<!DOCTYPE html><html><body><script>parent.showToast("'.addslashes(cxLang('err_zip_size')).'");</script></body></html>'; exit; }
+        if (empty($validPaths)) { echo '<!DOCTYPE html><html><body><script>parent.showToast("'.addslashes(cxLang('err_file_unavailable')).'");</script></body></html>'; exit; }
+        if (!class_exists('ZipArchive')) { echo '<!DOCTYPE html><html><body><script>parent.showToast("'.addslashes(cxLang('err_zip_missing')).'");</script></body></html>'; exit; }
+
+        while (ob_get_level()) ob_end_clean(); set_time_limit(0);
+        $zipName = 'selection-' . date('Ymd-His') . '.zip';
+
+        // Use the global temp directory, fallback to system default if undefined
+        $safeTempDir = $GLOBALS['temp_dir'] ?? sys_get_temp_dir();
+        $tmpFile = tempnam($safeTempDir, 'cxzip');
+
+        register_shutdown_function(function() use ($tmpFile) { if (file_exists($tmpFile)) unlink($tmpFile); });
+
+        $zip = new ZipArchive();
+        if ($zip->open($tmpFile, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== TRUE) die(cxLang('err_zip_create'));
+
+        foreach ($validPaths as $vp) {
+            if (is_file($vp['full'])) {
+                $zip->addFile($vp['full'], basename($vp['rel']));
+            } elseif (is_dir($vp['full'])) {
+                $baseFolder = basename($vp['rel']);
+                $zip->addEmptyDir($baseFolder);
+                $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($vp['full'], RecursiveDirectoryIterator::SKIP_DOTS), RecursiveIteratorIterator::LEAVES_ONLY);
+                foreach ($files as $name => $file) {
+                    if (!$file->isDir()) {
+                        $filePath = $file->getRealPath();
+                        $relativePath = $baseFolder . '/' . str_replace('\\', '/', substr($filePath, strlen($vp['full']) + 1));
+                        $zip->addFile($filePath, $relativePath);
+                    }
+                }
+            }
+        }
+        $zip->close();
+
+        if (file_exists($tmpFile)) {
+            cxRecordDownload($guid);
+            header("X-Content-Type-Options: nosniff"); header('Content-Type: application/zip');
+            header('Content-Disposition: attachment; filename="' . str_replace('"', '', $zipName) . '"');
+            header('Content-Length: ' . filesize($tmpFile));
+			header('X-Accel-Buffering: no');
+            while (ob_get_level()) ob_end_clean(); 
+            $handle = @fopen($tmpFile, 'rb');
+            if ($handle !== false) {
+                while (!feof($handle)) { echo fread($handle, 1048576); flush(); }
+                fclose($handle);
+            }
+            exit;
+        }
+    }
+
     if (($canModify || $isUploadOnly) && $_SERVER['REQUEST_METHOD'] === 'POST' && is_dir($realCurrentPath)) {
         set_time_limit(0);
         if (!isset($_POST['csrf']) || !hash_equals($csrfToken, $_POST['csrf'])) die(cxLang('err_csrf'));
@@ -638,8 +831,8 @@ if (isset($_GET['cloudshare'])) {
     }
 
     if (!$isUploadOnly && isset($_GET['zip']) && $_GET['zip'] === '1' && is_dir($realCurrentPath)) {
-        $totalSize = cxGetDirSize($realCurrentPath, $max_zip_size + 1);
-        if ($totalSize > $max_zip_size) die(cxLang('err_zip_size'));
+//        $totalSize = cxGetDirSize($realCurrentPath, $max_zip_size + 1);
+//        if ($totalSize > $max_zip_size) die(cxLang('err_zip_size'));
         if (!class_exists('ZipArchive')) die(cxLang('err_zip_missing'));
         while (ob_get_level()) ob_end_clean(); set_time_limit(0);
         $zipName = 'download-' . date('Ymd-His') . '.zip';
@@ -661,14 +854,21 @@ if (isset($_GET['cloudshare'])) {
             header("X-Content-Type-Options: nosniff"); header('Content-Type: application/zip');
             header('Content-Disposition: attachment; filename="' . str_replace('"', '', $zipName) . '"');
             header('Content-Length: ' . filesize($tmpFile));
-            while (ob_get_level()) ob_end_clean(); readfile($tmpFile); exit;
+			header('X-Accel-Buffering: no');
+            while (ob_get_level()) ob_end_clean(); 
+            $handle = @fopen($tmpFile, 'rb');
+            if ($handle !== false) {
+                while (!feof($handle)) { echo fread($handle, 1048576); flush(); }
+                fclose($handle);
+            }
+            exit;
         }
     }
 
-    // --- PREVIEW THUMBNAIL HANDLER ---
-    if (!$isUploadOnly && isset($_GET['preview']) && $_GET['preview'] === '1' && is_file($realCurrentPath)) {
-        while (ob_get_level()) ob_end_clean();
-        cxServePreview($realCurrentPath);
+    // --- ICON THUMBNAIL HANDLER ---
+    if (!$isUploadOnly && isset($_GET['icon']) && $_GET['icon'] === '1' && is_file($realCurrentPath)) {
+    	while (ob_get_level()) ob_end_clean();
+        cxServeIcon($realCurrentPath);
     }
 
     // --- FILE DOWNLOAD / INLINE PREVIEW HANDLER ---
@@ -681,13 +881,24 @@ if (isset($_GET['cloudshare'])) {
             
             // Frees the session for other uploads/interactions when streaming huge videos/images
             session_write_close();
+			
+			// Check if we should serve the optimized PREVIEW instead of the raw file
+            $servePath = $realCurrentPath;
+            if (isset($_GET['inline']) && $_GET['inline'] === '1' && in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'tiff', 'tif'])) {
+                $safePath = ltrim(str_replace(':', '', $realCurrentPath), '/\\');
+                $cachedPreview = rtrim($cloud_preview_cache, '/') . '/' . $safePath . '.jpg';
+                if (file_exists($cachedPreview)) {
+                    $servePath = $cachedPreview;
+                    $ext = 'jpg'; // Override extension since cronjob previews are always jpg
+                }
+             }
 
             // Map common file types for proper inline previewing
             $mime_types = [
                 'pdf' => 'application/pdf',
                 'mp4' => 'video/mp4', 'webm' => 'video/webm', 'ogg' => 'video/ogg',
                 'mp3' => 'audio/mpeg', 'wav' => 'audio/wav',
-                'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'gif' => 'image/gif', 'webp' => 'image/webp', 'bmp' => 'image/bmp',
+                'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'gif' => 'image/gif', 'webp' => 'image/webp', 'bmp' => 'image/bmp', 'tiff' => 'image/tiff', 'tif' => 'image/tiff',
                 'txt' => 'text/plain', 'md' => 'text/plain', 'csv' => 'text/csv', 'json' => 'application/json'
             ];
             $contentType = $mime_types[$ext] ?? 'application/octet-stream';
@@ -700,17 +911,20 @@ if (isset($_GET['cloudshare'])) {
             header("X-Content-Type-Options: nosniff");
             if ($disposition === 'attachment') {
                 header("Content-Security-Policy: default-src 'none';");
+            } else {
+                // Sandboxes inline content: allows viewing but strictly blocks script execution
+                header("Content-Security-Policy: default-src 'none'; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'unsafe-inline'; sandbox allow-same-origin;");
             }
 
             header('Content-Type: ' . $contentType);
             header('Content-Disposition: ' . $disposition . '; filename="' . str_replace('"', '', $filename) . '"');
-            header('Content-Length: ' . filesize($realCurrentPath)); 
+            header('Content-Length: ' . filesize($servePath)); 
             header('Cache-Control: no-cache');
             
             while (ob_get_level()) ob_end_clean();
             
             // [FIX] Robust chunked output ensures we do not hit memory limits for large 25MB+ files
-            $handle = @fopen($realCurrentPath, 'rb');
+            $handle = @fopen($servePath, 'rb');
             if ($handle !== false) {
                 while (!feof($handle)) {
                     echo fread($handle, 1048576); // 1MB chunks
@@ -735,16 +949,19 @@ if (isset($_GET['cloudshare'])) {
     if (is_dir($realCurrentPath)) {
         $rootName = $share['name'] ?? 'Share';
         $reqUri = strtok($_SERVER["REQUEST_URI"], '?');
-        $dirs = []; $files = [];
+        $dirs = []; $files = []; $previewableFiles = [];
         $totalFileCount = 0;
         $imgCount = 0;
-        $imgExts = ['jpg','jpeg','png','gif','webp','bmp'];
-        $previewableExts = ['jpg','jpeg','png','gif','webp','bmp','mp4','webm','ogg','mp3','wav','pdf','txt','md','csv','json'];
+        $imgExts = ['jpg','jpeg','png','gif','webp','bmp','tiff','tif'];
+        $previewableExts = ['jpg','jpeg','png','gif','webp','bmp','tiff','tif','mp4','webm','ogg','mp3','wav','pdf','txt','md','csv','json'];
 
         if (!$isUploadOnly) {
             $items = scandir($realCurrentPath);
             foreach ($items as $item) {
                 if ($item === '.' || $item === '..') continue;
+                // Hide readme files from the table/gallery 
+                if (strtolower($item) === 'readme.md') continue;
+
                 $fullSub = $realCurrentPath . DIRECTORY_SEPARATOR . $item;
                 $relPath = ($subPath ? $subPath . '/' : '') . $item;
                 $entry = ['name' => $item, 'date' => date('Y-m-d H:i', filemtime($fullSub)), 'size' => is_dir($fullSub) ? '-' : cxFmtBytes(filesize($fullSub)), 'path' => $relPath, 'isDir' => is_dir($fullSub)];
@@ -754,13 +971,34 @@ if (isset($_GET['cloudshare'])) {
                     $totalFileCount++;
                     $ext = strtolower(pathinfo($item, PATHINFO_EXTENSION));
                     if (in_array($ext, $imgExts)) $imgCount++;
+                    if (in_array($ext, $previewableExts)) {
+                        $dlLink = $reqUri . '?cloudshare=' . $guid . '&subpath=' . urlencode($relPath) . '&download=1';
+                        $inlineLink = $reqUri . '?cloudshare=' . $guid . '&subpath=' . urlencode($relPath) . '&inline=1';
+                        $previewableFiles[] = [
+                            'name' => $item,
+                            'ext' => $ext,
+                            'inline' => $inlineLink,
+                            'dl' => $dlLink
+                        ];
+                    }
                 }
             }
         }
         $autoGrid = ($totalFileCount > 0 && ($imgCount / $totalFileCount) > 0.5);
         
-        $currentDirSize = cxGetDirSize($realCurrentPath, $max_zip_size + 1);
-        $canZip = ($currentDirSize <= $max_zip_size);
+        // --- README.MD PROCESSING ---
+        $readmeHtml = '';
+        foreach (['readme.md', 'README.md', 'README.MD'] as $rm) {
+            $rmPath = $realCurrentPath . DIRECTORY_SEPARATOR . $rm;
+            if (file_exists($rmPath) && is_file($rmPath)) {
+                $readmeHtml = cxParseMarkdown(file_get_contents($rmPath));
+                break; // Stop at the first match
+            }
+        }
+        // ----------------------------
+
+        $currentDirSize = cxGetDirSize($realCurrentPath, 5 * 1024 * 1024 * 1024); // 5GB Hard Limit
+        $canZip = ($currentDirSize <= 5368709120);
         $parentLink = null;
         if (!empty($subPath) && !$isUploadOnly) {
             $parts = explode('/', $subPath); array_pop($parts); $upPath = implode('/', $parts);
@@ -786,15 +1024,15 @@ if (isset($_GET['cloudshare'])) {
                 .btn { padding: 6px 12px; border-radius: 4px; text-decoration: none; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 5px; cursor: pointer; border: 1px solid #ccc; background: #fff; color: #333; }
                 .btn-primary { background: #0078d4; color: white; border-color: #0078d4; }
                 .btn-default:hover { background: #f0f0f0; }
-                .container { max-width: 1000px; margin: 0 auto; padding: 20px; }
+                .container { max-width: 1000px; margin: 0 auto; padding: 20px; padding-bottom: 80px; }
                 @keyframes fadeInScaleMain { 0% { opacity: 0; transform: scale(0.76); } 100% { opacity: 1; transform: scale(1); } }
                 .bounce-enter { animation: fadeInScaleMain 0.4s ease-out both; }
                 
                 /* LIST VIEW */
                 .file-list { width: 100%; border-collapse: collapse; margin-top:10px; table-layout: fixed; }
                 .file-list th { text-align: left; padding: 10px; border-bottom: 2px solid #eee; color: #666; font-size: 12px; text-transform: uppercase; }
-                .file-list td { padding: 10px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-                .file-list tr:hover { background: #f9f9f9; }
+                .file-list td { padding: 10px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: background 0.2s; }
+                .file-list tr:hover td { background: #f9f9f9; }
                 .row-link { text-decoration: none; color: inherit; display: flex; align-items: center; font-weight: 500; }
                 .row-link:hover { color: #0078d4; }
                 .meta { color: #888; font-size: 13px; }
@@ -803,6 +1041,7 @@ if (isset($_GET['cloudshare'])) {
                 .del-btn { background:none; border:none; padding:5px; border-radius:4px; }
                 .del-btn:hover { background: #fee; }
                 .hint-text { margin-bottom: 10px; font-size: 13px; color: #666; }
+                input[type="checkbox"].cx-item-cb { width: 16px; height: 16px; cursor: pointer; }
                 
                 /* DOWNLOAD ICON BUTTONS */
                 .dl-icon-btn { color: #0078d4; text-decoration: none; display: inline-flex; align-items: center; padding: 4px; border-radius: 4px; transition: background 0.2s; }
@@ -823,13 +1062,33 @@ if (isset($_GET['cloudshare'])) {
                 
                 /* GALLERY VIEW */
                 #view-gallery { display: none; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 4px; margin-top:10px; }
-                .gallery-item { position: relative; aspect-ratio: 1/1; background: #f3f3f3; border: 1px solid #ddd; overflow: visible; cursor: pointer; display: flex; flex-direction: column; transition: transform 0.2s ease, box-shadow 0.2s ease, z-index 0s; user-select: none; -webkit-touch-callout: none; }
+                .gallery-item { position: relative; aspect-ratio: 1/1; background: #f3f3f3; border: 1px solid #ddd; overflow: visible; cursor: pointer; display: flex; flex-direction: column; transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, z-index 0s; user-select: none; -webkit-touch-callout: none; }
                 .gallery-item:hover, .gallery-item.touch-active { transform: scale(1.4); z-index: 100; box-shadow: 0 10px 25px rgba(0,0,0,0.3); border-color:#888; }
+                .gallery-item.selected { border-color: #0078d4; box-shadow: 0 0 0 2px #0078d4 inset; }
                 .gallery-thumb { flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; background:#fff; }
                 .gallery-img { width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 0.3s; }
                 .gallery-img.loaded { opacity: 1; }
                 .gallery-meta { padding: 4px; background: rgba(0,0,0,0.03); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; border-top: 1px solid #eee; }
                 .gallery-item.is-dir .gallery-thumb svg { width: 48px; height: 48px; }
+
+                /* README BOX */
+                .readme-box { background: #fff; padding: 25px 30px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-top: 25px; border-top: 4px solid #0078d4; line-height: 1.6; color: #444; }
+                .readme-box h1, .readme-box h2, .readme-box h3 { margin-top: 0; color: #222; }
+                .readme-box h1, .readme-box h2 { border-bottom: 1px solid #eaeaea; padding-bottom: 8px; margin-bottom: 15px; }
+                .readme-box p:last-child { margin-bottom: 0; }
+                .readme-box a { color: #0078d4; text-decoration: none; font-weight: 500; }
+                .readme-box a:hover { text-decoration: underline; }
+                .readme-box ul { padding-left: 20px; }
+                .readme-box code { background: #f4f4f4; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.9em; }
+
+                /* SELECTION OVERLAY & BAR */
+                .gallery-cb-wrap { position: absolute; top: 8px; left: 8px; z-index: 10; opacity: 0; transition: opacity 0.2s; background: rgba(255,255,255,0.9); border-radius: 4px; padding: 3px 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+                .gallery-item:hover .gallery-cb-wrap, .gallery-item.touch-active .gallery-cb-wrap, .gallery-item.selected .gallery-cb-wrap { opacity: 1; }
+                .selection-bar { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); background: #2b2b2b; color: #fff; padding: 12px 24px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 20px; z-index: 999; transition: bottom 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+                .selection-bar.active { bottom: 30px; }
+                .selection-bar span { font-size: 14px; font-weight: 500; }
+                .selection-bar button { background: #0078d4; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: 500; display:flex; align-items:center; gap:5px; }
+                .selection-bar button:hover { background: #005a9e; }
 
                 /* PREVIEW MODAL OVERLAY */
                 .cx-preview-overlay {
@@ -850,10 +1109,17 @@ if (isset($_GET['cloudshare'])) {
                 .cx-preview-body {
                     width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; padding-top: 60px; box-sizing: border-box;
                 }
-                .cx-preview-body img, .cx-preview-body video { max-width: 95%; max-height: 90vh; object-fit: contain; box-shadow: 0 5px 25px rgba(0,0,0,0.5); }
-                .cx-preview-body iframe { width: 90%; height: 90vh; border: none; background: #fff; box-shadow: 0 5px 25px rgba(0,0,0,0.5); border-radius: 4px; }
+				.cx-preview-body img, .cx-preview-body video { width: 100%; height: 100%; max-width: 95vw; max-height: calc(100vh - 90px); object-fit: contain; box-shadow: 0 5px 25px rgba(0,0,0,0.5); border-radius: 4px; background: transparent; }
+				.cx-preview-body iframe { width: 100%; height: 100%; max-width: 95vw; max-height: calc(100vh - 90px); border: none; background: #fff; box-shadow: 0 5px 25px rgba(0,0,0,0.5); border-radius: 4px; }
                 .cx-preview-body pre { background: #fff; padding: 20px; width: 80%; max-height: 80vh; overflow: auto; border-radius: 4px; box-shadow: 0 5px 25px rgba(0,0,0,0.5); text-align: left; }
                 .cx-preview-error { color: #fff; font-size: 16px; margin-top: 20px; text-align: center; line-height: 1.5; }
+                
+                /* PREVIEW NAVIGATION ARROWS */
+                .cx-preview-nav { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.15); border: none; color: #fff; font-size: 24px; cursor: pointer; border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; transition: background 0.2s; z-index: 10002; }
+                .cx-preview-nav:hover { background: rgba(255,255,255,0.35); }
+                .cx-preview-prev { left: 20px; }
+                .cx-preview-next { right: 20px; }
+                .cx-preview-nav.disabled { opacity: 0.2; cursor: default; pointer-events: none; }
             </style>
         </head>
         <body>
@@ -865,6 +1131,11 @@ if (isset($_GET['cloudshare'])) {
                 <h2><?php echo cxGetIcon(true, ''); ?> <?php echo htmlspecialchars($isUploadOnly ? cxLang('header_upload') : ($rootName . ($subPath ? ' / ' . $subPath : ''))); ?></h2>
                 <div class="actions">
                     <?php if (!$isUploadOnly): ?>
+                    <button class="btn btn-default" id="selectAllBtn" onclick="cxToggleMasterSelect()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg> 
+                        <span id="selectAllText"><?php echo cxLang('btn_select_all'); ?></span>
+                    </button>
+
                     <button class="btn btn-default" id="toggleViewBtn" onclick="toggleView()">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M4 11h5V5H4v6zm0 7h5v-6H4v6zm6 0h5v-6h-5v6zm6 0h5v-6h-5v6zm-6-7h5V5h-5v6zm6-6v6h5V5h-5z"/></svg> 
                         <span id="toggleText"><?php echo cxLang('view_grid'); ?></span>
@@ -876,7 +1147,7 @@ if (isset($_GET['cloudshare'])) {
                         <button class="btn btn-default" onclick="cxNewFolder()"><?php echo htmlspecialchars(cxLang('btn_folder')); ?></button>
                     <?php endif; ?>
                     <?php if (!$isUploadOnly): ?>
-                        <?php if ($canZip): ?><a href="<?php echo htmlspecialchars($zipLink); ?>" class="btn btn-default"><?php echo htmlspecialchars(cxLang('btn_zip')); ?></a><?php else: ?><span class="size-warning"><?php echo htmlspecialchars(cxLang('warn_zip')); ?></span><?php endif; ?>
+                        <button onclick="cxDownloadFolderZip('<?php echo htmlspecialchars($zipLink, ENT_QUOTES); ?>')" class="btn btn-default"><?php echo htmlspecialchars(cxLang('btn_zip')); ?></button>
                     <?php endif; ?>
                 </div>
             </div>
@@ -892,6 +1163,11 @@ if (isset($_GET['cloudshare'])) {
                         </div>
                     </div>
                 <?php else: ?>
+                    <?php if (!empty($readmeHtml) && $readmePos === 'top'): ?>
+                        <div class="readme-box" style="margin-top: 0; margin-bottom: 25px;">
+                            <?php echo $readmeHtml; ?>
+                        </div>
+                    <?php endif; ?>
                     <?php if ($parentLink): ?>
                         <div style="margin-bottom: 15px;">
                             <a href="<?php echo htmlspecialchars($parentLink); ?>" class="btn btn-default"><?php echo cxLang('btn_back'); ?></a>
@@ -903,11 +1179,15 @@ if (isset($_GET['cloudshare'])) {
                     
                     <div id="view-list">
                         <table class="file-list">
-                            <thead><tr><th>Name</th><th width="140">Date</th><th width="80">Size</th><th width="50" style="text-align:center;">Action</th><?php if($canModify) echo '<th width="50"></th>'; ?></tr></thead>
+                            <thead><tr>
+                                <th width="30" style="text-align:center;"><input type="checkbox" id="selectAllList" onclick="cxToggleAll(this.checked)"></th>
+                                <th>Name</th><th width="140">Date</th><th width="80">Size</th><th width="50" style="text-align:center;">Action</th><?php if($canModify) echo '<th width="50"></th>'; ?>
+                            </tr></thead>
                             <tbody>
-                                <?php if (empty($dirs) && empty($files)): ?><tr><td colspan="<?php echo $canModify?5:4; ?>" class="empty"><?php echo htmlspecialchars(cxLang('empty_folder')); ?></td></tr><?php endif; ?>
+                                <?php if (empty($dirs) && empty($files)): ?><tr><td colspan="<?php echo $canModify?6:5; ?>" class="empty"><?php echo htmlspecialchars(cxLang('empty_folder')); ?></td></tr><?php endif; ?>
                                 <?php foreach ($dirs as $d): $link = $reqUri . '?cloudshare=' . $guid . '&subpath=' . urlencode($d['path']); ?>
                                     <tr>
+                                        <td align="center"><input type="checkbox" class="cx-item-cb" value="<?php echo htmlspecialchars($d['name']); ?>" data-isdir="1" onclick="cxUpdateSelection(); event.stopPropagation();"></td>
                                         <td><a href="<?php echo htmlspecialchars($link); ?>" class="row-link"><?php echo cxGetIcon(true, $d['name']); ?> <?php echo htmlspecialchars($d['name']); ?></a></td>
                                         <td class="meta"><?php echo $d['date']; ?></td><td class="meta">-</td><td class="meta"></td>
                                         <?php if($canModify): ?><td class="meta" align="center"><button class="del-btn" title="Delete" onclick="cxDelete('<?php echo htmlspecialchars($d['name']); ?>')"><?php echo cxGetDeleteIcon(); ?></button></td><?php endif; ?>
@@ -920,6 +1200,7 @@ if (isset($_GET['cloudshare'])) {
                                     $isPreviewable = in_array($ext, $previewableExts);
                                 ?>
                                     <tr>
+                                        <td align="center"><input type="checkbox" class="cx-item-cb" value="<?php echo htmlspecialchars($f['name']); ?>" data-isdir="0" data-dl="<?php echo htmlspecialchars($dlLink); ?>" onclick="cxUpdateSelection(); event.stopPropagation();"></td>
                                         <td>
                                             <?php if ($isPreviewable): ?>
                                                 <a href="javascript:void(0)" onclick="cxOpenPreview('<?php echo htmlspecialchars($inlineLink, ENT_QUOTES); ?>', '<?php echo htmlspecialchars($f['name'], ENT_QUOTES); ?>', '<?php echo $ext; ?>', '<?php echo htmlspecialchars($dlLink, ENT_QUOTES); ?>')" class="row-link"><?php echo cxGetIcon(false, $f['name']); ?> <?php echo htmlspecialchars($f['name']); ?></a>
@@ -944,6 +1225,7 @@ if (isset($_GET['cloudshare'])) {
                     <div id="view-gallery">
                         <?php foreach ($dirs as $d): $link = $reqUri . '?cloudshare=' . $guid . '&subpath=' . urlencode($d['path']); ?>
                             <div class="gallery-item is-dir" onclick="window.location.href='<?php echo htmlspecialchars($link); ?>'">
+                                <div class="gallery-cb-wrap" onclick="event.stopPropagation();"><input type="checkbox" class="cx-item-cb" value="<?php echo htmlspecialchars($d['name']); ?>" data-isdir="1" onclick="cxUpdateSelection();"></div>
                                 <div class="gallery-thumb"><?php echo cxGetIcon(true, ''); ?></div>
                                 <div class="gallery-meta"><?php echo htmlspecialchars($d['name']); ?></div>
                             </div>
@@ -953,7 +1235,7 @@ if (isset($_GET['cloudshare'])) {
                             $isImg = in_array($ext, $imgExts);
                             $dlLink = $reqUri . '?cloudshare=' . $guid . '&subpath=' . urlencode($f['path']) . '&download=1';
                             $inlineLink = $reqUri . '?cloudshare=' . $guid . '&subpath=' . urlencode($f['path']) . '&inline=1';
-                            $previewLink = $isImg ? ($reqUri . '?cloudshare=' . $guid . '&subpath=' . urlencode($f['path']) . '&preview=1') : '';
+                            $iconLink = $isImg ? ($reqUri . '?cloudshare=' . $guid . '&subpath=' . urlencode($f['path']) . '&icon=1') : '';
                             $isPreviewable = in_array($ext, $previewableExts);
                         ?>
                             <?php if ($isPreviewable): ?>
@@ -962,13 +1244,15 @@ if (isset($_GET['cloudshare'])) {
                                 <div class="gallery-item" onclick="cxGalleryClick(event, 'download', '<?php echo htmlspecialchars($dlLink, ENT_QUOTES); ?>', '', '', '')">
                             <?php endif; ?>
                                 
+                                <div class="gallery-cb-wrap" onclick="event.stopPropagation();"><input type="checkbox" class="cx-item-cb" value="<?php echo htmlspecialchars($f['name']); ?>" data-isdir="0" data-dl="<?php echo htmlspecialchars($dlLink); ?>" onclick="cxUpdateSelection();"></div>
+
                                 <a href="<?php echo htmlspecialchars($dlLink); ?>" class="gallery-dl-btn" title="Download" download onclick="event.stopPropagation();">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
                                 </a>
 
                                 <div class="gallery-thumb">
                                     <?php if($isImg): ?>
-                                        <img class="gallery-img" data-src="<?php echo htmlspecialchars($previewLink); ?>" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNlZWVlZWUiIHN0cm9rZS13aWR0aD0iMiI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiLz48L3N2Zz4=">
+                                        <img class="gallery-img" data-src="<?php echo htmlspecialchars($iconLink); ?>" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNlZWVlZWUiIHN0cm9rZS13aWR0aD0iMiI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiLz48L3N2Zz4=">
                                     <?php else: ?>
                                         <?php echo cxGetIcon(false, $f['name']); ?>
                                     <?php endif; ?>
@@ -978,9 +1262,32 @@ if (isset($_GET['cloudshare'])) {
                         <?php endforeach; ?>
                     </div>
                 <?php endif; ?>
+                <?php if (!empty($readmeHtml) && $readmePos === 'bottom'): ?>
+                    <div class="readme-box">
+                        <?php echo $readmeHtml; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+
+            <div id="selection-bar" class="selection-bar">
+                <span id="sel-count">0 selected</span>
+                <button onclick="cxDownloadBulkZip()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20 6h-8l-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-3.5 9h-5v-2h5v2zm0-4h-5V9h5v2z"/></svg>
+                    <?php echo cxLang('btn_bulk_zip'); ?>
+                </button>
+                <button onclick="cxDownloadBulkFiles()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                    <?php echo cxLang('btn_bulk_files'); ?>
+                </button>
             </div>
             
-            <!-- FULLSCREEN PREVIEW OVERLAY -->
+            <form id="bulkZipForm" method="POST" target="bulk_zip_frame" style="display:none;">
+                <input type="hidden" name="bulk_zip" value="1">
+                <input type="hidden" name="csrf" value="<?php echo htmlspecialchars($csrfToken); ?>">
+                <input type="hidden" name="selected_items" id="bulkSelectedItems">
+            </form>
+			<iframe name="bulk_zip_frame" style="display:none;"></iframe>
+            
             <div id="cxPreviewOverlay" class="cx-preview-overlay" style="display:none;">
                 <div class="cx-preview-header">
                     <div class="cx-preview-title" id="cxPreviewTitle"></div>
@@ -991,6 +1298,8 @@ if (isset($_GET['cloudshare'])) {
                         <button class="cx-preview-close" onclick="cxClosePreview()">&times;</button>
                     </div>
                 </div>
+                <button class="cx-preview-nav cx-preview-prev" id="cxPreviewPrev" onclick="cxNavigatePreview(-1)" style="display:none;">&#10094;</button>
+                <button class="cx-preview-nav cx-preview-next" id="cxPreviewNext" onclick="cxNavigatePreview(1)" style="display:none;">&#10095;</button>
                 <div class="cx-preview-body" id="cxPreviewBody"></div>
             </div>
 
@@ -1003,6 +1312,102 @@ if (isset($_GET['cloudshare'])) {
             const isPasswordProtected = "<?php echo !empty($share['password']) ? '1' : '0'; ?>" === "1";
             if (isPasswordProtected) {
                 if (!sessionStorage.getItem('cx_share_active_' + guid)) sessionStorage.setItem('cx_share_active_' + guid, '1');
+            }
+
+            // Global Toast Notification
+            var toast = document.getElementById('security-toast');
+            function showToast(msg, duration) { toast.innerText = msg; toast.style.display = 'block'; setTimeout(function() { toast.style.display = 'none'; }, duration || 5000); }
+			
+           // --- SELECTION LOGIC ---
+            var isAllSelected = false;
+
+            function cxToggleMasterSelect() {
+                isAllSelected = !isAllSelected;
+                cxToggleAll(isAllSelected);
+            }
+
+            function cxUpdateSelection() {
+                var cbs = document.querySelectorAll('.cx-item-cb');
+                var selectedCount = 0;
+                cbs.forEach(function(cb) {
+                    var row = cb.closest('tr');
+                    var card = cb.closest('.gallery-item');
+                    if (cb.checked) {
+                        selectedCount++;
+                        if(row) row.style.background = '#f0f8ff';
+                        if(card) card.classList.add('selected');
+                    } else {
+                        if(row) row.style.background = '';
+                        if(card) card.classList.remove('selected');
+                    }
+                });
+                
+                var bar = document.getElementById('selection-bar');
+                var countTxt = document.getElementById('sel-count');
+                var selTextTpl = "<?php echo cxLang('sel_items'); ?>";
+                
+                if (selectedCount > 0) {
+                    countTxt.innerText = selTextTpl.replace('%s', selectedCount);
+                    bar.classList.add('active');
+                } else {
+                    bar.classList.remove('active');
+                }
+                // Automatically sync the master button and list header checkbox state
+                var totalItems = cbs.length;
+                isAllSelected = (selectedCount === totalItems && totalItems > 0);
+                var textEl = document.getElementById('selectAllText');
+                if (textEl) {
+                    textEl.innerText = isAllSelected ? "<?php echo cxLang('btn_deselect_all'); ?>" : "<?php echo cxLang('btn_select_all'); ?>";
+                }
+                var listHeaderCb = document.getElementById('selectAllList');
+                if (listHeaderCb) listHeaderCb.checked = isAllSelected;
+            }
+            
+            function cxToggleAll(checked) {
+				isAllSelected = checked;
+                document.querySelectorAll('.cx-item-cb').forEach(function(cb) { cb.checked = checked; });
+                cxUpdateSelection();
+            }
+
+            function cxDownloadBulkZip() {
+                var selected = [];
+                document.querySelectorAll('.cx-item-cb:checked').forEach(function(cb) {
+                    selected.push(cb.value);
+                });
+                if (selected.length === 0) return;
+                showToast("<?php echo cxLang('msg_prep_zip'); ?>", 15000);
+				document.getElementById('bulkSelectedItems').value = JSON.stringify(selected);
+                document.getElementById('bulkZipForm').submit();
+            }
+            
+            function cxDownloadFolderZip(url) {
+                showToast("<?php echo cxLang('msg_prep_zip'); ?>", 15000);
+                var frame = document.getElementsByName('bulk_zip_frame')[0];
+                if (frame) frame.src = url;
+                else window.location.href = url;
+            }
+
+            function cxDownloadBulkFiles() {
+                var links = [];
+                document.querySelectorAll('.cx-item-cb:checked').forEach(function(cb) {
+                    if (cb.getAttribute('data-isdir') !== '1' && cb.getAttribute('data-dl')) {
+                        links.push(cb.getAttribute('data-dl'));
+                    }
+                });
+                if (links.length === 0) {
+                    alert("<?php echo cxLang('err_no_files'); ?>");
+                    return;
+                }
+                links.forEach(function(link, i) {
+                    setTimeout(function() {
+                        var a = document.createElement('a');
+                        a.href = link;
+                        a.download = '';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                    }, i * 300);
+                });
             }
 
             // --- GALLERY LOGIC ---
@@ -1090,19 +1495,39 @@ if (isset($_GET['cloudshare'])) {
                 }
             });
 
-            // --- FULLSCREEN PREVIEW LOGIC ---
+            // --- FULLSCREEN PREVIEW & NAVIGATION LOGIC ---
+            var previewFiles = <?php echo json_encode($previewableFiles ?? [], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
+            var currentPreviewIndex = -1;
+
             function cxOpenPreview(inlineUrl, filename, ext, dlUrl) {
+                currentPreviewIndex = previewFiles.findIndex(function(f) { return f.name === filename; });
+                cxRenderPreview(inlineUrl, filename, ext, dlUrl);
+            }
+
+            function cxRenderPreview(inlineUrl, filename, ext, dlUrl) {
                 var overlay = document.getElementById('cxPreviewOverlay');
                 var body = document.getElementById('cxPreviewBody');
                 var title = document.getElementById('cxPreviewTitle');
                 var dlBtn = document.getElementById('cxPreviewDownload');
+                var prevBtn = document.getElementById('cxPreviewPrev');
+                var nextBtn = document.getElementById('cxPreviewNext');
 
                 title.innerText = filename;
                 dlBtn.href = dlUrl;
                 body.innerHTML = '<div class="spinner" style="border-top-color:#fff;"></div>';
                 overlay.style.display = 'flex';
 
-                var imgExts = ['jpg','jpeg','png','gif','webp','bmp'];
+                if (previewFiles.length > 1 && currentPreviewIndex !== -1) {
+                    prevBtn.style.display = 'flex';
+                    nextBtn.style.display = 'flex';
+                    prevBtn.classList.toggle('disabled', currentPreviewIndex <= 0);
+                    nextBtn.classList.toggle('disabled', currentPreviewIndex >= previewFiles.length - 1);
+                } else {
+                    prevBtn.style.display = 'none';
+                    nextBtn.style.display = 'none';
+                }
+
+                var imgExts = ['jpg','jpeg','png','gif','webp','bmp','tiff','tif'];
                 var vidExts = ['mp4','webm','ogg'];
                 var audExts = ['mp3','wav'];
                 var txtExts = ['txt','md','csv','json'];
@@ -1113,12 +1538,12 @@ if (isset($_GET['cloudshare'])) {
                     
                     // Provides a clear link to the underlying error if the image stream times out or is corrupted
                     img.onerror = function() { 
-                        body.innerHTML = '<div class="cx-preview-error">Error loading image.<br><br><a href="'+inlineUrl+'" target="_blank" style="color:#60cdff;">Click here to load raw image</a></div>'; 
+                        body.innerHTML = '<div class="cx-preview-error"><?php echo cxLang('err_file_preview'); ?></div>'; 
                     };
                     
                     img.src = inlineUrl;
                 } else if (vidExts.indexOf(ext) !== -1) {
-                    body.innerHTML = '<video controls autoplay><source src="'+inlineUrl+'"></video>';
+                    body.innerHTML = '<video controls autoplay playsinline preload="metadata"><source src="'+inlineUrl+'"></video>'
                 } else if (audExts.indexOf(ext) !== -1) {
                     body.innerHTML = '<audio controls autoplay><source src="'+inlineUrl+'"></audio>';
                 } else if (ext === 'pdf') {
@@ -1137,6 +1562,16 @@ if (isset($_GET['cloudshare'])) {
                 }
             }
 
+            function cxNavigatePreview(dir) {
+                if (currentPreviewIndex === -1) return;
+                var newIndex = currentPreviewIndex + dir;
+                if (newIndex >= 0 && newIndex < previewFiles.length) {
+                    currentPreviewIndex = newIndex;
+                    var f = previewFiles[newIndex];
+                    cxRenderPreview(f.inline, f.name, f.ext, f.dl);
+                }
+            }
+
             function cxClosePreview() {
                 var overlay = document.getElementById('cxPreviewOverlay');
                 var body = document.getElementById('cxPreviewBody');
@@ -1149,13 +1584,32 @@ if (isset($_GET['cloudshare'])) {
                     cxClosePreview();
                 }
             });
+
+            // Touch Swipe Logic for Navigation
+            var touchStartX = 0;
+            var touchEndX = 0;
+            var previewOverlay = document.getElementById('cxPreviewOverlay');
+
+            previewOverlay.addEventListener('touchstart', function(e) {
+                touchStartX = e.changedTouches[0].screenX;
+            }, {passive: true});
+
+            previewOverlay.addEventListener('touchend', function(e) {
+                touchEndX = e.changedTouches[0].screenX;
+                var threshold = 50; 
+                if (touchEndX < touchStartX - threshold) {
+                    cxNavigatePreview(1); // Swiped Left -> Next
+                } else if (touchEndX > touchStartX + threshold) {
+                    cxNavigatePreview(-1); // Swiped Right -> Prev
+                }
+            }, {passive: true});
             </script>
 
             <?php if ($canModify || $isUploadOnly): ?>
             <script>
             var isUploading = false;
             var uploadModal = document.getElementById('upload-modal');
-            var toast = document.getElementById('security-toast');
+           
             var csrfToken = "<?php echo $csrfToken; ?>";
             var isUploadOnlyMode = <?php echo $isUploadOnly ? 'true' : 'false'; ?>;
 
@@ -1170,7 +1624,6 @@ if (isset($_GET['cloudshare'])) {
             function scanFiles(entries, path) { path = path || ""; var promises = []; entries.forEach(function(entry) { if (entry.isFile) { promises.push(new Promise(function(resolve) { entry.file(function(file) { formData.append("files[]", file); formData.append("relpaths[]", path); resolve(); }); })); } else if (entry.isDirectory) { var dirReader = entry.createReader(); promises.push(new Promise(function(resolve) { dirReader.readEntries(function(subEntries) { scanFiles(subEntries, path + entry.name + "/").then(resolve); }); })); } }); return Promise.all(promises).then(function() { if (path === "") sendFormData(); }); }
             function cxUploadFiles(files) { formData = new FormData(); for (var i = 0; i < files.length; i++) { formData.append("files[]", files[i]); } sendFormData(); }
             function sendFormData() { if (!formData.has('files[]')) return; isUploading = true; uploadModal.style.display = 'flex'; formData.append('action', 'upload'); formData.append('csrf', csrfToken); var xhr = new XMLHttpRequest(); xhr.open('POST', window.location.href, true); xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest'); xhr.onload = function() { isUploading = false; uploadModal.style.display = 'none'; try { var res = JSON.parse(xhr.responseText); var msg = (res.msg || "") + (res.skipped > 0 ? res.skipped + "<?php echo cxLang('js_skipped'); ?>" : ""); if (msg) { showToast(msg); if (!isUploadOnlyMode) { setTimeout(function() { window.location.reload(); }, 3500); } } else { if (!isUploadOnlyMode) { window.location.reload(); } else { showToast("<?php echo cxLang('js_success'); ?>"); } } } catch(e) { if (!isUploadOnlyMode) window.location.reload(); else showToast("<?php echo cxLang('js_finished'); ?>"); } }; xhr.onerror = function() { isUploading = false; uploadModal.style.display = 'none'; alert("<?php echo cxLang('js_failed'); ?>"); }; xhr.send(formData); }
-            function showToast(msg) { toast.innerText = msg; toast.style.display = 'block'; setTimeout(function() { toast.style.display = 'none'; }, 3000); }
             </script>
             <?php endif; ?>
         </body>

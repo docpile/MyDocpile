@@ -73,7 +73,7 @@ class myCloudHousekeeper {
         $this->loadConfig();
         
         // Flip extensions for O(1) lookup speed (PDF REMOVED as requested)
-        $exts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'mp4', 'webm', 'mov', 'mkv', 'avi'];
+        $exts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'tiff', 'tif', 'mp4', 'webm', 'mov', 'mkv', 'avi'];
         $this->validExts = array_fill_keys($exts, true);
         
         // Detect CPUs and set Workers (N-1)
@@ -184,8 +184,9 @@ class myCloudHousekeeper {
         
         // --- SEARCH INDEXING ---
         if ($doSearchIndex) {
-            $this->log(">>> Task: Updating Search Indexes (Recoll)");
-            $this->updateSearchIndexes($roots);
+            $searchRoots = $this->getSearchIndexRoots();
+            $this->log(">>> Task: Updating/Creating Search Indexes (Recoll) for " . count($searchRoots) . " default roots");
+            $this->updateSearchIndexes($searchRoots);
         }
 
         // --- OUTBOX SWEEPER ---
@@ -264,6 +265,9 @@ class myCloudHousekeeper {
     /**
      * Robust Locking with Stalled Process Detection
      */
+    /**
+     * Robust Locking with Stalled Process Detection
+     */
     private function acquireLock() {
         $this->lockFileHandle = fopen($this->lockFilePath, 'c+');
         if (!$this->lockFileHandle) {
@@ -300,7 +304,15 @@ class myCloudHousekeeper {
                 $this->log("!! Killing stalled process $otherPid...");
                 posix_kill($otherPid, SIGKILL);
                 sleep(2); // Wait for OS to clean up
+            } else {
+                $this->log("!! Stalled process $otherPid is already dead.");
             }
+
+            // The lock is likely held by an orphaned child process that inherited the file descriptor.
+            // We must forcibly break the lock by destroying the old file and creating a new one.
+            fclose($this->lockFileHandle);
+            @unlink($this->lockFilePath);
+            $this->lockFileHandle = fopen($this->lockFilePath, 'c+');
 
             // Retry Lock
             if (flock($this->lockFileHandle, LOCK_EX | LOCK_NB)) {
@@ -626,7 +638,7 @@ class myCloudHousekeeper {
         } else {
             // Child
             $this->pids = []; // Clear parent pids from memory
-            ini_set('memory_limit', '1024M');
+            ini_set('memory_limit', '2048M');
             gc_disable();
             while (ob_get_level()) ob_end_clean();
             $this->workerExecuteBatch($jobs);
@@ -655,8 +667,9 @@ class myCloudHousekeeper {
        // Environment variables are often ignored if the library is already loaded.
         if (class_exists('Imagick')) {
             Imagick::setResourceLimit(Imagick::RESOURCETYPE_THREAD, 1);
-            Imagick::setResourceLimit(Imagick::RESOURCETYPE_MEMORY, 256 * 1024 * 1024); 
-            Imagick::setResourceLimit(Imagick::RESOURCETYPE_MAP, 256 * 1024 * 1024);
+            // Allow Imagick up to 1GB of RAM before safely overflowing to disk cache
+            Imagick::setResourceLimit(Imagick::RESOURCETYPE_MEMORY, 1024 * 1024 * 1024); 
+            Imagick::setResourceLimit(Imagick::RESOURCETYPE_MAP, 1024 * 1024 * 1024);
         }
         foreach ($jobs as $job) {
             $this->ensureDir(dirname($job['dest']));
@@ -817,6 +830,15 @@ class myCloudHousekeeper {
         // Skip tiny files (spacers/corrupt) to avoid error spam
         if (@filesize($source) < 32) return false;
         
+        // Memory Safeguard: Calculate Megapixels to decide safe routing
+        $isMassive = false;
+        $imgInfo = @getimagesize($source);
+        if ($imgInfo && isset($imgInfo[0], $imgInfo[1])) {
+            // Anything over ~30 Megapixels is considered massive
+            if (($imgInfo[0] * $imgInfo[1]) > 30000000) {
+                $isMassive = true;
+            }
+        }
 
         // --- STRATEGY 0: FFMPEG (Video to Image Bridge) ---
         $videoExts = ['mp4', 'webm', 'mov', 'mkv', 'avi'];
@@ -848,6 +870,11 @@ class myCloudHousekeeper {
             try {
                 $im = new Imagick();
 
+                // [CRITICAL OPTIMIZATION] For massive JPEGs, tell libjpeg to scale during the disk-read phase.
+                // This slashes RAM usage for a 50MP JPEG from ~200MB down to ~5MB.
+                if (in_array($ext, ['jpg', 'jpeg'])) {
+                    $im->setOption('jpeg:size', ($maxDim * 2) . 'x' . ($maxDim * 2));
+                }
                 // Optimization: Read only first frame/page for multi-frame images
                 $readPath = $source;
                 if (in_array($ext, ['tiff', 'tif', 'gif'])) {
@@ -924,8 +951,10 @@ class myCloudHousekeeper {
         }
 
         // --- STRATEGY 2: GD (Fallback) ---
-        if (extension_loaded('gd') && in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
-            try {
+        // GD cannot cache to disk. If the image is massive, it WILL cause a fatal memory crash.
+        // By bypassing it, we let the file fail silently rather than killing the worker thread.
+        if (!$isMassive && extension_loaded('gd') && in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
+        	try {
                 // Get dimensions
                 list($w, $h) = @getimagesize($source);
                 if (!$w) return false;
@@ -1032,6 +1061,27 @@ class myCloudHousekeeper {
     }
 
     /**
+     * Retrieves unique cloud roots, limited to the "default" interface
+     */
+    private function getSearchIndexRoots() {
+        $roots = [];
+        if (isset($GLOBALS['user_details']) && is_array($GLOBALS['user_details'])) {
+            foreach ($GLOBALS['user_details'] as $user) {
+                if (isset($user['cloud']) && is_array($user['cloud'])) {
+                    foreach ($user['cloud'] as $c) {
+                        if (isset($c['interface']) && $c['interface'] === 'default') {
+                            if (!empty($c['path']) && is_dir($c['path'])) {
+                                $roots[] = rtrim($c['path'], '/');
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return array_unique($roots);
+    }
+
+    /**
      * Generates isolated Recoll search indexes for each cloud root
      */
     private function updateSearchIndexes($roots) {
@@ -1055,7 +1105,12 @@ class myCloudHousekeeper {
                 if ($this->verbose) $this->log("Updated search configuration for: " . $root);
             }
             
-            if ($this->verbose) $this->log("Indexing: " . $root);
+        $dbDir = $recollDir . DIRECTORY_SEPARATOR . 'xapiandb';
+        if (!is_dir($dbDir)) {
+            $this->log("Creating NEW index for: " . $root);
+        } else {
+            $this->log("Updating EXISTING index for: " . $root);
+        }
             
             // ionice -c 3 (Idle IO priority) and nice -n 19 (Lowest CPU priority)
             $cmd = "ionice -c 3 nice -n 19 recollindex -c " . escapeshellarg($recollDir) . " 2>&1";
