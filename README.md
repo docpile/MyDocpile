@@ -47,7 +47,7 @@ Of course, I'd be more than happy to receive some kind of a feedback - this prod
 
 ![Main UI](https://github.com/docpile/MyDocpile/blob/main/images/02_main_cloud_ui.png?raw=true)
 
-**Webmail UI** - security by design: end-to-end encryption using industry standard GPG by default
+**Webmail UI** - security by design: (Optional) end-to-end encryption using industry standard GPG by default
 
 ![Webmail UI](https://github.com/docpile/MyDocpile/blob/main/images/03_main_webmail_ui.png?raw=true)
 
@@ -163,7 +163,7 @@ The MyDocpile software is designed to have **the least depenencies possible**. S
 ### 6. Webmail
 * **Multi-account:** You can have multiple accounts connected here, all nicely brought together into a "SmartBox"
 * **Security first:**
-  * End-to-end encryption (optional, of course) for secure email
+  * End-to-end encryption (optional, of course) for secure email using GPG. If the public key of a user is known or published in a key repository, the user always is always asked to send the mail encrypted.
   * Phishing resistance: Many security measures implemented to limit phishing
   * Spam protection: Shows the DMARC result and whether the mail was transmitted via TLS
   * Tracking protection: All pictures (of course except identified tracking) are proxied by the server, thereby making sender tracking profiles almost useless
