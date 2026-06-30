@@ -1,3 +1,7 @@
+4.0.264
+	Security: Public shares now also produce a log file
+	Improvement: Public shares - dark mode available 
+
 4.0.263
 	Improvement: Public shares can now also contain a readme.md, displayed either at the beginning or the end of the file list
 	Improvement: Download as ZIP also for larger files possible (up to 5 GB)

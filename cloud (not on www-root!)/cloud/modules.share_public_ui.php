@@ -83,11 +83,11 @@ $trans = [
         'js_finished' => "Upload finished.",
         'js_failed' => "Upload failed",
         'js_skipped' => " file(s) skipped/blocked.",
-        'hint_click' => "Click a file to preview it, or use the download icon.",
+        'hint_click' => "Click a file twice to preview it, or use the download icon.",
         'view_list' => "List View",
         'view_grid' => "Gallery View",
         'btn_bulk_zip' => "Download ZIP",
-        'btn_bulk_files' => "Download Files",
+        'btn_bulk_files' => "Download all Files",
         'sel_items' => "%s selected",
         'err_no_files' => "No files selected (folders cannot be downloaded individually)."
     ],
@@ -138,11 +138,11 @@ $trans = [
         'js_finished' => "Upload beendet.",
         'js_failed' => "Upload fehlgeschlagen",
         'js_skipped' => " Datei(en) übersprungen/blockiert.",
-        'hint_click' => "Datei anklicken für Vorschau, oder das Download-Icon nutzen.",
+        'hint_click' => "Datei zweimal anklicken für Vorschau, oder das Download-Icon nutzen.",
         'view_list' => "Liste",
         'view_grid' => "Galerie",
         'btn_bulk_zip' => "Als ZIP herunterladen",
-        'btn_bulk_files' => "Dateien herunterladen",
+        'btn_bulk_files' => "Dateien einzeln herunterladen",
         'sel_items' => "%s ausgewählt",
         'err_no_files' => "Keine einzelnen Dateien ausgewählt (Ordner können nicht einzeln geladen werden)."
     ]
@@ -594,6 +594,46 @@ function cxServeIcon($fullPath) {
     exit;
 }
 
+function cxLogAction($shareName, $action, $result, $details = '', $targetPath = '') {
+    // Use the global $list_dir, fallback to the script's directory if undefined
+    $logDir = $GLOBALS['list_dir'] ?? __DIR__;
+    $logFile = rtrim($logDir, '/\\') . '/shared_actions.txt';
+    $ip = $_SERVER['REMOTE_ADDR'] ?? 'UNKNOWN';
+    
+    // Define the raw data fields
+    $fields = [
+        date('Y-m-d'),
+        date('H:i:s'),
+        $ip,
+        $shareName,
+        $action,
+        $result,
+        $details,
+        $targetPath
+    ];
+    
+    // STRIP TABS AND NEWLINES FROM EVERY FIELD
+    // This ensures that even if a filename contains a tab, it won't break the log format
+    foreach ($fields as &$field) {
+        $field = str_replace(["\t", "\n", "\r"], ' ', (string)$field);
+        // Trim to remove any leading/trailing whitespace that might look like a tab
+        $field = trim($field);
+    }
+    
+    // Create the tab-delimited string
+    $logLine = implode("\t", $fields) . "\n";
+    
+    // Append to file
+    $fp = @fopen($logFile, 'a');
+    if ($fp) {
+        if (flock($fp, LOCK_EX)) {
+            fwrite($fp, $logLine);
+            flock($fp, LOCK_UN);
+        }
+        fclose($fp);
+    }
+}
+
 if (isset($_GET['cloudshare'])) {
     $clientIp = $_SERVER['REMOTE_ADDR'];
     if (!cxCheckRateLimit($clientIp)) die(cxLang('err_access_denied'));
@@ -604,12 +644,13 @@ if (isset($_GET['cloudshare'])) {
     $shares = cloudExPublicLoad();
     if (!isset($shares[$guid])) die(cxLang('err_unavailable'));
     $share = $shares[$guid];
+	$shareName = $share['name'] ?? $guid;
 	$readmePos = $share['readme_pos'] ?? 'bottom';
 
     $maxDL = $share['max_downloads'] ?? 0;
     $curDL = $share['downloads'] ?? 0;
     if ($maxDL > 0 && $curDL >= $maxDL) { unset($shares[$guid]); die(cxLang('err_unavailable')); }
-    if (cxIsShareLocked($guid)) die(cxLang('err_locked'));
+    if (cxIsShareLocked($guid)) { cxLogAction($shareName, '🔒 LOGIN', '🛡 ️BLOCKED', 'Locked due to failures', ''); die(cxLang('err_locked')); }
     if (!empty($share['expires']) && time() > $share['expires']) die(cxLang('err_expired'));
 
     if (isset($_GET['logout'])) {
@@ -617,10 +658,26 @@ if (isset($_GET['cloudshare'])) {
         if (!isset($_SESSION['cx_csrf'])) $_SESSION['cx_csrf'] = bin2hex(random_bytes(32));
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!isset($_POST['csrf']) || !hash_equals($_SESSION['cx_csrf'], $_POST['csrf'])) die(cxLang('err_csrf'));
-            session_destroy();
+            cxLogAction($shareName, '❎ LOGOUT', '✅ SUCCESS', 'Manual logout', '');
+			session_destroy();
             header("Location: " . strtok($_SERVER["REQUEST_URI"], '?') . '?cloudshare=' . $guid); exit;
         }
         die(cxLang('err_logout'));
+    }
+
+    if (isset($_GET['tab_logout'])) {
+        // If silent, just log it. Do NOT destroy the session.
+        if (isset($_GET['silent'])) {
+            cxLogAction($shareName, '↪️ LEAVE_SITE', '✅ SUCCESS', 'User navigated away', '');
+            exit; 
+        } else {
+            // Manual logout button clicked: Destroy session
+            if (session_status() === PHP_SESSION_NONE) session_start();
+            cxLogAction($shareName, '❎ LOGOUT', '✅ SUCCESS', 'Manual logout', '');
+            session_destroy();
+            header("Location: " . strtok($_SERVER["REQUEST_URI"], '?') . '?cloudshare=' . $guid);
+			exit;
+        }       
     }
 
     $sharedRootPath = realpath($share['path']);
@@ -642,12 +699,15 @@ if (isset($_GET['cloudshare'])) {
             if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['share_pass'])) {
                 if (!isset($_POST['csrf']) || !hash_equals($_SESSION['cx_csrf'] ?? '', $_POST['csrf'])) die(cxLang('err_csrf'));
                 if (password_verify($_POST['share_pass'], $share['password'])) {
-                    session_regenerate_id(true);
-                    $_SESSION[$sessKey] = true;
+                    cxLogAction($shareName, '🔒 LOGIN', '✅ SUCCESS', 'Password verified', '');
+					session_regenerate_id(true);
+                    $_SESSION[$sessKey] = bin2hex(random_bytes(16));
+                    $_SESSION['cx_just_auth'] = true;
                     if (empty($_SESSION['cx_csrf'])) $_SESSION['cx_csrf'] = bin2hex(random_bytes(32));
                     header("Location: " . $_SERVER['REQUEST_URI']); exit;
                 } else {
-                    cxRegisterFail($clientIp); cxIncrementShareAttempts($guid); $err = cxLang('err_pass_incorrect');
+                    cxLogAction($shareName, '🔒 LOGIN', '🛑 FAILURE', 'Incorrect password', '');
+					cxRegisterFail($clientIp); cxIncrementShareAttempts($guid); $err = cxLang('err_pass_incorrect');
                 }
             }
             cxEnsureSession();
@@ -661,14 +721,24 @@ if (isset($_GET['cloudshare'])) {
             <!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">
             <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; script-src 'self' 'unsafe-inline'">
             <meta http-equiv="Referrer-Policy" content="no-referrer">
-            <style>body{font-family:sans-serif;background:#f3f3f3;display:flex;align-items:center;justify-content:center;height:100vh;margin:0} @keyframes fadeInScale {0% { opacity: 0; transform: scale(0.76); } 100% { opacity: 1; transform: scale(1); }} .box{background:#fff;padding:30px;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.1);width:300px;text-align:center;animation: fadeInScale 0.4s ease-out both;} input{width:100%;padding:10px;margin:10px 0;border:1px solid #ddd;border-radius:4px;box-sizing:border-box} button{background:#0078d4;color:white;border:none;padding:10px 20px;border-radius:4px;cursor:pointer;width:100%}.err{color:red;font-size:12px;margin-bottom:10px}</style></head>
-            <body><div class="box"><h3><?php echo htmlspecialchars(cxLang('login_title')); ?></h3>
+            <style>
+			body{font-family:sans-serif;background:#f3f3f3;display:flex;align-items:center;justify-content:center;height:100vh;margin:0} @keyframes fadeInScale {0% { opacity: 0; transform: scale(0.76); } 100% { opacity: 1; transform: scale(1); }} .box{background:#fff;padding:30px;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.1);width:300px;text-align:center;animation: fadeInScale 0.4s ease-out both;} input{width:100%;padding:10px;margin:10px 0;border:1px solid #ddd;border-radius:4px;box-sizing:border-box} button{background:#0078d4;color:white;border:none;padding:10px 20px;border-radius:4px;cursor:pointer;width:100%}.err{color:red;font-size:12px;margin-bottom:10px}
+            body.dark-mode { background: #1e1e1e; color: #e0e0e0; } body.dark-mode .box { background: #2d2d2d; box-shadow: 0 4px 20px rgba(0,0,0,0.5); } body.dark-mode input { background: #1e1e1e; color: #e0e0e0; border-color: #555; }
+			</style>
+			</head>
+            <body><script>(function(){var d=localStorage.getItem('cx_dark_mode');if(d==='1'||(d===null&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches))document.body.classList.add('dark-mode');})();</script><div class="box"><h3><?php echo htmlspecialchars(cxLang('login_title')); ?></h3>
             <?php echo isset($err) ? "<div class='err'>".htmlspecialchars($err)."</div>" : ''; ?>
             <form method="POST"><input type="hidden" name="csrf" value="<?php echo htmlspecialchars($csrfToken); ?>"><input type="password" name="share_pass" placeholder="<?php echo htmlspecialchars(cxLang('login_placeholder')); ?>" required autofocus autocomplete="off"><button><?php echo htmlspecialchars(cxLang('login_btn')); ?></button></form></div></body></html>
             <?php exit;
         }
     } else {
         cxEnsureSession();
+        $sessKeyFree = 'cx_share_entry_' . $guid;
+        if (empty($_SESSION[$sessKeyFree])) {
+            cxLogAction($shareName, '🟢 FREE_ACCESS', '✅ SUCCESS', 'Entered', '');
+            $_SESSION[$sessKeyFree] = bin2hex(random_bytes(16));
+            $_SESSION['cx_just_auth'] = true;
+        }
     }
 
     // Ensure the CSRF Token ALWAYS exists for normal loads
@@ -676,6 +746,21 @@ if (isset($_GET['cloudshare'])) {
         $_SESSION['cx_csrf'] = bin2hex(random_bytes(32));
     }
     $csrfToken = $_SESSION['cx_csrf'];
+
+    // Generate Tab-Binding Security Script
+    $activeSessKey = !empty($share['password']) ? ('cx_share_' . $guid) : ('cx_share_entry_' . $guid);
+    $activeToken = $_SESSION[$activeSessKey] ?? '';
+    $justAuth = !empty($_SESSION['cx_just_auth']);
+    $tabSecurityScript = "<script>(function(){
+        var t='".htmlspecialchars($activeToken)."';
+        var sk='cx_tab_tok_".$guid."';
+        if(" . ($justAuth ? 'true' : 'false') . "){
+            sessionStorage.setItem(sk,t);
+        } else if(t && sessionStorage.getItem(sk) !== t && window.location.search.indexOf('tab_logout') === -1) {
+            window.location.replace('?cloudshare=".$guid."&tab_logout=1');
+        }
+    })();</script>";
+    if ($justAuth) unset($_SESSION['cx_just_auth']);
 
     $perm = $share['permission'] ?? 'read';
     $canModify = ($perm === 'modify' && !empty($share['password']));
@@ -705,7 +790,7 @@ if (isset($_GET['cloudshare'])) {
             }
         }
 
-        if ($totalSize > 5368709120) { echo '<!DOCTYPE html><html><body><script>parent.showToast("'.addslashes(cxLang('err_zip_size')).'");</script></body></html>'; exit; }
+        if ($totalSize > 5368709120) { cxLogAction($shareName, '🗜️ DOWNLOAD_BULK_ZIP', '🛑 FAILURE', 'Size limit exceeded', $realCurrentPath); echo '<!DOCTYPE html><html><body><script>parent.showToast("'.addslashes(cxLang('err_zip_size')).'");</script></body></html>'; exit; }
         if (empty($validPaths)) { echo '<!DOCTYPE html><html><body><script>parent.showToast("'.addslashes(cxLang('err_file_unavailable')).'");</script></body></html>'; exit; }
         if (!class_exists('ZipArchive')) { echo '<!DOCTYPE html><html><body><script>parent.showToast("'.addslashes(cxLang('err_zip_missing')).'");</script></body></html>'; exit; }
 
@@ -740,6 +825,7 @@ if (isset($_GET['cloudshare'])) {
         $zip->close();
 
         if (file_exists($tmpFile)) {
+            cxLogAction($shareName, '🗜️ DOWNLOAD_BULK_ZIP', '✅ SUCCESS', count($validPaths) . ' items', $realCurrentPath);
             cxRecordDownload($guid);
             header("X-Content-Type-Options: nosniff"); header('Content-Type: application/zip');
             header('Content-Disposition: attachment; filename="' . str_replace('"', '', $zipName) . '"');
@@ -762,12 +848,21 @@ if (isset($_GET['cloudshare'])) {
 
         if ($canModify && $action === 'mkdir' && !empty($_POST['dirname'])) {
             $newDirName = preg_replace('/[^a-zA-Z0-9_\-\. ]/', '', $_POST['dirname']);
-            if ($newDirName && !file_exists($realCurrentPath . DIRECTORY_SEPARATOR . $newDirName)) mkdir($realCurrentPath . DIRECTORY_SEPARATOR . $newDirName, 0755, true);
+            if ($newDirName && !file_exists($realCurrentPath . DIRECTORY_SEPARATOR . $newDirName)) {
+                if (mkdir($realCurrentPath . DIRECTORY_SEPARATOR . $newDirName, 0755, true)) {
+                    cxLogAction($shareName, '🔷 CREATE_FOLDER', '✅ SUCCESS', '', $realCurrentPath . DIRECTORY_SEPARATOR . $newDirName);
+                } else {
+                    cxLogAction($shareName, '🔷 CREATE_FOLDER', '🛑 FAILURE', '', $realCurrentPath . DIRECTORY_SEPARATOR . $newDirName);
+                }
+            }
         }
         if ($canModify && $action === 'delete' && !empty($_POST['target'])) {
             $target = basename($_POST['target']);
             $targetPath = $realCurrentPath . DIRECTORY_SEPARATOR . $target;
-            if (file_exists($targetPath) && dirname($targetPath) === $realCurrentPath) cxRemoveRecursive($targetPath);
+            if (file_exists($targetPath) && dirname($targetPath) === $realCurrentPath) {
+                cxRemoveRecursive($targetPath);
+                cxLogAction($shareName, '🗑️ DELETE_ITEM', '✅ SUCCESS', '', $targetPath);
+            }
         }
         if ($action === 'upload' && !empty($_FILES['files'])) {
             $targetBaseDir = $realCurrentPath;
@@ -824,6 +919,11 @@ if (isset($_GET['cloudshare'])) {
             if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
                 $msg = $quotaExceeded ? cxLang('err_quota') : "";
                 if ($isUploadOnly) $msg = ($skipped > 0) ? "Error: $skipped file(s) skipped." : ($msg ?: cxLang('js_success'));
+
+                $uploadResult = ($skipped === $count && $count > 0) ? '🛑 FAILURE' : ($skipped > 0 ? '❓ PARTIAL' : '✅ SUCCESS');
+                $uploadDetails = "Total: $count, Skipped: $skipped" . ($quotaExceeded ? " (Quota Exceeded)" : "");
+                cxLogAction($shareName, '⬆️ UPLOAD', $uploadResult, $uploadDetails, $targetBaseDir);
+
                 echo json_encode(['status' => 'ok', 'skipped' => $skipped, 'msg' => $msg]); exit;
             }
         }
@@ -850,6 +950,7 @@ if (isset($_GET['cloudshare'])) {
         }
         $zip->close();
         if (file_exists($tmpFile)) {
+            cxLogAction($shareName, '🗜️ DOWNLOAD_ZIP', '✅ SUCCESS', '', $realCurrentPath);
             cxRecordDownload($guid);
             header("X-Content-Type-Options: nosniff"); header('Content-Type: application/zip');
             header('Content-Disposition: attachment; filename="' . str_replace('"', '', $zipName) . '"');
@@ -920,6 +1021,8 @@ if (isset($_GET['cloudshare'])) {
             header('Content-Disposition: ' . $disposition . '; filename="' . str_replace('"', '', $filename) . '"');
             header('Content-Length: ' . filesize($servePath)); 
             header('Cache-Control: no-cache');
+			
+			cxLogAction($shareName, $disposition === 'inline' ? '👁️ VIEW_INLINE' : '⬇️ DOWNLOAD_FILE', '✅ SUCCESS', cxFmtBytes(filesize($servePath)), $realCurrentPath);
             
             while (ob_get_level()) ob_end_clean();
             
@@ -938,7 +1041,13 @@ if (isset($_GET['cloudshare'])) {
         if ($realCurrentPath === $sharedRootPath) {
             ?>
             <!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">
-            <style>body{font-family:sans-serif;background:#f3f3f3;display:flex;align-items:center;justify-content:center;height:100vh;margin:0} .box{background:#fff;padding:35px;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.1);width:350px;text-align:center;line-height:1.5;} .filename{display:block;margin:15px 0;font-weight:bold;color:#000;word-break:break-all;font-size:1.1em} .btn{display:inline-block;background:#0078d4;color:white;text-decoration:none;padding:12px 30px;border-radius:4px;font-weight:600;margin-top:10px}</style></head><body>
+            <style>
+			body{font-family:sans-serif;background:#f3f3f3;display:flex;align-items:center;justify-content:center;height:100vh;margin:0} .box{background:#fff;padding:35px;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.1);width:350px;text-align:center;line-height:1.5;} .filename{display:block;margin:15px 0;font-weight:bold;color:#000;word-break:break-all;font-size:1.1em} .btn{display:inline-block;background:#0078d4;color:white;text-decoration:none;padding:12px 30px;border-radius:4px;font-weight:600;margin-top:10px}
+			body.dark-mode { background: #1e1e1e; color: #e0e0e0; } body.dark-mode .box { background: #2d2d2d; box-shadow: 0 4px 20px rgba(0,0,0,0.5); } body.dark-mode .filename { color: #fff; }
+			</style>
+            <?php echo $tabSecurityScript; ?>
+			</head><body>
+			<script>(function(){var d=localStorage.getItem('cx_dark_mode');if(d==='1'||(d===null&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches))document.body.classList.add('dark-mode');})();</script>
             <div class="box"><h3><?php echo htmlspecialchars(cxLang('shared_file_title')); ?></h3>
             <div class="msg"><?php echo cxLang('shared_file_msg', htmlspecialchars($filename)); ?></div>
             <a href="<?php echo htmlspecialchars($_SERVER['REQUEST_URI'] . (strpos($_SERVER['REQUEST_URI'], '?') ? '&' : '?') . 'download=1'); ?>" class="btn"><?php echo htmlspecialchars(cxLang('btn_download')); ?></a></div></body></html>
@@ -986,16 +1095,35 @@ if (isset($_GET['cloudshare'])) {
         }
         $autoGrid = ($totalFileCount > 0 && ($imgCount / $totalFileCount) > 0.5);
         
-        // --- README.MD PROCESSING ---
-        $readmeHtml = '';
-        foreach (['readme.md', 'README.md', 'README.MD'] as $rm) {
-            $rmPath = $realCurrentPath . DIRECTORY_SEPARATOR . $rm;
-            if (file_exists($rmPath) && is_file($rmPath)) {
-                $readmeHtml = cxParseMarkdown(file_get_contents($rmPath));
-                break; // Stop at the first match
+        // --- README.MD PROCESSING (DUAL ZONE) ---
+        $readmeTopHtml = '';
+        $readmeBottomHtml = '';
+        
+        // Only interpret the file if a valid position is configured
+        if (in_array($readmePos, ['top', 'bottom'], true)) {
+            foreach (['readme.md', 'README.md', 'README.MD'] as $rm) {
+                $rmPath = $realCurrentPath . DIRECTORY_SEPARATOR . $rm;
+                if (file_exists($rmPath) && is_file($rmPath)) {
+                    $rawMd = file_get_contents($rmPath);
+                    
+                    if ($readmePos === 'bottom') {
+                        // Force everything to the bottom. Strip the [FOOTER] tag so it doesn't render as text.
+                        $cleanMd = preg_replace('/\[FOOTER\]/i', '', $rawMd);
+                        $readmeBottomHtml = cxParseMarkdown(trim($cleanMd));
+                    } else { // $readmePos === 'top'
+                        if (preg_match('/\[FOOTER\]/i', $rawMd)) {
+                            $parts = preg_split('/\[FOOTER\]/i', $rawMd, 2);
+                            $readmeTopHtml = cxParseMarkdown(trim($parts[0]));
+                            $readmeBottomHtml = cxParseMarkdown(trim($parts[1]));
+                        } else {
+                            $readmeTopHtml = cxParseMarkdown(trim($rawMd));
+                        }
+                    }
+                    break; 
+                }
             }
         }
-        // ----------------------------
+        // ----------------------------------------
 
         $currentDirSize = cxGetDirSize($realCurrentPath, 5 * 1024 * 1024 * 1024); // 5GB Hard Limit
         $canZip = ($currentDirSize <= 5368709120);
@@ -1072,7 +1200,7 @@ if (isset($_GET['cloudshare'])) {
                 .gallery-item.is-dir .gallery-thumb svg { width: 48px; height: 48px; }
 
                 /* README BOX */
-                .readme-box { background: #fff; padding: 25px 30px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-top: 25px; border-top: 4px solid #0078d4; line-height: 1.6; color: #444; }
+                .readme-box { background: #fff; padding: 25px 30px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-top: 25px; border-top: 1px solid #444;  margin-bottom: 25px; border-bottom: 1px solid #444; line-height: 1.6; color: #444; }
                 .readme-box h1, .readme-box h2, .readme-box h3 { margin-top: 0; color: #222; }
                 .readme-box h1, .readme-box h2 { border-bottom: 1px solid #eaeaea; padding-bottom: 8px; margin-bottom: 15px; }
                 .readme-box p:last-child { margin-bottom: 0; }
@@ -1120,9 +1248,52 @@ if (isset($_GET['cloudshare'])) {
                 .cx-preview-prev { left: 20px; }
                 .cx-preview-next { right: 20px; }
                 .cx-preview-nav.disabled { opacity: 0.2; cursor: default; pointer-events: none; }
+
+                /* DARK MODE */
+                body.dark-mode { background: #1e1e1e; color: #e0e0e0; }
+                body.dark-mode .header { background: #2d2d2d; border-bottom: 1px solid #444; }
+                body.dark-mode .header h2 { color: #e0e0e0; }
+                body.dark-mode .btn-default { background: #333; color: #e0e0e0; border: 1px solid #555; }
+                body.dark-mode .btn-default:hover { background: #444; }
+                body.dark-mode .file-list th { border-bottom: 2px solid #444; color: #aaa; }
+                body.dark-mode .file-list td { border-bottom: 1px solid #333; }
+                body.dark-mode .file-list tr:hover td { background: #2a2a2a; }
+                body.dark-mode .gallery-item { background: #2d2d2d; border-color: #444; }
+                body.dark-mode .gallery-thumb { background: #222; }
+                body.dark-mode .gallery-meta { background: rgba(0,0,0,0.2); border-top-color: #444; color:#ccc; }
+                body.dark-mode .gallery-cb-wrap { background: rgba(45,45,45,0.9); }
+                body.dark-mode .readme-box { background: #2d2d2d; color: #ccc; border-color: #444; }
+                body.dark-mode .readme-box h1, body.dark-mode .readme-box h2, body.dark-mode .readme-box h3 { color: #eee; }
+                body.dark-mode .readme-box h1, body.dark-mode .readme-box h2 { border-bottom-color: #444; }
+                body.dark-mode .readme-box code { background: #1e1e1e; }
+                body.dark-mode .modal-content, body.dark-mode .upload-box { background: #2d2d2d; color: #e0e0e0; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+                body.dark-mode .upload-box { border-color: #555; background: #2a2a2a; }
+                body.dark-mode .hint-text { color: #aaa; }
+                body.dark-mode .empty { color: #777; }
+                body.dark-mode .row-link { color: #e0e0e0; }
+                body.dark-mode .row-link:hover { color: #5eb0ef; }
+                body.dark-mode .dl-icon-btn { color: #5eb0ef; }
+                body.dark-mode .dl-icon-btn:hover { background: rgba(94, 176, 239, 0.15); }
+                body.dark-mode .del-btn:hover { background: rgba(217, 83, 79, 0.2); }
+
             </style>
+			<?php echo $tabSecurityScript; ?>
         </head>
         <body>
+            <script>
+                (function(){
+                    var d = localStorage.getItem('cx_dark_mode');
+                    var m = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
+                    if (d === '1' || (d === null && m && m.matches)) document.body.classList.add('dark-mode');
+                    if (m) {
+                        m.addEventListener('change', function(e) {
+                            if (localStorage.getItem('cx_dark_mode') === null) {
+                                document.body.classList.toggle('dark-mode', e.matches);
+                            }
+                        });
+                    }
+                })();
+            </script>
             <div id="drop-zone"></div>
             <div id="upload-modal" class="modal-overlay"><div class="modal-content"><div class="spinner"></div><div style="font-weight:600;"><?php echo htmlspecialchars(cxLang('modal_uploading')); ?></div><div style="font-size:12px; color:#666; margin-top:5px;"><?php echo htmlspecialchars(cxLang('modal_stay')); ?></div></div></div>
             <div id="security-toast" class="toast"></div>
@@ -1130,6 +1301,9 @@ if (isset($_GET['cloudshare'])) {
             <div class="header">
                 <h2><?php echo cxGetIcon(true, ''); ?> <?php echo htmlspecialchars($isUploadOnly ? cxLang('header_upload') : ($rootName . ($subPath ? ' / ' . $subPath : ''))); ?></h2>
                 <div class="actions">
+                    <button class="btn btn-default" onclick="cxToggleDarkMode()" title="Toggle Dark Mode">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8C12.92 3.04 12.46 3 12 3z"/></svg>
+                    </button>
                     <?php if (!$isUploadOnly): ?>
                     <button class="btn btn-default" id="selectAllBtn" onclick="cxToggleMasterSelect()">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg> 
@@ -1163,9 +1337,9 @@ if (isset($_GET['cloudshare'])) {
                         </div>
                     </div>
                 <?php else: ?>
-                    <?php if (!empty($readmeHtml) && $readmePos === 'top'): ?>
+                    <?php if (!empty($readmeTopHtml)): ?>
                         <div class="readme-box" style="margin-top: 0; margin-bottom: 25px;">
-                            <?php echo $readmeHtml; ?>
+                            <?php echo $readmeTopHtml; ?>
                         </div>
                     <?php endif; ?>
                     <?php if ($parentLink): ?>
@@ -1225,7 +1399,7 @@ if (isset($_GET['cloudshare'])) {
                     <div id="view-gallery">
                         <?php foreach ($dirs as $d): $link = $reqUri . '?cloudshare=' . $guid . '&subpath=' . urlencode($d['path']); ?>
                             <div class="gallery-item is-dir" onclick="window.location.href='<?php echo htmlspecialchars($link); ?>'">
-                                <div class="gallery-cb-wrap" onclick="event.stopPropagation();"><input type="checkbox" class="cx-item-cb" value="<?php echo htmlspecialchars($d['name']); ?>" data-isdir="1" onclick="cxUpdateSelection();"></div>
+                                <div class="gallery-cb-wrap" onclick="event.stopPropagation();"><input type="checkbox" class="cx-item-cb" value="<?php echo htmlspecialchars($d['name']); ?>" data-isdir="1" onclick="event.stopPropagation(); cxUpdateSelection();"></div>
                                 <div class="gallery-thumb"><?php echo cxGetIcon(true, ''); ?></div>
                                 <div class="gallery-meta"><?php echo htmlspecialchars($d['name']); ?></div>
                             </div>
@@ -1244,7 +1418,7 @@ if (isset($_GET['cloudshare'])) {
                                 <div class="gallery-item" onclick="cxGalleryClick(event, 'download', '<?php echo htmlspecialchars($dlLink, ENT_QUOTES); ?>', '', '', '')">
                             <?php endif; ?>
                                 
-                                <div class="gallery-cb-wrap" onclick="event.stopPropagation();"><input type="checkbox" class="cx-item-cb" value="<?php echo htmlspecialchars($f['name']); ?>" data-isdir="0" data-dl="<?php echo htmlspecialchars($dlLink); ?>" onclick="cxUpdateSelection();"></div>
+                                <div class="gallery-cb-wrap" onclick="event.stopPropagation();"><input type="checkbox" class="cx-item-cb" value="<?php echo htmlspecialchars($f['name']); ?>" data-isdir="0" data-dl="<?php echo htmlspecialchars($dlLink); ?>" onclick="event.stopPropagation(); cxUpdateSelection();"></div>
 
                                 <a href="<?php echo htmlspecialchars($dlLink); ?>" class="gallery-dl-btn" title="Download" download onclick="event.stopPropagation();">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
@@ -1262,9 +1436,9 @@ if (isset($_GET['cloudshare'])) {
                         <?php endforeach; ?>
                     </div>
                 <?php endif; ?>
-                <?php if (!empty($readmeHtml) && $readmePos === 'bottom'): ?>
+                <?php if (!empty($readmeBottomHtml)): ?>
                     <div class="readme-box">
-                        <?php echo $readmeHtml; ?>
+                        <?php echo $readmeBottomHtml; ?>
                     </div>
                 <?php endif; ?>
             </div>
@@ -1318,6 +1492,12 @@ if (isset($_GET['cloudshare'])) {
             var toast = document.getElementById('security-toast');
             function showToast(msg, duration) { toast.innerText = msg; toast.style.display = 'block'; setTimeout(function() { toast.style.display = 'none'; }, duration || 5000); }
 			
+            // --- DARK MODE LOGIC ---
+            function cxToggleDarkMode() {
+                var isDark = document.body.classList.toggle('dark-mode');
+                localStorage.setItem('cx_dark_mode', isDark ? '1' : '0');
+            }
+
            // --- SELECTION LOGIC ---
             var isAllSelected = false;
 
@@ -1327,13 +1507,23 @@ if (isset($_GET['cloudshare'])) {
             }
 
             function cxUpdateSelection() {
+                var activeView = isGrid ? document.getElementById('view-gallery') : document.getElementById('view-list');
+                if (!activeView) return;
+                
+                // 1. Gather the true state from the currently active view
+                var selectedValues = new Set();
+                activeView.querySelectorAll('.cx-item-cb:checked').forEach(function(cb) {
+                    selectedValues.add(cb.value);
+                });
+                
+                // 2. Synchronize ALL checkboxes (both hidden and visible) and apply styles
                 var cbs = document.querySelectorAll('.cx-item-cb');
-                var selectedCount = 0;
                 cbs.forEach(function(cb) {
+                    cb.checked = selectedValues.has(cb.value);
+                    
                     var row = cb.closest('tr');
                     var card = cb.closest('.gallery-item');
                     if (cb.checked) {
-                        selectedCount++;
                         if(row) row.style.background = '#f0f8ff';
                         if(card) card.classList.add('selected');
                     } else {
@@ -1341,6 +1531,11 @@ if (isset($_GET['cloudshare'])) {
                         if(card) card.classList.remove('selected');
                     }
                 });
+                
+                // 3. Update Counters based strictly on active view to prevent double-counting
+                var selectedCount = selectedValues.size;
+                var activeCbs = activeView.querySelectorAll('.cx-item-cb');
+                var totalItems = activeCbs.length;
                 
                 var bar = document.getElementById('selection-bar');
                 var countTxt = document.getElementById('sel-count');
@@ -1352,8 +1547,8 @@ if (isset($_GET['cloudshare'])) {
                 } else {
                     bar.classList.remove('active');
                 }
-                // Automatically sync the master button and list header checkbox state
-                var totalItems = cbs.length;
+                
+                // 4. Automatically sync the master button and list header checkbox state
                 isAllSelected = (selectedCount === totalItems && totalItems > 0);
                 var textEl = document.getElementById('selectAllText');
                 if (textEl) {
@@ -1371,12 +1566,16 @@ if (isset($_GET['cloudshare'])) {
 
             function cxDownloadBulkZip() {
                 var selected = [];
-                document.querySelectorAll('.cx-item-cb:checked').forEach(function(cb) {
+                var activeView = isGrid ? document.getElementById('view-gallery') : document.getElementById('view-list');
+                
+                activeView.querySelectorAll('.cx-item-cb:checked').forEach(function(cb) {
                     selected.push(cb.value);
                 });
+                
                 if (selected.length === 0) return;
+                
                 showToast("<?php echo cxLang('msg_prep_zip'); ?>", 15000);
-				document.getElementById('bulkSelectedItems').value = JSON.stringify(selected);
+                document.getElementById('bulkSelectedItems').value = JSON.stringify(selected);
                 document.getElementById('bulkZipForm').submit();
             }
             
@@ -1387,17 +1586,28 @@ if (isset($_GET['cloudshare'])) {
                 else window.location.href = url;
             }
 
+            // REPLACEMENT: Complete routine for cxDownloadBulkFiles()
             function cxDownloadBulkFiles() {
                 var links = [];
-                document.querySelectorAll('.cx-item-cb:checked').forEach(function(cb) {
+                var activeView = isGrid ? document.getElementById('view-gallery') : document.getElementById('view-list');
+                
+                activeView.querySelectorAll('.cx-item-cb:checked').forEach(function(cb) {
                     if (cb.getAttribute('data-isdir') !== '1' && cb.getAttribute('data-dl')) {
                         links.push(cb.getAttribute('data-dl'));
                     }
                 });
+                
                 if (links.length === 0) {
                     alert("<?php echo cxLang('err_no_files'); ?>");
                     return;
                 }
+          
+                // FIX: Notify the user about the browser's security block
+                if (links.length > 1) {
+                    showToast("Starting downloads... If your browser blocks them, please click 'Allow multiple files' in your address bar.", 10000);
+                }
+                
+                // FIX: Increase delay to 800ms to avoid browser spam filters
                 links.forEach(function(link, i) {
                     setTimeout(function() {
                         var a = document.createElement('a');
@@ -1406,7 +1616,7 @@ if (isset($_GET['cloudshare'])) {
                         document.body.appendChild(a);
                         a.click();
                         document.body.removeChild(a);
-                    }, i * 300);
+                    }, i * 800); 
                 });
             }
 
@@ -1431,6 +1641,8 @@ if (isset($_GET['cloudshare'])) {
                     gallery.style.display = 'grid';
                     if(txt) txt.innerText = "<?php echo cxLang('view_list'); ?>";
                     initLazyLoad();
+					// Force intersection check for items already in viewport after view switch
+					setTimeout(function() { window.dispatchEvent(new Event('scroll')); }, 50);
                 } else {
                     list.style.display = 'table';
                     gallery.style.display = 'none';
@@ -1626,6 +1838,16 @@ if (isset($_GET['cloudshare'])) {
             function sendFormData() { if (!formData.has('files[]')) return; isUploading = true; uploadModal.style.display = 'flex'; formData.append('action', 'upload'); formData.append('csrf', csrfToken); var xhr = new XMLHttpRequest(); xhr.open('POST', window.location.href, true); xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest'); xhr.onload = function() { isUploading = false; uploadModal.style.display = 'none'; try { var res = JSON.parse(xhr.responseText); var msg = (res.msg || "") + (res.skipped > 0 ? res.skipped + "<?php echo cxLang('js_skipped'); ?>" : ""); if (msg) { showToast(msg); if (!isUploadOnlyMode) { setTimeout(function() { window.location.reload(); }, 3500); } } else { if (!isUploadOnlyMode) { window.location.reload(); } else { showToast("<?php echo cxLang('js_success'); ?>"); } } } catch(e) { if (!isUploadOnlyMode) window.location.reload(); else showToast("<?php echo cxLang('js_finished'); ?>"); } }; xhr.onerror = function() { isUploading = false; uploadModal.style.display = 'none'; alert("<?php echo cxLang('js_failed'); ?>"); }; xhr.send(formData); }
             </script>
             <?php endif; ?>
+            <script>
+                window.addEventListener('pagehide', function() {
+                    // Only trigger if we are not navigating to a file download
+                    // This check prevents triggering logouts during the download process
+                    var isDownload = event.persisted === false; 
+                    if (navigator.sendBeacon) {
+                        navigator.sendBeacon('?cloudshare=<?php echo $guid; ?>&tab_logout=1&silent=1');
+                    }
+                });
+            </script>
         </body>
         </html>
 <?php
