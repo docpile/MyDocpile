@@ -896,13 +896,13 @@ function show_post_install_instructions() {
     msg_header "Post-Installation Instructions"
     
     # Dynamically extract base directories, sort, and deduplicate them
-    local dirs=("$www" "/var/lib/mydocpile" "$(dirname "$icon_cache")" "$(dirname "$preview_cache")" "/tmp" "/dev/urandom" "/dev/shm")
+    local dirs=("$www" "/var/lib/mydocpile" "$(dirname "$icon_cache")" "$(dirname "$preview_cache")" "/tmp" "/dev/urandom" "/dev/shm" "/usr/bin/ffmpeg")
     local unique_dirs=($(printf "%s\n" "${dirs[@]}" | sort -u))
     local basedir_str=$(IFS=:; echo "${unique_dirs[*]}")
     
     msg_info "1. ${BOLD}${CYAN}PHP open_basedir Configuration:${RESET}"
-    msg_info "   Please ensure your php.ini allows access at least to the following paths:"
-    msg_info "   open_basedir = ${BOLD}$basedir_str ${RESET}"
+    msg_info "   Please ensure your php.ini allows access at least to the following paths and files:"
+    msg_info "   open_basedir = YOUR-CURRENT-PATHS:${BOLD}$basedir_str ${RESET}"
     msg_info ""
     
     # Determine the directory where this script resides
