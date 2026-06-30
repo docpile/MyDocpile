@@ -47,7 +47,7 @@ Of course, I'd be more than happy to receive some kind of a feedback - this prod
 
 ![Main UI](https://github.com/docpile/MyDocpile/blob/main/images/02_main_cloud_ui.png?raw=true)
 
-**Webmail UI**
+**Webmail UI** - Secure webmail, with GPG encryption by default.
 
 ![Webmail UI](https://github.com/docpile/MyDocpile/blob/main/images/03_main_webmail_ui.png?raw=true)
 
@@ -71,7 +71,7 @@ Optional: **OnlyOffice integration** - makes the cloud almost a desktop replacem
 
 ![Document Management](https://github.com/docpile/MyDocpile/blob/main/images/08_office_view_-_document_management.png?raw=true)
 
-**Commander View** - Similar to Total Commander
+**Commander View** - Similar to Total Commander and others
 
 ![Commander View](https://github.com/docpile/MyDocpile/blob/main/images/09_commander_view.png?raw=true)
 
@@ -163,7 +163,8 @@ The MyDocpile software is designed to have **the least depenencies possible**. S
 ### 6. Webmail
 * **Multi-account:** You can have multiple accounts connected here, all nicely brought together into a "SmartBox"
 * **Security first:**
-  * Phishing resistance: Many security measures implemented to limit phishing
+  * PGP end-to-end encryption is completely incorporated and the actively offered default, thereby making mails as secure as possible 
+  * Phishing resistance: Many security measures implemented to limit phishing possibilites
   * Spam protection: Shows the DMARC result and whether the mail was transmitted via TLS
   * Tracking protection: All pictures (of course except identified tracking) are proxied by the server, thereby making sender tracking profiles almost useless
   * Scripting protection: Heavily sandboxed mail display. Therefore, no code whatsoever can be executed by emails.
