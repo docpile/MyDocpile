@@ -39,7 +39,7 @@ $trans = [
     'en' => [
         'btn_select_all' => "Select All",
         'btn_deselect_all' => "Deselect All",
-        'msg_prep_zip' => "Preparing ZIP file... Please wait until the download starts.",
+        'msg_prep_zip' => "Preparing ZIP file... Please wait until the download starts, also aftger the end of this toast.",
 		'err_access_denied' => "Too many failed attempts. Access denied.",
         'err_invalid_link' => "Invalid share link format.",
         'err_unavailable' => "Share no longer available.",
@@ -83,7 +83,7 @@ $trans = [
         'js_finished' => "Upload finished.",
         'js_failed' => "Upload failed",
         'js_skipped' => " file(s) skipped/blocked.",
-        'hint_click' => "Click a file twice to preview it, or use the download icon.",
+        'hint_click' => "Click a file or tap it twice for a full-screen preview, or use the download icon.",
         'view_list' => "List View",
         'view_grid' => "Gallery View",
         'btn_bulk_zip' => "Download ZIP",
@@ -94,7 +94,7 @@ $trans = [
     'de' => [
         'btn_select_all' => "Alle auswählen",
         'btn_deselect_all' => "Auswahl aufheben",
-        'msg_prep_zip' => "ZIP-Datei wird vorbereitet... Bitte warten bis die Datei heruntergeladen wird.",
+        'msg_prep_zip' => "ZIP-Datei wird vorbereitet... Bitte warten bis die Datei heruntergeladen wird, auch nach dem Ende dieses Popups.",
 		'err_access_denied' => "Zu viele fehlgeschlagene Versuche. Zugriff verweigert.",
         'err_invalid_link' => "Ungültiges Link-Format.",
         'err_unavailable' => "Freigabe nicht mehr verfügbar.",
@@ -138,7 +138,7 @@ $trans = [
         'js_finished' => "Upload beendet.",
         'js_failed' => "Upload fehlgeschlagen",
         'js_skipped' => " Datei(en) übersprungen/blockiert.",
-        'hint_click' => "Datei zweimal anklicken für Vorschau, oder das Download-Icon nutzen.",
+        'hint_click' => "Datei anklicken oder zweimal antippen für Vollbild-Vorschau, oder das Download-Icon nutzen.",
         'view_list' => "Liste",
         'view_grid' => "Galerie",
         'btn_bulk_zip' => "Als ZIP herunterladen",
@@ -375,8 +375,12 @@ function cxParseMarkdown($text) {
     $text = preg_replace('/_([^_]+?)_/s', '<em>$1</em>', $text);
     $text = preg_replace('/\*([^\*]+?)\*/s', '<em>$1</em>', $text);
     
-    // Links (Block javascript: protocol for security)
-    $text = preg_replace('/\[([^\]]+)\]\(([^)]+)\)/', '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>', $text);
+    // Images (Process before links)
+    $text = preg_replace('/!\[([^\]]*)\]\(([^)]+)\)/', '<img src="$2" alt="$1" style="max-width:100%; height:auto;">', $text);
+    $text = preg_replace('/src="javascript:[^"]*"/i', 'src="#"', $text);
+
+    // Links (Block javascript: protocol for security, negative lookbehind to skip images)
+    $text = preg_replace('/(?<!!)\[([^\]]+)\]\(([^)]+)\)/', '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>', $text);
     $text = preg_replace('/href="javascript:[^"]*"/i', 'href="#"', $text);
     
     // Headers (H1 - H6)
@@ -397,7 +401,7 @@ function cxParseMarkdown($text) {
         if (empty($block)) continue;
         
         // Prevent wrapping block-level elements in <p> tags
-        if (preg_match('/^<(h[1-6]|ul|ol|li|blockquote)/i', $block)) {
+        if (preg_match('/^<(h[1-6]|ul|ol|li|blockquote|img)/i', $block)) {
             $html .= $block . "\n";
         } else {
             $html .= "<p>" . nl2br($block) . "</p>\n";
@@ -668,7 +672,6 @@ if (isset($_GET['cloudshare'])) {
     if (isset($_GET['tab_logout'])) {
         // If silent, just log it. Do NOT destroy the session.
         if (isset($_GET['silent'])) {
-            cxLogAction($shareName, '↪️ LEAVE_SITE', '✅ SUCCESS', 'User navigated away', '');
             exit; 
         } else {
             // Manual logout button clicked: Destroy session
@@ -775,6 +778,8 @@ if (isset($_GET['cloudshare'])) {
         if (!isset($_POST['csrf']) || !hash_equals($csrfToken, $_POST['csrf'])) die(cxLang('err_csrf'));
         $selectedItems = json_decode($_POST['selected_items'] ?? '[]', true);
         if (!is_array($selectedItems) || empty($selectedItems)) die(cxLang('err_file_unavailable'));
+		
+		session_write_close();
 
 //       $totalSize = 0;
         $validPaths = [];
@@ -934,6 +939,9 @@ if (isset($_GET['cloudshare'])) {
 //        $totalSize = cxGetDirSize($realCurrentPath, $max_zip_size + 1);
 //        if ($totalSize > $max_zip_size) die(cxLang('err_zip_size'));
         if (!class_exists('ZipArchive')) die(cxLang('err_zip_missing'));
+		
+		session_write_close();
+		
         while (ob_get_level()) ob_end_clean(); set_time_limit(0);
         $zipName = 'download-' . date('Ymd-His') . '.zip';
         $tmpFile = tempnam(sys_get_temp_dir(), 'cxzip');
@@ -1168,9 +1176,15 @@ if (isset($_GET['cloudshare'])) {
                 .size-warning { font-size: 11px; color: #999; align-self: center; margin-right: 10px; }
                 .del-btn { background:none; border:none; padding:5px; border-radius:4px; }
                 .del-btn:hover { background: #fee; }
-                .hint-text { margin-bottom: 10px; font-size: 13px; color: #666; }
+                .hint-text { margin-bottom: 10px; font-size: 13px; color: #aaa; }
                 input[type="checkbox"].cx-item-cb { width: 16px; height: 16px; cursor: pointer; }
                 
+                @media (max-width: 720px) {
+                    .file-list .col-date, .file-list .col-size {
+                        display: none;
+                    }
+                }
+
                 /* DOWNLOAD ICON BUTTONS */
                 .dl-icon-btn { color: #0078d4; text-decoration: none; display: inline-flex; align-items: center; padding: 4px; border-radius: 4px; transition: background 0.2s; }
                 .dl-icon-btn:hover { background: rgba(0, 120, 212, 0.1); }
@@ -1200,10 +1214,9 @@ if (isset($_GET['cloudshare'])) {
                 .gallery-item.is-dir .gallery-thumb svg { width: 48px; height: 48px; }
 
                 /* README BOX */
-                .readme-box { background: #fff; padding: 25px 30px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-top: 25px; border-top: 1px solid #444;  margin-bottom: 25px; border-bottom: 1px solid #444; line-height: 1.6; color: #444; }
-                .readme-box h1, .readme-box h2, .readme-box h3 { margin-top: 0; color: #222; }
-                .readme-box h1, .readme-box h2 { border-bottom: 1px solid #eaeaea; padding-bottom: 8px; margin-bottom: 15px; }
-                .readme-box p:last-child { margin-bottom: 0; }
+                .readme-box { background: #fff; padding: 25px 0px; padding-bottom: 35px; border-radius: 8px; margin-top: 25px;  line-height: 1.6; color: #444; }
+                .readme-box h1, .readme-box h2, .readme-box h3 { margin-top: 0; color: #000;  padding-bottom: 8px; margin-bottom: 3px; }
+				.readme-box p:last-child { margin-bottom: 0; }
                 .readme-box a { color: #0078d4; text-decoration: none; font-weight: 500; }
                 .readme-box a:hover { text-decoration: underline; }
                 .readme-box ul { padding-left: 20px; }
@@ -1262,7 +1275,7 @@ if (isset($_GET['cloudshare'])) {
                 body.dark-mode .gallery-thumb { background: #222; }
                 body.dark-mode .gallery-meta { background: rgba(0,0,0,0.2); border-top-color: #444; color:#ccc; }
                 body.dark-mode .gallery-cb-wrap { background: rgba(45,45,45,0.9); }
-                body.dark-mode .readme-box { background: #2d2d2d; color: #ccc; border-color: #444; }
+                body.dark-mode .readme-box { background:  #1e1e1e; color: #ccc; border-color: #444; }
                 body.dark-mode .readme-box h1, body.dark-mode .readme-box h2, body.dark-mode .readme-box h3 { color: #eee; }
                 body.dark-mode .readme-box h1, body.dark-mode .readme-box h2 { border-bottom-color: #444; }
                 body.dark-mode .readme-box code { background: #1e1e1e; }
@@ -1355,18 +1368,24 @@ if (isset($_GET['cloudshare'])) {
                         <table class="file-list">
                             <thead><tr>
                                 <th width="30" style="text-align:center;"><input type="checkbox" id="selectAllList" onclick="cxToggleAll(this.checked)"></th>
-                                <th>Name</th><th width="140">Date</th><th width="80">Size</th><th width="50" style="text-align:center;">Action</th><?php if($canModify) echo '<th width="50"></th>'; ?>
+                                <th>Name</th>
+                                <th class="col-date" width="140">Date</th>
+                                <?php if(!empty($files)) echo '<th class="col-size" width="80">Size</th><th width="50" style="text-align:center;">Action</th>'; ?>
+                                <?php if($canModify) echo '<th width="50"></th>'; ?>
                             </tr></thead>
                             <tbody>
-                                <?php if (empty($dirs) && empty($files)): ?><tr><td colspan="<?php echo $canModify?6:5; ?>" class="empty"><?php echo htmlspecialchars(cxLang('empty_folder')); ?></td></tr><?php endif; ?>
+                                <?php if (empty($dirs) && empty($files)): ?><tr><td colspan="<?php echo $canModify ? 4 : 3; ?>" class="empty"><?php echo htmlspecialchars(cxLang('empty_folder')); ?></td></tr><?php endif; ?>
+                                
                                 <?php foreach ($dirs as $d): $link = $reqUri . '?cloudshare=' . $guid . '&subpath=' . urlencode($d['path']); ?>
                                     <tr>
                                         <td align="center"><input type="checkbox" class="cx-item-cb" value="<?php echo htmlspecialchars($d['name']); ?>" data-isdir="1" onclick="cxUpdateSelection(); event.stopPropagation();"></td>
                                         <td><a href="<?php echo htmlspecialchars($link); ?>" class="row-link"><?php echo cxGetIcon(true, $d['name']); ?> <?php echo htmlspecialchars($d['name']); ?></a></td>
-                                        <td class="meta"><?php echo $d['date']; ?></td><td class="meta">-</td><td class="meta"></td>
+                                        <td class="meta col-date"><?php echo $d['date']; ?></td>
+                                        <?php if(!empty($files)) echo '<td class="meta col-size">-</td><td class="meta"></td>'; ?>
                                         <?php if($canModify): ?><td class="meta" align="center"><button class="del-btn" title="Delete" onclick="cxDelete('<?php echo htmlspecialchars($d['name']); ?>')"><?php echo cxGetDeleteIcon(); ?></button></td><?php endif; ?>
                                     </tr>
                                 <?php endforeach; ?>
+                                
                                 <?php foreach ($files as $f): 
                                     $ext = strtolower(pathinfo($f['name'], PATHINFO_EXTENSION));
                                     $dlLink = $reqUri . '?cloudshare=' . $guid . '&subpath=' . urlencode($f['path']) . '&download=1';
@@ -1382,8 +1401,8 @@ if (isset($_GET['cloudshare'])) {
                                                 <a href="<?php echo htmlspecialchars($dlLink); ?>" class="row-link"><?php echo cxGetIcon(false, $f['name']); ?> <?php echo htmlspecialchars($f['name']); ?></a>
                                             <?php endif; ?>
                                         </td>
-                                        <td class="meta"><?php echo $f['date']; ?></td>
-                                        <td class="meta"><?php echo $f['size']; ?></td>
+                                        <td class="meta col-date"><?php echo $f['date']; ?></td>
+                                        <td class="meta col-size"><?php echo $f['size']; ?></td>
                                         <td class="meta" align="center">
                                             <a href="<?php echo htmlspecialchars($dlLink); ?>" class="dl-icon-btn" title="Download" download>
                                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
@@ -1393,8 +1412,7 @@ if (isset($_GET['cloudshare'])) {
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>
-                        </table>
-                    </div>
+                        </table>                    </div>
 
                     <div id="view-gallery">
                         <?php foreach ($dirs as $d): $link = $reqUri . '?cloudshare=' . $guid . '&subpath=' . urlencode($d['path']); ?>

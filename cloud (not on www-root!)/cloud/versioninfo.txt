@@ -1,3 +1,6 @@
+4.0.265
+	Fixes: Public shares and markdown files
+	
 4.0.264
 	Security: Public shares now also produce a log file
 	Improvement: Public shares - dark mode available 
