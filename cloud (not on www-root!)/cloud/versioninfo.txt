@@ -1,3 +1,6 @@
+4.0.266
+	Improvement: Further markdown improvements. A sample file containing the markdown options added
+
 4.0.265
 	Fixes: Public shares and markdown files
 	

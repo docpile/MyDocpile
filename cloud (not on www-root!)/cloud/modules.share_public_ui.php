@@ -369,12 +369,28 @@ function cxParseMarkdown($text) {
     $text = htmlspecialchars($text, ENT_NOQUOTES, 'UTF-8');
     $text = str_replace("\r\n", "\n", $text);
     
-    // Bold and Italic
+    // Fenced Code Blocks (Process before inline code and formatting)
+    $text = preg_replace('/```(.*?)```/s', '<pre><code>$1</code></pre>', $text);
+    
+    // Inline Code
+    $text = preg_replace('/`([^`]+)`/', '<code>$1</code>', $text);
+
+    // Bold, Italic, Strikethrough, and Highlight
     $text = preg_replace('/__(.+?)__/s', '<strong>$1</strong>', $text);
     $text = preg_replace('/\*\*(.+?)\*\*/s', '<strong>$1</strong>', $text);
-    $text = preg_replace('/_([^_]+?)_/s', '<em>$1</em>', $text);
-    $text = preg_replace('/\*([^\*]+?)\*/s', '<em>$1</em>', $text);
-    
+    $text = preg_replace('/_([^_`]+?)_/s', '<em>$1</em>', $text);
+    $text = preg_replace('/\*([^\*`]+?)\*/s', '<em>$1</em>', $text);
+    $text = preg_replace('/~~(.+?)~~/s', '<del>$1</del>', $text);
+    $text = preg_replace('/==(.+?)==/s', '<mark>$1</mark>', $text);
+
+    $text = preg_replace('/\[color:([a-zA-Z]+|#[a-fA-F0-9]{3,8})\](.*?)\[\/color\]/is', '<span class="cx-color" style="color:$1;">$2</span>', $text);
+
+    // Horizontal Rules
+    $text = preg_replace('/^(?:\-{3,}|\*{3,}|_{3,})$/m', '<hr>', $text);
+
+    // Strict Autolinks (<https://...>)
+    $text = preg_replace('/<((?:https?|ftp):\/\/[^>]+)>/i', '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>', $text);
+
     // Images (Process before links)
     $text = preg_replace('/!\[([^\]]*)\]\(([^)]+)\)/', '<img src="$2" alt="$1" style="max-width:100%; height:auto;">', $text);
     $text = preg_replace('/src="javascript:[^"]*"/i', 'src="#"', $text);
@@ -389,9 +405,55 @@ function cxParseMarkdown($text) {
         return "<h{$h}>" . trim($m[2]) . "</h{$h}>";
     }, $text);
     
-    // Unordered Lists
-    $text = preg_replace('/^[\*\-]\s+(.+)$/m', '<li>$1</li>', $text);
-    $text = preg_replace('/((?:<li>.*?<\/li>\n?)+)/s', "<ul>\n$1</ul>\n", $text);
+    // Blockquotes
+    $text = preg_replace('/^>\s+(.+)$/m', '<blockquote>$1</blockquote>', $text);
+    
+    // Tables
+    $text = preg_replace_callback('/^(\|.*\|)\n(\|[-:| ]+\|)\n((?:\|.*\|(?:\n|$))*)/m', function($m) {
+        $processRow = function($rowStr) {
+            $rowStr = trim($rowStr);
+            if (substr($rowStr, 0, 1) === '|') $rowStr = substr($rowStr, 1);
+            if (substr($rowStr, -1) === '|') $rowStr = substr($rowStr, 0, -1);
+            return explode('|', $rowStr);
+        };
+
+        $html = "<table>\n<thead>\n<tr>";
+        foreach ($processRow($m[1]) as $th) {
+            $html .= "<th>" . trim($th) . "</th>";
+        }
+        $html .= "</tr>\n</thead>\n";
+        
+        $tbody = trim($m[3]);
+        if (!empty($tbody)) {
+            $html .= "<tbody>\n";
+            $rows = explode("\n", $tbody);
+            foreach ($rows as $row) {
+                $html .= "<tr>";
+                foreach ($processRow($row) as $cell) {
+                    $html .= "<td>" . trim($cell) . "</td>";
+                }
+                $html .= "</tr>\n";
+            }
+            $html .= "</tbody>\n";
+        }
+        $html .= "</table>";
+        return $html;
+    }, $text);
+
+    // Task Lists (Process BEFORE standard Unordered Lists)
+    $text = preg_replace('/^[\*\-]\s+\[ \]\s+(.+)$/m', '<li class="ul-item task-list"><input type="checkbox" disabled> $1</li>', $text);
+    $text = preg_replace('/^[\*\-]\s+\[[xX]\]\s+(.+)$/m', '<li class="ul-item task-list"><input type="checkbox" checked disabled> $1</li>', $text);
+
+    // Lists (Unordered and Ordered)
+    $text = preg_replace('/^[\*\-]\s+(.+)$/m', '<li class="ul-item">$1</li>', $text);
+    $text = preg_replace('/^\d+\.\s+(.+)$/m', '<li class="ol-item">$1</li>', $text);
+    
+    // Wrap Lists
+    $text = preg_replace('/((?:<li class="ul-item(?: task-list)?">.*?<\/li>\n?)+)/s', "<ul>\n$1</ul>\n", $text);
+    $text = preg_replace('/((?:<li class="ol-item">.*?<\/li>\n?)+)/s', "<ol>\n$1</ol>\n", $text);
+    
+    // Clean up temporary list classes
+    $text = preg_replace('/ class="(?:ul-item|ol-item)(?: task-list)?"/', '', $text);
     
     // Paragraphs
     $blocks = explode("\n\n", $text);
@@ -401,12 +463,16 @@ function cxParseMarkdown($text) {
         if (empty($block)) continue;
         
         // Prevent wrapping block-level elements in <p> tags
-        if (preg_match('/^<(h[1-6]|ul|ol|li|blockquote|img)/i', $block)) {
+        if (preg_match('/^<(h[1-6]|ul|ol|li|blockquote|img|hr|pre|table)/i', $block)) {
             $html .= $block . "\n";
         } else {
             $html .= "<p>" . nl2br($block) . "</p>\n";
         }
     }
+    
+    // Merge adjacent blockquotes into a single blockquote with linebreaks
+    $html = preg_replace('/<\/blockquote>\n*<blockquote>/s', "<br>\n", $html);
+
     return trim($html);
 }
 
@@ -1221,6 +1287,22 @@ if (isset($_GET['cloudshare'])) {
                 .readme-box a:hover { text-decoration: underline; }
                 .readme-box ul { padding-left: 20px; }
                 .readme-box code { background: #f4f4f4; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.9em; }
+                .readme-box blockquote { border-left: 4px solid #ddd; margin-left: 0; padding-left: 15px; color: #666; }
+                .readme-box hr { border: 0; border-top: 1px solid #ddd; margin: 20px 0; }
+                .readme-box pre { background: #f4f4f4; padding: 15px; border-radius: 4px; overflow-x: auto; }
+                .readme-box pre code { padding: 0; background: transparent; }
+                body.dark-mode .readme-box blockquote { border-left-color: #555; color: #aaa; }
+                body.dark-mode .readme-box pre { background: #1a1a1a; }
+                .readme-box table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 14px; }
+                .readme-box th, .readme-box td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+                .readme-box th { background: #f9f9f9; font-weight: 600; }
+                body.dark-mode .readme-box th, body.dark-mode .readme-box td { border-color: #444; }
+                body.dark-mode .readme-box th { background: #222; }
+                .readme-box li input[type="checkbox"] { margin: 0 8px 0 -22px; vertical-align: middle; cursor: default; }
+                .readme-box ul { list-style-position: inside; }
+                .readme-box mark { background: #fff3cd; padding: 0 4px; border-radius: 3px; color: #856404; }
+                body.dark-mode .readme-box mark { background: #664d03; color: #ffeb8a; }
+                
 
                 /* SELECTION OVERLAY & BAR */
                 .gallery-cb-wrap { position: absolute; top: 8px; left: 8px; z-index: 10; opacity: 0; transition: opacity 0.2s; background: rgba(255,255,255,0.9); border-radius: 4px; padding: 3px 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
@@ -1288,6 +1370,8 @@ if (isset($_GET['cloudshare'])) {
                 body.dark-mode .dl-icon-btn { color: #5eb0ef; }
                 body.dark-mode .dl-icon-btn:hover { background: rgba(94, 176, 239, 0.15); }
                 body.dark-mode .del-btn:hover { background: rgba(217, 83, 79, 0.2); }
+				
+				body.dark-mode .cx-color { filter: invert(1) hue-rotate(180deg); }
 
             </style>
 			<?php echo $tabSecurityScript; ?>
