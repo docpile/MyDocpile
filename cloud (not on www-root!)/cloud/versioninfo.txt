@@ -91,7 +91,7 @@
 	Fix: Webmail save as PDF - not all necessary fields included
 
 3.2.243
-	Improvement: Webmail shift from slow PHP IMAP to webklex/php-imap
+	Webmail shift from slow PHP IMAP to webklex/php-imap
 
 3.1.242
 	Improvement: Webmail performance improvements
@@ -331,7 +331,7 @@
 	Fix: Webmail attachment download leaves blank window
 
 3.1.190
-	Feature: Webmail Tab Beta 1
+	Webmail Tab Beta 1
 
 3.0.189
 	Fix: Office View on tablet: PDF preview does not work
@@ -478,7 +478,7 @@
 	Improvement: Sort help files in a more logical manner; fill the missing icons
 
 2.6.150
-	Feature: Optional index search
+	Optional index search
 
 2.5.149
 	Improvement: Help file additions
@@ -532,8 +532,8 @@
 	Improvement: Print dialog refinements
 
 2.5.137
+	Rights management completely rewritten, now very granular and flexible
 	Improvement: Context menu grid fine tuning
-	Security: Rights management completely rewritten, now very granular and flexible
 
 2.4.136
 	Feature: Document Templates are respected. File name: &quot;template.*&quot;, e.g. &quot;template.docx&quot;
@@ -586,8 +586,8 @@
 	Fix: Office View must be off in Gallery Mode
 
 2.4.122
-	Feature: Adding PDF workflow
-	Feature: Office View - introducing a content management system view
+	Adding PDF workflow
+	Office View - introducing a content management system view
 
 2.3.121
 	Fix: Hotfix - Background colors damaged
@@ -637,7 +637,7 @@
 	Improvement: OnlyOffice improvements
 
 2.3.109
-	Feature: Full featured Office solution
+	Full featured Office solution
 
 2.2.108
 	Improvement: Add dropdown for easier navigation in tag menu
@@ -716,13 +716,13 @@
 	Fix: "Beta" badge missing for Beta app
 
 2.1.93
+	Admin Mode rights and ownership management
+	Admin SSH Module
 	Improvement: Expand the text editor to use the whole viewport
 	Fix: Search in read-only cloud displays .recycle-bin and contents
 	Fix: Admin Module: Expired session should fire login screen instead of "Session expired" message
-	Feature: Admin Mode rights and ownership management
 	Fix: Admin Module: During use of the cloud (e.g. while in the editor) do not expire the ssh session
 	Fix: Admin Module Login: No browser autosave and option to display password
-	Feature: Admin SSH Module
 
 2.0.92
 	New release mechanism (extra beta folder) introduced
@@ -768,10 +768,10 @@
 	Update: Large file upload and download checks
 
 2.0.83
+	Login environment implemented as a PHP class
+	Server side code implemented as a PHP class (reduced length by a half)
 	Fix: Help search does not work -> Search now is a fulltext index
 	Fix: Ticketing should not reset build numbers on major version change
-	Improvement: Login environment implemented as a PHP class
-	Improvement: Server side code implemented as a PHP class (reduced length by a half)
 
 1.7.82
 	Feature: General styling fixes

@@ -365,44 +365,39 @@ function cxGetDeleteIcon() {
 }
 
 function cxParseMarkdown($text) {
-    // Escape all HTML to prevent XSS from malicious readme files
+    // 1. Escape all HTML to prevent XSS
     $text = htmlspecialchars($text, ENT_NOQUOTES, 'UTF-8');
     $text = str_replace("\r\n", "\n", $text);
     
-    // Fenced Code Blocks (Process before inline code and formatting)
-    $text = preg_replace('/```(.*?)```/s', '<pre><code>$1</code></pre>', $text);
+    // 2. EXTRACTION PATTERN: Protect Code Blocks & Inline Code
+    $codeBlocks = [];
     
-    // Inline Code
-    $text = preg_replace('/`([^`]+)`/', '<code>$1</code>', $text);
-
-    // Bold, Italic, Strikethrough, and Highlight
-    $text = preg_replace('/__(.+?)__/s', '<strong>$1</strong>', $text);
-    $text = preg_replace('/\*\*(.+?)\*\*/s', '<strong>$1</strong>', $text);
-    $text = preg_replace('/_([^_`]+?)_/s', '<em>$1</em>', $text);
-    $text = preg_replace('/\*([^\*`]+?)\*/s', '<em>$1</em>', $text);
-    $text = preg_replace('/~~(.+?)~~/s', '<del>$1</del>', $text);
-    $text = preg_replace('/==(.+?)==/s', '<mark>$1</mark>', $text);
-
-    $text = preg_replace('/\[color:([a-zA-Z]+|#[a-fA-F0-9]{3,8})\](.*?)\[\/color\]/is', '<span class="cx-color" style="color:$1;">$2</span>', $text);
-
-    // Horizontal Rules
-    $text = preg_replace('/^(?:\-{3,}|\*{3,}|_{3,})$/m', '<hr>', $text);
-
-    // Strict Autolinks (<https://...>)
-    $text = preg_replace('/<((?:https?|ftp):\/\/[^>]+)>/i', '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>', $text);
-
-    // Images (Process before links)
-    $text = preg_replace('/!\[([^\]]*)\]\(([^)]+)\)/', '<img src="$2" alt="$1" style="max-width:100%; height:auto;">', $text);
-    $text = preg_replace('/src="javascript:[^"]*"/i', 'src="#"', $text);
-
-    // Links (Block javascript: protocol for security, negative lookbehind to skip images)
-    $text = preg_replace('/(?<!!)\[([^\]]+)\]\(([^)]+)\)/', '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>', $text);
-    $text = preg_replace('/href="javascript:[^"]*"/i', 'href="#"', $text);
+    // Extract Fenced Code Blocks (Now supports language tags e.g., ```php)
+    $text = preg_replace_callback('/```([a-zA-Z0-9_\-\+]+)?[ \t]*\n(.*?)```/s', function($m) use (&$codeBlocks) {
+        $id = '@@CBLK' . count($codeBlocks) . '@@';
+        $langClass = !empty($m[1]) ? ' class="language-' . strtolower(trim($m[1])) . '"' : '';
+        $codeBlocks[$id] = '<pre><code' . $langClass . '>' . $m[2] . '</code></pre>';
+        return $id;
+    }, $text);
     
-    // Headers (H1 - H6)
+    // Extract Inline Code
+    $text = preg_replace_callback('/`([^`]+)`/', function($m) use (&$codeBlocks) {
+        $id = '@@CBLK' . count($codeBlocks) . '@@';
+        $codeBlocks[$id] = '<code>' . $m[1] . '</code>';
+        return $id;
+    }, $text);
+
+    // ========================================================================
+    // 3. BLOCK-LEVEL ELEMENTS
+    // ========================================================================
+    
+    // Headers (H1 - H6) with automatic ID generation for anchor linking
     $text = preg_replace_callback('/^(#{1,6})\s+(.+)$/m', function($m) {
         $h = strlen($m[1]);
-        return "<h{$h}>" . trim($m[2]) . "</h{$h}>";
+        $title = trim($m[2]);
+        $id = strtolower(preg_replace('/[^a-zA-Z0-9\-]+/', '-', $title));
+        $id = trim($id, '-');
+        return "<h{$h} id=\"{$id}\">" . $title . "</h{$h}>";
     }, $text);
     
     // Blockquotes
@@ -418,20 +413,15 @@ function cxParseMarkdown($text) {
         };
 
         $html = "<table>\n<thead>\n<tr>";
-        foreach ($processRow($m[1]) as $th) {
-            $html .= "<th>" . trim($th) . "</th>";
-        }
+        foreach ($processRow($m[1]) as $th) { $html .= "<th>" . trim($th) . "</th>"; }
         $html .= "</tr>\n</thead>\n";
         
         $tbody = trim($m[3]);
         if (!empty($tbody)) {
             $html .= "<tbody>\n";
-            $rows = explode("\n", $tbody);
-            foreach ($rows as $row) {
+            foreach (explode("\n", $tbody) as $row) {
                 $html .= "<tr>";
-                foreach ($processRow($row) as $cell) {
-                    $html .= "<td>" . trim($cell) . "</td>";
-                }
+                foreach ($processRow($row) as $cell) { $html .= "<td>" . trim($cell) . "</td>"; }
                 $html .= "</tr>\n";
             }
             $html .= "</tbody>\n";
@@ -440,13 +430,13 @@ function cxParseMarkdown($text) {
         return $html;
     }, $text);
 
-    // Task Lists (Process BEFORE standard Unordered Lists)
-    $text = preg_replace('/^[\*\-]\s+\[ \]\s+(.+)$/m', '<li class="ul-item task-list"><input type="checkbox" disabled> $1</li>', $text);
-    $text = preg_replace('/^[\*\-]\s+\[[xX]\]\s+(.+)$/m', '<li class="ul-item task-list"><input type="checkbox" checked disabled> $1</li>', $text);
+    // Task Lists (Allow leading spaces)
+    $text = preg_replace('/^[ \t]*[\*\-]\s+\[ \]\s+(.+)$/m', '<li class="ul-item task-list"><input type="checkbox" disabled> $1</li>', $text);
+    $text = preg_replace('/^[ \t]*[\*\-]\s+\[[xX]\]\s+(.+)$/m', '<li class="ul-item task-list"><input type="checkbox" checked disabled> $1</li>', $text);
 
     // Lists (Unordered and Ordered)
-    $text = preg_replace('/^[\*\-]\s+(.+)$/m', '<li class="ul-item">$1</li>', $text);
-    $text = preg_replace('/^\d+\.\s+(.+)$/m', '<li class="ol-item">$1</li>', $text);
+    $text = preg_replace('/^[ \t]*[\*\-]\s+(.+)$/m', '<li class="ul-item">$1</li>', $text);
+    $text = preg_replace('/^[ \t]*\d+\.\s+(.+)$/m', '<li class="ol-item">$1</li>', $text);
     
     // Wrap Lists
     $text = preg_replace('/((?:<li class="ul-item(?: task-list)?">.*?<\/li>\n?)+)/s', "<ul>\n$1</ul>\n", $text);
@@ -454,8 +444,56 @@ function cxParseMarkdown($text) {
     
     // Clean up temporary list classes
     $text = preg_replace('/ class="(?:ul-item|ol-item)(?: task-list)?"/', '', $text);
+
+    // Horizontal Rules
+    $text = preg_replace('/^[ \t]*(?:\-{3,}|\*{3,}|_{3,})$/m', '<hr>', $text);
+
+    // ========================================================================
+    // 4. LINKS & IMAGES (Must process before inline formatting)
+    // ========================================================================
+
+    // Strict Autolinks (<https://...>)
+    $text = preg_replace('/<((?:https?|ftp):\/\/[^>]+)>/i', '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>', $text);
+
+    // Images (Strict Same-Origin Policy for Security)
+    $host = isset($_SERVER['HTTP_HOST']) ? preg_quote($_SERVER['HTTP_HOST'], '/') : 'localhost';
+    $text = preg_replace_callback('/!\[([^\]]*)\]\(([^)]+)\)/', function($m) use ($host) {
+        $src = trim($m[2]);
+        // Block any protocol (http://, ftp://) or protocol-relative (//) URL that doesn't match our host
+        if (preg_match('/^(?:[a-z]+:)?\/\/(?!' . $host . '(?:\/|:|$))/i', $src)) {
+            return '<span class="cx-color" style="color:#d9534f; border:1px solid #d9534f; padding:2px 4px; border-radius:3px; font-size:0.85em;">[External Image Blocked]</span>';
+        }
+        return '<img src="' . $src . '" alt="' . $m[1] . '" style="max-width:100%; height:auto;">';
+    }, $text);
+
+    // Links (Negative lookbehind to skip images)
+    $text = preg_replace('/(?<!!)\[([^\]]+)\]\(([^)]+)\)/', '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>', $text);
     
-    // Paragraphs
+    // Security: Neutralize dangerous protocols in generated tags
+    $text = preg_replace('/(href|src)="(?:\s*)(?:javascript|vbscript|data(?!\:image)):[^"]*"/i', '$1="#"', $text);
+
+    // ========================================================================
+    // 5. INLINE ELEMENTS (Protected by HTML lookahead)
+    // ========================================================================
+
+    // The (?![^<]*>) ensures we DO NOT format text that is inside an HTML tag (like an href="")
+    $text = preg_replace('/__(.+?)__(?![^<]*>)/s', '<strong>$1</strong>', $text);
+    $text = preg_replace('/\*\*(.+?)\*\*(?![^<]*>)/s', '<strong>$1</strong>', $text);
+    
+    // Require spaces or boundaries for underscores to prevent breaking standard file_names
+    $text = preg_replace('/(?<=\s|^)_(.+?)_(?=\s|[[:punct:]]|$)(?![^<]*>)/s', '<em>$1</em>', $text);
+    $text = preg_replace('/\*([^\*]+?)\*(?![^<]*>)/s', '<em>$1</em>', $text);
+    
+    $text = preg_replace('/~~(.+?)~~(?![^<]*>)/s', '<del>$1</del>', $text);
+    $text = preg_replace('/==(.+?)==(?![^<]*>)/s', '<mark>$1</mark>', $text);
+
+    // Text Colors
+    $text = preg_replace('/\[color:([a-zA-Z]+|#[a-fA-F0-9]{3,8})\](.*?)\[\/color\](?![^<]*>)/is', '<span class="cx-color" style="color:$1;">$2</span>', $text);
+
+    // ========================================================================
+    // 6. PARAGRAPH FORMATTING & RESTORATION
+    // ========================================================================
+    
     $blocks = explode("\n\n", $text);
     $html = '';
     foreach ($blocks as $block) {
@@ -463,18 +501,22 @@ function cxParseMarkdown($text) {
         if (empty($block)) continue;
         
         // Prevent wrapping block-level elements in <p> tags
-        if (preg_match('/^<(h[1-6]|ul|ol|li|blockquote|img|hr|pre|table)/i', $block)) {
+        if (preg_match('/^<(h[1-6]|ul|ol|li|blockquote|img|hr|pre|table|@@CBLK)/i', $block)) {
             $html .= $block . "\n";
         } else {
             $html .= "<p>" . nl2br($block) . "</p>\n";
         }
     }
     
-    // Merge adjacent blockquotes into a single blockquote with linebreaks
+    // Merge adjacent blockquotes
     $html = preg_replace('/<\/blockquote>\n*<blockquote>/s', "<br>\n", $html);
+
+    // 7. Swap the protected code blocks back into the final HTML
+    $html = strtr($html, $codeBlocks);
 
     return trim($html);
 }
+
 
 function cxEnsureSession() {
     if (session_status() === PHP_SESSION_NONE) {

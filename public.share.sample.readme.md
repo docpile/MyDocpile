@@ -65,6 +65,8 @@ You can use [Standard Markdown Links](https://github.com) or strict autolinks li
 **Images:**
 ![Tux, the Linux mascot](https://upload.wikimedia.org/wikipedia/commons/a/af/Tux.png)
 
+Remark: For security reasons, only images residing on the same server as the share are accepted. So, **first** share the image file, **then** take the "direct download" link (ends with "`&direct=1`", like `https://myserver.com/cloud/index.php?cloudshare=LONG_GUID_OF_THE_FILE_SHARE&direct=1`) 
+
 ## 📊 Tables
 
 Data can be organized into clean, responsive tables:
