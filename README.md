@@ -119,6 +119,7 @@ The MyDocpile software is designed to have **the least depenencies possible**. S
 * **Multi-Language support:**
   *  **Full RTL Support:** Automatically mirrors layouts, arrows, and toggle behaviors if the active language is Right-to-Left (e.g., Arabic...).
   *  **Many languages included:** Major languages are included (most of them AI translated, so feel free to change the translations if needed) 
+* **Public Sharing:** Securely share files and folders with public or as passphrase proctected share
 
 ### 2. Core File & Directory Management
 * **Standard Operations:**
@@ -137,6 +138,12 @@ The MyDocpile software is designed to have **the least depenencies possible**. S
   * It is possible to configure a user for a SFTP cloud, either to administer a server, or for file access to another cloud. SSH key authentication is deliberately not implemented as this could easily end up to be a security nightmare in this context - a password the user can be asked for every time, but a SSH key?
 * **End-to-End encrypted vaults:**
   * Uses state-of-the-art encryption to generate fully encrypted directories. It uses a per-file encryption, thereby also encrypting the file names.
+* **Extended public charing:**
+  * Secure sharing of files and directories for read-only access, modify or uploads.   
+  * Modify and upload shares must be securely password protected. Brute-force detection further secures them.
+  * Shared directories can include a "readme.md" markdown file (see sample file). This readme.md file will be displayed either at the top or at the bottom of the file list/gallery. You can also have readme.md files in every subdirectory.
+  * As for pictures, there is a gallery view available quite similar to the regular gallery view.
+  * Users can select and download selected files and folders. There is a secure ZIP file creation for the user to be able to downloed these.
 
 ### 3. Archiving & Compression
 * **Dynamic Zipping:** Download entire folders as `.zip` files generated dynamically on the server. 
