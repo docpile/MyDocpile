@@ -2,6 +2,8 @@
 
 Welcome to the example `README.md`. This file demonstrates all the formatting options supported by our custom Markdown parser, including standard syntax and our unique extensions.
 
+For a public share, you always have the option to **add a "readme.md" file to any shared folder or it's subfolders.** This file is a sample to show you the markdown options you have. There are some extensions to the regular markdown language. E.g. you can set a specified font color (which will be lightness-inverted in dark mode).  
+
 ---
 
 ## 📝 Typography & Text Formatting
