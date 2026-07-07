@@ -3231,7 +3231,7 @@ class MyCloudEmailServer {
                 
                 $attCount = (int)($_POST['att_count'] ?? 0);
                 $attachments = [];
-                $tempDir = $GLOBALS['temp_dir'] ?? sys_get_temp_dir();
+                $tempDir = $this->user_temp_dir;
                 for ($i = 0; $i < $attCount; $i++) {
                     $name = $_POST['att_name_' . $i] ?? '';
                     $rawPath = $_POST['att_path_' . $i] ?? '';
@@ -3587,7 +3587,7 @@ class MyCloudEmailServer {
                     
                     $attCount = (int)($_POST['att_count'] ?? 0);
                     $attachments = [];
-                    $tempDir = $GLOBALS['temp_dir'] ?? sys_get_temp_dir();
+                    $tempDir = $this->user_temp_dir;
                     for ($i = 0; $i < $attCount; $i++) {
                         $name = $_POST['att_name_' . $i] ?? '';
                         $rawPath = $_POST['att_path_' . $i] ?? '';
@@ -3670,7 +3670,7 @@ class MyCloudEmailServer {
                 // STRICT FLAT PARSING: No arrays. Read att_name_0, att_path_0, etc.
                 $attCount = (int)($_POST['att_count'] ?? 0);
                 $attachments = [];
-                $tempDir = $GLOBALS['temp_dir'] ?? sys_get_temp_dir();
+                $tempDir = $this->user_temp_dir;
                 for ($i = 0; $i < $attCount; $i++) {
                     $name = $_POST['att_name_' . $i] ?? '';
                     $rawPath = $_POST['att_path_' . $i] ?? '';

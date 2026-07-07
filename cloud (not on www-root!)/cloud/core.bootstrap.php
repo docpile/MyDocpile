@@ -56,6 +56,55 @@ $GLOBALS['mycloud_svg_logo'] = '<svg xmlns="http://www.w3.org/2000/svg" viewBox=
  $userKeys = []; 
  $userCloudData = [];
  
+ 
+ $allKnownPaths = [];
+ if (isset($GLOBALS['user_details']) && is_array($GLOBALS['user_details'])) {
+     foreach ($GLOBALS['user_details'] as $ud) {
+         $uName = $ud['name'] ?? '';
+         if ($uName !== '' && isset($ud['cloud']) && is_array($ud['cloud'])) {
+             foreach ($ud['cloud'] as $c) {
+                 $p = isset($c['path']) ? rtrim($c['path'], '/\\') : '';
+                 if ($p !== '') {
+                     $allKnownPaths[] = ['user' => $uName, 'path' => $p];
+                 }
+             }
+         }
+     }
+ }
+
+// --- ZERO TRUST: EMAIL CLOUD ATTACHMENT INGESTION ---
+// Prevent bypass of the UI restriction by blocking backend ingestion
+// into non-private clouds.
+if (isset($_POST['myCloud_action']) && in_array($_POST['myCloud_action'], ['cloud_ingest_att', 'cloud_ingest_temp'])) {
+    $targetCloud = $_POST['myCloud_key'] ?? ($_REQUEST['myCloud_key'] ?? '');
+    $is_private = false;
+    if ($targetCloud !== '' && isset($GLOBALS['user_details']) && is_array($GLOBALS['user_details'])) {
+        $targetPath = '';
+        foreach ($GLOBALS['user_details'] as $ud) {
+            if (($ud['name'] ?? '') === $currentUser && isset($ud['cloud'][$targetCloud]['path'])) {
+                $targetPath = rtrim($ud['cloud'][$targetCloud]['path'], '/\\');
+                break;
+            }
+        }
+        if ($targetPath !== '') {
+            $is_private = true;
+            foreach ($allKnownPaths as $other) {
+                if ($other['user'] === $currentUser) continue;
+                $oPath = $other['path'];
+                if ($targetPath === $oPath || strpos($targetPath . '/', $oPath . '/') === 0 || strpos($oPath . '/', $targetPath . '/') === 0) {
+                    $is_private = false; break;
+                }
+            }
+        }
+    }
+    if (!$is_private) {
+        while (ob_get_level() > 0) @ob_end_clean();
+        header('Content-Type: application/json');
+        echo json_encode(['status' => 'ERR', 'msg' => 'Zero Trust Policy: Non-private clouds cannot be used for email attachment hosting.']);
+        exit;
+    }
+}
+
  if (isset($GLOBALS['user_details']) && is_array($GLOBALS['user_details'])) {
      foreach ($GLOBALS['user_details'] as $ud) {
          if (isset($ud['name']) && $ud['name'] === $currentUser && isset($ud['cloud'])) {
@@ -73,9 +122,25 @@ $GLOBALS['mycloud_svg_logo'] = '<svg xmlns="http://www.w3.org/2000/svg" viewBox=
                  $r = $c['rights'] ?? 'read-only';
                  // Virtual apps bypass the physical read-only limits
                  if (($c['interface'] ?? 'default') === 'email' && !isset($c['rights'])) $r = 'full';
+
+                 $p = isset($c['path']) ? rtrim($c['path'], '/\\') : '';
+                 $is_private = false;
+                 if ($p !== '') {
+                     $is_private = true;
+                     foreach ($allKnownPaths as $other) {
+                         if ($other['user'] === $currentUser) continue;
+                         $oPath = $other['path'];
+                         // Detect overlapping paths: exact match or subsets
+                         if ($p === $oPath || strpos($p . '/', $oPath . '/') === 0 || strpos($oPath . '/', $p . '/') === 0) {
+                             $is_private = false; break;
+                         }
+                     }
+                 }
+
                  $userCloudData[$k] = [
                      'interface' => $c['interface'] ?? 'default',
-                     'rights' => $r
+                     'rights' => $r,
+					 'is_private' => $is_private
                  ];
             }
              break;

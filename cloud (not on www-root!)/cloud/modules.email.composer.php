@@ -301,7 +301,7 @@ window.myCloudShowEmailComposer = function(prefill = null) {
                 const writeableClouds = [];
                 if (typeof myCloudCloudConfig !== 'undefined') {
                     for (const [k, c] of Object.entries(myCloudCloudConfig)) {
-                        if ((c.interface || 'default') !== 'email' && c.rights !== 'read-only' && c.rights !== 'no-access') {
+                        if ((c.interface || 'default') !== 'email' && c.rights !== 'read-only' && c.rights !== 'no-access' && c.is_private) {
                             writeableClouds.push(k);
                         }
                     }
@@ -339,8 +339,8 @@ window.myCloudShowEmailComposer = function(prefill = null) {
                         return;
                     }
                     attachmentsProcessed = 'mandatory';
-                } else if (writeableClouds.length > 0) {
-                    // Optional Cloud Detach
+                } else if (writeableClouds.length > 0 && totalRawSize > 10 * 1024 * 1024) {
+                    // Optional Cloud Detach if attachments are > 10MB in size
                     const wantsCloud = await new Promise(resolve => {
                         myCloudShowAlert(
                             L.cloud_detach_title || 'Optimize Attachments?',

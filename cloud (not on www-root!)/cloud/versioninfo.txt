@@ -1,3 +1,14 @@
+4.0.269
+	Improvement: Webmail attachment choice for cloud link only &gt;10MB in total attachments size
+	Security: Do not show -mail dirs in the cloud
+
+4.0.268
+	Improvement: Webmail - Send as attachment dialog only presented if attachments >10MG in size
+	Security: Webmail Send as attachment or link dialog: only saved to clouds unique to the current user
+
+4.0.267
+	Hotfix: Webmail attachments not sent
+
 4.0.266
 	Improvement: Further markdown improvements. A sample file containing the markdown options added
 

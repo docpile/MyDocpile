@@ -607,6 +607,22 @@ class MyCloudServer {
             }
         }
 
+        // --- ZERO TRUST: EMAIL CLOUD ATTACHMENT INGESTION ---
+        if (in_array($action, ['cloud_ingest_att', 'cloud_ingest_temp'])) {
+            global $user_details;
+            $cloudUsageCount = 0;
+            if (isset($user_details) && is_array($user_details)) {
+                foreach ($user_details as $ud) {
+                    if (isset($ud['cloud'][$this->key])) {
+                        $cloudUsageCount++;
+                    }
+                }
+            }
+            if ($cloudUsageCount > 1) {
+                $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Zero Trust Policy: Non-private clouds cannot be used for email attachment hosting.']);
+            }
+        }
+
         // ROUTER
         switch ($action) {
             // Read-Only Actions
@@ -800,7 +816,7 @@ class MyCloudServer {
             if (!is_array($items)) return ['size'=>0, 'files'=>0, 'dirs'=>0];
 
             foreach ($items as $i) {
-                if ($i === '.' || $i === '..' || $i === '.recycle_bin' || $i === '.recoll') continue;
+                if ($i === '.' || $i === '..' || $i === '.recycle_bin' || $e === '.mail' || $i === '.recoll') continue;
                 if ($checkLimits()) return ['size'=>$totalSize, 'files'=>$totalFiles, 'dirs'=>$totalDirs, 'aborted'=>true];
                 $p = $dir . DIRECTORY_SEPARATOR . $i;
                 if (is_dir($p)) {
@@ -821,7 +837,7 @@ class MyCloudServer {
         $rootItems = @scandir($target);
         if (is_array($rootItems)) {
             foreach($rootItems as $i) {
-                if ($i === '.' || $i === '..' || $i === '.recycle_bin' || $i === '.recoll') continue;
+                if ($i === '.' || $i === '..' || $i === '.recycle_bin' || $e === '.mail' || $i === '.recoll') continue;
                 $p = $target . DIRECTORY_SEPARATOR . $i;
                 if (is_dir($p)) {
                     $s = $scanStats($p); 
@@ -1525,7 +1541,7 @@ class MyCloudServer {
             if ($entries === false) continue;
             foreach ($entries as $e) {
                 if ($e === '.' || $e === '..') continue;
-                if ($e === '.recycle_bin' || $e === '.recoll' || $e === '.mycloud_crypto_salt') continue;
+                if ($e === '.recycle_bin' || $e === '.recoll' || $e === '.mail' || $e === '.mycloud_crypto_salt') continue;
                 $fp = $currDir . '/' . $e;
                 $rp = $currRel === '/' ? '/' . $e : rtrim($currRel, '/') . '/' . $e;
                 $isDir = is_dir($fp);
