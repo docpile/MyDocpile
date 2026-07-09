@@ -518,7 +518,11 @@ function myCloudRenderUI() {
         Object.keys(obj).sort(function(a, b) {
             if (a === '.recycle_bin') return 1;
             if (b === '.recycle_bin') return -1;
-            return a.toLowerCase().localeCompare(b.toLowerCase());
+            var pathA = (path === '/') ? '/' + a : path + '/' + a;
+            var pathB = (path === '/') ? '/' + b : path + '/' + b;
+            var nameA = (st.pathNames && st.pathNames[pathA]) ? st.pathNames[pathA] : a.replace(/\.enc$/, '');
+            var nameB = (st.pathNames && st.pathNames[pathB]) ? st.pathNames[pathB] : b.replace(/\.enc$/, '');
+            return nameA.toLowerCase().localeCompare(nameB.toLowerCase());
         }).forEach(function(key) {
             if (key === '__children') return;
             
@@ -1663,6 +1667,20 @@ function renderCommanderButtons(container) {
 // Helper for Zip Operations in Commander
 function commanderZipAction(mode, files, targetDir) {
     if (files.length === 0) return;
+
+
+    // --- E2E ZIP INTERCEPTION ---
+    const isEncrypted = typeof myCloudCrypto !== 'undefined' && files.some(f => myCloudCrypto.isDirEncrypted(f));
+    const isTargetEncrypted = typeof myCloudCrypto !== 'undefined' && myCloudCrypto.isDirEncrypted(targetDir);
+    
+    if (isEncrypted || isTargetEncrypted) {
+        if (typeof window.myCloudE2EZipCreate === 'function') {
+            window.myCloudE2EZipCreate(files, targetDir, mode);
+        } else {
+            myCloudShowAlert("Error", "Client-side Zip generation is required for encrypted vaults.");
+        }
+        return;
+    }
     
     // We only support zipping folders nicely if it's a single folder selection in standard zip logic,
     // but the batch logic handles arrays.

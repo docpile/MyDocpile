@@ -382,7 +382,7 @@ class MyCloudEmailServer {
         }
         
         $changed = false;
-        preg_match_all('/(?:([^<,]+)\s*<([^>]+)>|([a-zA-Z0-9!#$%&\'*+\-\/=?^_`{|}~.]+@[a-zA-Z0-9.-]+))/', $all, $matches, PREG_SET_ORDER);
+        preg_match_all('/(?:([^<,]+)\s*<([^>]+)>|([^\s,<>"\'|]+@[^\s,<>"\'|]+))/', $all, $matches, PREG_SET_ORDER);
         
         foreach ($matches as $m) {
             $name = !empty($m[1]) ? trim(str_replace(['"', "'"], '', $m[1])) : '';
@@ -390,8 +390,16 @@ class MyCloudEmailServer {
 
             
             $email = strtolower(trim($email));
-            if (filter_var($email, FILTER_VALIDATE_EMAIL) && !in_array($email, $existingEmails)) {
-                $auto[] = [
+            if (strpos($email, '@') !== false) {
+                list($local, $domain) = explode('@', $email, 2);
+                if (preg_match('/[^\x20-\x7E]/', $domain) && function_exists('idn_to_ascii')) {
+                    $domain = idn_to_ascii($domain, 0, INTL_IDNA_VARIANT_UTS46) ?: $domain;
+                    $email = $local . '@' . $domain;
+                }
+            }
+            $email = preg_replace('/[^\p{L}\p{N}!#$%&\'*+\-\/=?^_`{|}~.@]/u', '', $email);
+            if (filter_var($email, FILTER_VALIDATE_EMAIL, defined('FILTER_FLAG_EMAIL_UNICODE') ? FILTER_FLAG_EMAIL_UNICODE : 0) && !in_array($email, $existingEmails)) {
+                 	$auto[] = [
                     'id' => uniqid('auto_'), 'name' => $name ?: explode('@', $email)[0],
                     'first_name' => '', 'last_name' => '', 'emails' => [['type' => 'Collected', 'val' => $email]],
                     'phones' => [], 'company' => '', 'job_title' => '', 'address' => '', 'website' => '', 'labels' => 'Auto-Collected', 'notes' => ''
@@ -681,23 +689,37 @@ class MyCloudEmailServer {
             $writeRes($socket, "MAIL FROM: <$sender_email>"); $readRes($socket);
             
         $all_rcpts = $to . ',' . $cc . ',' . $bcc;
-        preg_match_all('/(?:<([^>]+)>|([a-zA-Z0-9!#$%&\'*+\-\/=?^_`{|}~.]+@[a-zA-Z0-9.-]+))/', $all_rcpts, $matches);
+        preg_match_all('/(?:<([^>]+)>|([^\s,<>"\'|]+@[^\s,<>"\'|]+))/', $all_rcpts, $matches);
         $recipients = [];
         foreach ($matches[0] as $i => $fullMatch) {
             $clean_email = !empty($matches[1][$i]) ? $matches[1][$i] : $matches[2][$i];
-            $clean_email = preg_replace('/[^a-zA-Z0-9!#$%&\'*+\-\/=?^_`{|}~.@]/', '', trim($clean_email));
-            if (filter_var($clean_email, FILTER_VALIDATE_EMAIL)) {
-                $recipients[] = $clean_email;
+            $clean_email = trim($clean_email);
+            if (strpos($clean_email, '@') !== false) {
+                list($local, $domain) = explode('@', $clean_email, 2);
+                if (preg_match('/[^\x20-\x7E]/', $domain) && function_exists('idn_to_ascii')) {
+                    $domain = idn_to_ascii($domain, 0, INTL_IDNA_VARIANT_UTS46) ?: $domain;
+                    $clean_email = $local . '@' . $domain;
+                }
+            }
+            $clean_email = preg_replace('/[^\p{L}\p{N}!#$%&\'*+\-\/=?^_`{|}~.@]/u', '', $clean_email);
+            if (filter_var($clean_email, FILTER_VALIDATE_EMAIL, defined('FILTER_FLAG_EMAIL_UNICODE') ? FILTER_FLAG_EMAIL_UNICODE : 0)) {
+            	$recipients[] = $clean_email;
             }
         }
         $recipients = array_unique($recipients);
 
+        $accepted_rcpts = 0;
+        $last_rcpt_err = '';
         foreach($recipients as $clean_email) {
-
-                $writeRes($socket, "RCPT TO: <" . $clean_email . ">");
-                $rcptRes = $readRes($socket);
-                if (substr($rcptRes, 0, 3) !== '250') return "Recipient rejected: $rcptRes";
+            $writeRes($socket, "RCPT TO: <" . $clean_email . ">");
+            $rcptRes = $readRes($socket);
+            if (substr($rcptRes, 0, 3) !== '250' && substr($rcptRes, 0, 3) !== '251') {
+                $last_rcpt_err = "Recipient rejected ($clean_email): $rcptRes";
+            } else {
+                $accepted_rcpts++;
             }
+        }
+        if ($accepted_rcpts === 0) return $last_rcpt_err ?: "No valid recipients provided.";
 
             $writeRes($socket, "DATA"); $readRes($socket);
         }

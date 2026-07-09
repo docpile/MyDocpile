@@ -511,7 +511,7 @@ async function myCloudStartExplorer(key = null) {
         myCloudIsMultiCloudMode = true; 
         let defaultKey = '';
         if (typeof myCloudUserKeys !== 'undefined' && myCloudUserKeys.length > 0) {
-            defaultKey = myCloudUserKeys[0];
+            defaultKey = myCloudUserKeys.find(k => !myCloudCloudConfig[k] || myCloudCloudConfig[k].interface !== 'hidden') || myCloudUserKeys[0];
             if (window.myCloudIsMailOnly && typeof myCloudCloudConfig !== 'undefined') {
                 for (let k of myCloudUserKeys) {
                     if (myCloudCloudConfig[k] && myCloudCloudConfig[k].interface === 'email') {
@@ -1540,7 +1540,6 @@ async function myCloudToggleTerminal() {
 window.myCloudE2ETransfer = async function(srcPath, destDir, action, sourceRoot, targetRoot, forcedDestName) {
     const st = myCloudState;
     
-    // Ensure vaults are unlocked
     if (sourceRoot && !myCloudCrypto.isDirUnlocked(sourceRoot)) throw new Error("Source vault is locked.");
     if (targetRoot && !myCloudCrypto.isDirUnlocked(targetRoot)) throw new Error("Target vault is locked.");
 
@@ -1568,9 +1567,19 @@ window.myCloudE2ETransfer = async function(srcPath, destDir, action, sourceRoot,
         if (listRes.status === 'OK') {
             for (let child of listRes.data) {
                 if (child.name === '/.recycle_bin') continue;
-                // Inject into allItems temporarily so the recursive call knows if it's a DIR
                 if (!st.allItems.some(i => i.name === child.name)) st.allItems.push(child);
-                await window.myCloudE2ETransfer(child.name, newDestDir, action, sourceRoot, targetRoot, null);
+                
+                // DECRYPT SUBDIRECTORY/FILE NAME PROPERLY
+                let childPlainName = child.name.split('/').pop();
+                if (sourceRoot && childPlainName.endsWith('.enc')) {
+                    try {
+                        childPlainName = await myCloudCrypto.decryptName(sourceRoot, childPlainName);
+                    } catch(e) {
+                        childPlainName = childPlainName.replace(/\.enc$/, '');
+                    }
+                }
+                
+                await window.myCloudE2ETransfer(child.name, newDestDir, action, sourceRoot, targetRoot, childPlainName);
             }
         }
         

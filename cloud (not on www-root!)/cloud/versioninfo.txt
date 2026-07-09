@@ -1,3 +1,11 @@
+4.0.271
+	Feature: Logfile viewer for users (configurable)
+
+4.0.270
+	Security: E2EE: Subdir encryption added (before, it was just file encryption)
+	Security: E2EE: ZIP file creation within the vault now decrypts the ZIP file contents itself (thereby making it readable to a ZIP file viewer)
+	Improvement: Introduction of a &quot;hidden&quot; cloud, especially useful for storing mail attachments in a safe place
+
 4.0.269
 	Improvement: Webmail attachment choice for cloud link only &gt;10MB in total attachments size
 	Security: Do not show -mail dirs in the cloud

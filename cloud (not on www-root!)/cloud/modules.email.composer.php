@@ -299,17 +299,20 @@ window.myCloudShowEmailComposer = function(prefill = null) {
                 const sizeThreshold = 20 * 1024 * 1024; // 20MB
                 
                 const writeableClouds = [];
-                if (typeof myCloudCloudConfig !== 'undefined') {
+                let hiddenAttachmentCloud = null;
+				if (typeof myCloudCloudConfig !== 'undefined') {
                     for (const [k, c] of Object.entries(myCloudCloudConfig)) {
-                        if ((c.interface || 'default') !== 'email' && c.rights !== 'read-only' && c.rights !== 'no-access' && c.is_private) {
-                            writeableClouds.push(k);
+                        if (c.interface === 'hidden' && c.rights !== 'read-only' && c.rights !== 'no-access' ) {
+                            hiddenAttachmentCloud = k;
+                        } else if ((c.interface || 'default') !== 'email' && c.interface !== 'hidden' && c.rights !== 'read-only' && c.rights !== 'no-access' && c.is_private) {
+							writeableClouds.push(k);
                         }
                     }
                 }
 
                 if (totalEncodedSize > sizeThreshold) {
-                    if (writeableClouds.length === 0) {
-                        return myCloudShowAlert(L.error_prefix || 'Error', L.email_too_large || 'Attachments exceed the 20MB limit and no writable cloud is available to host them.');
+                    if (writeableClouds.length === 0 && !hiddenAttachmentCloud) {
+						return myCloudShowAlert(L.error_prefix || 'Error', L.email_too_large || 'Attachments exceed the 20MB limit and no writable cloud is available to host them.');
                     }
                     
                     const wantsCloud = await new Promise(resolve => {
@@ -339,7 +342,7 @@ window.myCloudShowEmailComposer = function(prefill = null) {
                         return;
                     }
                     attachmentsProcessed = 'mandatory';
-                } else if (writeableClouds.length > 0 && totalRawSize > 10 * 1024 * 1024) {
+                } else if ((writeableClouds.length > 0 || hiddenAttachmentCloud) && totalRawSize > 10 * 1024 * 1024) {
                     // Optional Cloud Detach if attachments are > 10MB in size
                     const wantsCloud = await new Promise(resolve => {
                         myCloudShowAlert(
@@ -377,8 +380,11 @@ window.myCloudShowEmailComposer = function(prefill = null) {
                     else if (typeof myCloudShowLoading === 'function') myCloudShowLoading();
 
                     // Determine Target Cloud
-                    let targetCloud = myCloudState.settings[devKey].lastEmailSaveCloud || writeableClouds[0];
-                    if (!writeableClouds.includes(targetCloud)) targetCloud = writeableClouds[0];
+                    let targetCloud = hiddenAttachmentCloud;
+                    if (!targetCloud) {
+                        targetCloud = myCloudState.settings[devKey].lastEmailSaveCloud || writeableClouds[0];
+                        if (!writeableClouds.includes(targetCloud)) targetCloud = writeableClouds[0];
+                    }
 
                     // Generate Name: YYYY-MM-DD_Recipient_Subject (Max 40 chars)
                     const dateStr = new Date().toISOString().split('T')[0];
@@ -971,7 +977,7 @@ window.myCloudShowEmailComposer = function(prefill = null) {
                 '<div style="display:flex; gap:10px;">' +
                    '<input type="file" id="emlAttachInput" multiple style="display:none;" onchange="window._emlHandleFiles(event)">' +
                    '<button type="button" onclick="document.getElementById(\'emlAttachInput\').click()" style="background:transparent; color:var(--text-primary); border:1px solid var(--border-medium); display:flex; align-items:center; gap:6px;"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5a2.5 2.5 0 0 1 5 0v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5a2.5 2.5 0 0 0 5 0V5c0-2.21-1.79-4-4-4S6 2.79 6 5v11.5c0 3.87 3.13 7 7 7s7-3.13 7-7V6h-1.5z"/></svg> ' + (L.attach_files || 'Attach Files') + '</button>' +
-                   ((typeof myCloudCloudConfig !== 'undefined' && Object.values(myCloudCloudConfig).some(c => (c.interface || 'default') !== 'email' && c.rights !== 'no-access')) ? 
+                   ((typeof myCloudCloudConfig !== 'undefined' && Object.values(myCloudCloudConfig).some(c => (c.interface || 'default') !== 'email' && c.interface !== 'hidden' && c.rights !== 'no-access')) ?
                    '<button type="button" onclick="window._emailAttachFromCloud()" style="background:transparent; color:var(--text-primary); border:1px solid var(--border-medium); display:flex; align-items:center; gap:6px;"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg><span class="hide-mobile">' + (L.attach_from_cloud || 'Attach from Cloud') + '</span></button>' : '') +
                  '</div>' +
                 '<div style="display:flex; gap:10px; align-items:center;">' +

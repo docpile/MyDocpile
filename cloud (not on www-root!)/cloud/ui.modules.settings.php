@@ -385,6 +385,9 @@ function _cloudExRenderSettingsContent(panel, activeTab) {
     if (window.myCloudIsGlobalAdmin) {
         tabList.push('admin');
     }
+    if (window.myCloudLogviewerEnabled) {
+        tabList.push('logviewer');
+    }
     const tabs = tabList.map(function(t) {
         if (t === 'tags' && !window.myCloudActionAllowed('edit_tags')) return '';
         // Mark the respective tab based on the 2nd parameter
@@ -395,6 +398,7 @@ function _cloudExRenderSettingsContent(panel, activeTab) {
         if (t === 'all') icon = '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>';
         else if (t === 'tags') icon = '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M21.41 11.58l-9-9C12.05 2.22 11.55 2 11 2H4c-1.1 0-2 .9-2 2v7c0 .55.22 1.05.59 1.41l9 9c.36.36.86.58 1.41.58.55 0 1.05-.22 1.41-.59l7-7c.37-.36.59-.86.59-1.41 0-.55-.23-1.06-.59-1.41zM5.5 7C4.67 7 4 6.33 4 5.5S4.67 4 5.5 4 7 4.67 7 5.5 6.33 7 5.5 7z"/></svg>';
         else if (t === 'admin') icon = '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>';
+        else if (t === 'logviewer') icon = '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>';
         else icon = `<span style="display:inline-flex; transform: scale(${t === 'phone' ? '0.85' : (t === 'tablet' ? '1.1' : '1')});">${myCloudSvg[t] || ''}</span>`;
         
         // Use myCloud_LANG.all for title
@@ -402,6 +406,7 @@ function _cloudExRenderSettingsContent(panel, activeTab) {
         if (t === 'all') label = myCloud_LANG.all || 'All';
         else if (t === 'tags') label = myCloud_LANG.tag_labels || 'Tags';
         else if (t === 'admin') label = 'Admin';
+        else if (t === 'logviewer') label = 'Logviewer';
         else label = t.charAt(0).toUpperCase() + t.slice(1);
 
 
@@ -610,13 +615,20 @@ function _cloudExRenderSettingsContent(panel, activeTab) {
             activeContent = '<div style="padding:20px; color:var(--danger);">Admin module failed to load.</div>';
         }
     }
+    else if (activeTab === 'logviewer') {
+        if (window.myCloudLogviewerHtml) {
+            activeContent = window.myCloudLogviewerHtml;
+        } else {
+            activeContent = '<div style="padding:20px; color:var(--danger);">Logviewer module failed to load.</div>';
+        }
+    }
     else activeContent = deviceSettingsHtml;
 
     const modal = document.getElementById('myCloudModal');
     let wrapperStyle = '';
     let contentStyle = '';
 
-    if (activeTab === 'admin') {
+    if (activeTab === 'admin' || activeTab === 'logviewer') {
         if (modal) {
             modal.style.width = '1000px';
             modal.style.maxWidth = '95vw';
@@ -625,7 +637,7 @@ function _cloudExRenderSettingsContent(panel, activeTab) {
         panel.style.height = '75vh';
         panel.style.minHeight = '500px';
         wrapperStyle = 'border:none; box-shadow:none; border-radius:0; height:100%; display:flex; flex-direction:column;';
-        contentStyle = 'flex:1; overflow-y:auto;';
+        contentStyle = 'flex:1; overflow-y:auto; padding: ' + (activeTab === 'logviewer' ? '20px;' : '0;');
     } else {
         if (modal) {
             modal.style.width = (window.innerWidth <= 600) ? '360px' : '700px';
@@ -826,6 +838,9 @@ function _cloudExRenderSettingsContent(panel, activeTab) {
             if (btn.dataset.tab === 'admin' && typeof ca_init === 'function') {
                 setTimeout(ca_init, 50);
             }
+            if (btn.dataset.tab === 'logviewer' && typeof fetchAdminLogStats === 'function') {
+                setTimeout(fetchAdminLogStats, 50);
+            }
         };
     });
 
@@ -931,5 +946,178 @@ function _cloudExRenderSettingsContent(panel, activeTab) {
         };
     }
 }
+
+
+// ============================================================================
+// LOGVIEWER MODULE GLOBAL JAVASCRIPT
+// ============================================================================
+
+window.adminLogHandleIpClick = function(event, ip) {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    const observer = new MutationObserver(function(mutations, obs) {
+        const inp = document.getElementById("authadm_checkip_input_ip");
+        if (inp && !inp.value) {
+            inp.value = ip;
+            obs.disconnect();
+        }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    setTimeout(function() { observer.disconnect(); }, 2000);
+
+    if (typeof showIpMenu === "function") {
+        showIpMenu(event, ip);
+    } else if (typeof authadm_show_checkip_popup === "function") {
+        authadm_show_checkip_popup(ip);
+    }
+};
+
+window.toggleDetails = function(row) {
+    const tbody = row.closest("tbody");
+    const detailsRow = tbody.querySelector(".details-row");
+    const icon = row.querySelector(".expand-icon");
+    
+    if (detailsRow.style.display === "none") {
+        detailsRow.style.display = "table-row";
+        icon.style.transform = "rotate(90deg)";
+        icon.style.color = "var(--accent-primary)";
+    } else {
+        detailsRow.style.display = "none";
+        icon.style.transform = "rotate(0deg)";
+        icon.style.color = "var(--text-secondary)";
+    }
+};
+
+window.filterUserStats = function() {
+    const filterInput = document.getElementById("userStatsFilter");
+    if (!filterInput) return;
+    
+    const term = filterInput.value.toLowerCase();
+    const tbodies = document.querySelectorAll("#userStatsTable tbody.user-group");
+    
+    for (let i = 0; i < tbodies.length; i++) {
+        const tbody = tbodies[i];
+        const userNameCell = tbody.querySelector(".main-row td:nth-child(2)");
+        if (userNameCell && userNameCell.textContent.toLowerCase().indexOf(term) !== -1) {
+            tbody.style.display = "";
+        } else {
+            tbody.style.display = "none";
+        }
+    }
+};
+
+window.logViewerNaturalSort = function(a, b, direction) {
+    const dateRegex = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
+    if (dateRegex.test(a) && dateRegex.test(b)) {
+        return (new Date(a.replace(" ", "T")) - new Date(b.replace(" ", "T"))) * direction;
+    }
+    return a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }) * direction;
+};
+
+window.initTableSorting = function() {
+    const tables = document.querySelectorAll("table.sortable-table");
+    
+    for (let i = 0; i < tables.length; i++) {
+        const table = tables[i];
+        const thead = table.querySelector("thead");
+        if (!thead) continue;
+        
+        const headers = thead.querySelectorAll("th:not(.no-sort)");
+        const isGrouped = table.querySelector("tbody.user-group") !== null;
+        
+        for (let j = 0; j < headers.length; j++) {
+            const th = headers[j];
+            th.addEventListener("click", function() {
+                const index = Array.prototype.indexOf.call(th.parentNode.children, th);
+                const isDescFirstCol = /Last|Failed|Week|Month|Year/i.test(th.textContent.trim());
+                const currentlyAsc = th.classList.contains("sort-asc");
+                const currentlyDesc = th.classList.contains("sort-desc");
+                
+                let nextIsAsc;
+                if (!currentlyAsc && !currentlyDesc) {
+                    nextIsAsc = isDescFirstCol ? false : true;
+                } else {
+                    nextIsAsc = !currentlyAsc;
+                }
+
+                const direction = nextIsAsc ? 1 : -1;
+
+                for (let k = 0; k < headers.length; k++) {
+                    headers[k].classList.remove("sort-asc", "sort-desc");
+                }
+                th.classList.add(nextIsAsc ? "sort-asc" : "sort-desc");
+
+                if (isGrouped) {
+                    const tbodies = Array.prototype.slice.call(table.querySelectorAll("tbody.user-group"));
+                    tbodies.sort(function(a, b) {
+                        const aText = a.querySelector(".main-row").children[index].textContent.trim();
+                        const bText = b.querySelector(".main-row").children[index].textContent.trim();
+                        return window.logViewerNaturalSort(aText, bText, direction);
+                    });
+                    for (let k = 0; k < tbodies.length; k++) {
+                        table.appendChild(tbodies[k]);
+                    }
+                } else {
+                    const tbody = table.querySelector("tbody.standard-group");
+                    if (!tbody) return;
+                    
+                    const rows = Array.prototype.slice.call(tbody.querySelectorAll("tr"));
+                    if (rows.length === 1 && rows[0].children.length === 1) return;
+                    
+                    rows.sort(function(a, b) {
+                        const aText = a.children[index].textContent.trim();
+                        const bText = b.children[index].textContent.trim();
+                        return window.logViewerNaturalSort(aText, bText, direction);
+                    });
+                    for (let k = 0; k < rows.length; k++) {
+                        tbody.appendChild(rows[k]);
+                    }
+                }
+            });
+        }
+    }
+};
+
+window.fetchAdminLogStats = function() {
+    var content = document.getElementById("adminLogStatsContent");
+    var timeframeSelect = document.getElementById("adminLogTimeframe");
+    if (!content || !timeframeSelect) return;
+    
+    var timeframe = timeframeSelect.value;
+    var filterValue = "";
+    var filterInput = document.getElementById("userStatsFilter");
+    if (filterInput) {
+        filterValue = filterInput.value;
+    }
+    
+    content.innerHTML = '<div class="admin-log-loader"><div class="admin-log-spinner"></div><div style="font-weight:500;">Analyzing log files...</div></div>';
+
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", window.location.href, true);
+    xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+    xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
+    
+    xhr.onload = function() {
+        if (xhr.status === 200) {
+            content.innerHTML = xhr.responseText;
+            window.initTableSorting(); 
+            
+            var newFilterInput = document.getElementById("userStatsFilter");
+            if (newFilterInput && filterValue) {
+                newFilterInput.value = filterValue;
+                window.filterUserStats();
+            }
+        } else {
+            content.innerHTML = "<h2>Error</h2><p class='error-message'>Failed to fetch statistics (HTTP " + xhr.status + ").</p>";
+        }
+    };
+    
+    xhr.onerror = function() {
+        content.innerHTML = "<h2>Error</h2><p class='error-message'>Network error occurred.</p>";
+    };
+    
+    xhr.send("action=get_admin_log_stats&timeframe=" + encodeURIComponent(timeframe));
+};
 
 </script>

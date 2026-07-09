@@ -62,10 +62,15 @@ $GLOBALS['mycloud_svg_logo'] = '<svg xmlns="http://www.w3.org/2000/svg" viewBox=
      foreach ($GLOBALS['user_details'] as $ud) {
          $uName = $ud['name'] ?? '';
          if ($uName !== '' && isset($ud['cloud']) && is_array($ud['cloud'])) {
-             foreach ($ud['cloud'] as $c) {
+             foreach ($ud['cloud'] as $k => $c) {
                  $p = isset($c['path']) ? rtrim($c['path'], '/\\') : '';
                  if ($p !== '') {
-                     $allKnownPaths[] = ['user' => $uName, 'path' => $p];
+                     $allKnownPaths[] = [
+                         'user' => $uName, 
+                         'path' => $p, 
+                         'key' => $k,
+                         'interface' => $c['interface'] ?? 'default'
+                     ];
                  }
              }
          }
@@ -80,21 +85,27 @@ if (isset($_POST['myCloud_action']) && in_array($_POST['myCloud_action'], ['clou
     $is_private = false;
     if ($targetCloud !== '' && isset($GLOBALS['user_details']) && is_array($GLOBALS['user_details'])) {
         $targetPath = '';
+		$targetInterface = 'default';
         foreach ($GLOBALS['user_details'] as $ud) {
-            if (($ud['name'] ?? '') === $currentUser && isset($ud['cloud'][$targetCloud]['path'])) {
-                $targetPath = rtrim($ud['cloud'][$targetCloud]['path'], '/\\');
+            if (($ud['name'] ?? '') === $currentUser && isset($ud['cloud'][$targetCloud])) {
+                $targetPath = rtrim($ud['cloud'][$targetCloud]['path'] ?? '', '/\\');
+                $targetInterface = $ud['cloud'][$targetCloud]['interface'] ?? 'default';
                 break;
             }
         }
         if ($targetPath !== '') {
-            $is_private = true;
-            foreach ($allKnownPaths as $other) {
-                if ($other['user'] === $currentUser) continue;
-                $oPath = $other['path'];
-                if ($targetPath === $oPath || strpos($targetPath . '/', $oPath . '/') === 0 || strpos($oPath . '/', $targetPath . '/') === 0) {
-                    $is_private = false; break;
-                }
-            }
+            if ($targetInterface === 'hidden') {
+                $is_private = true;
+            } else {
+                $is_private = true;
+                foreach ($allKnownPaths as $other) {
+                    if ($other['user'] === $currentUser) continue;
+                    $oPath = $other['path'];
+                    if ($targetPath === $oPath || strpos($targetPath . '/', $oPath . '/') === 0 || strpos($oPath . '/', $targetPath . '/') === 0) {
+                        $is_private = false; break;
+                    }
+				}
+			}
         }
     }
     if (!$is_private) {
@@ -124,9 +135,12 @@ if (isset($_POST['myCloud_action']) && in_array($_POST['myCloud_action'], ['clou
                  if (($c['interface'] ?? 'default') === 'email' && !isset($c['rights'])) $r = 'full';
 
                  $p = isset($c['path']) ? rtrim($c['path'], '/\\') : '';
+				 $intf = $c['interface'] ?? 'default';
                  $is_private = false;
-                 if ($p !== '') {
+                 if ($intf === 'hidden') {
                      $is_private = true;
+                 } elseif ($p !== '') {
+                    	$is_private = true;
                      foreach ($allKnownPaths as $other) {
                          if ($other['user'] === $currentUser) continue;
                          $oPath = $other['path'];
@@ -196,6 +210,31 @@ window.addEventListener('beforeinstallprompt', (e) => {
 
 // Inject Full Config map
  const myCloudCloudConfig = <?php echo json_encode($userCloudData); ?>;
+
+
+ // Inject Logviewer Status & UI Payload
+ window.myCloudLogviewerEnabled = <?php
+    $logvEnabled = false;
+    if (isset($GLOBALS['user_details'])) {
+        foreach ($GLOBALS['user_details'] as $ud) {
+            if (($ud['name'] ?? '') === $currentUser && !empty($ud['logviewer'])) {
+                $logvEnabled = true;
+                break;
+            }
+        }
+    }
+    echo $logvEnabled ? 'true' : 'false';
+ ?>;
+
+ window.myCloudLogviewerHtml = <?php
+    if ($logvEnabled && file_exists(__DIR__ . '/modules.admin_logviewer.php')) {
+        include_once __DIR__ . '/modules.admin_logviewer.php';
+        echo function_exists('Logviewer_render_html') ? json_encode(Logviewer_render_html()) : 'null';
+    } else {
+        echo 'null';
+    }
+ ?>;
+
 
  // Global click listener to hide context menu
  document.addEventListener('click', (e) => {

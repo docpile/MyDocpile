@@ -302,4 +302,156 @@ const myCloudCrypto = (function() {
         }
     };
 })();
+
+// E2E Client-Side ZIP Generator
+window.myCloudE2EZipCreate = async function(files, targetDir, mode) {
+    const st = typeof myCloudState !== 'undefined' ? myCloudState : window.myCloudState;
+    if (!st) return;
+    
+    if (typeof window.myCloudCreateProgressUI === 'function') {
+        window.myCloudCreateProgressUI((typeof myCloud_LANG !== 'undefined' && myCloud_LANG.zipping) ? myCloud_LANG.zipping : "Creating Secure ZIP...");
+    }
+    
+    try {
+        if (typeof window.JSZip === 'undefined') {
+            if (typeof myCloudLoadJS === 'function') {
+                await myCloudLoadJS('https://unpkg.com/jszip/dist/jszip.min.js');
+            } else {
+                await new Promise((r) => { const s = document.createElement('script'); s.src = 'https://unpkg.com/jszip/dist/jszip.min.js'; s.onload = r; document.head.appendChild(s); });
+            }
+        }
+        
+        const zip = new JSZip();
+        
+        const addTargetToZip = async (path, zipFolder) => {
+            const item = st.allItems.find(i => i.name === path);
+            if (!item) return;
+            
+            const root = myCloudCrypto.getCryptoRoot(path);
+            let plainName = path.split('/').pop();
+            if (root && plainName.endsWith('.enc')) {
+                try { plainName = await myCloudCrypto.decryptName(root, plainName); } 
+                catch(e) { plainName = plainName.replace(/\.enc$/, ''); }
+            }
+            
+            if (item.size === 'DIR') {
+                const newFolder = zipFolder.folder(plainName);
+                const listFd = new URLSearchParams({ myCloud_action: 'list', myCloud_key: st.key, myCloud_token: window.myCloudCsrfToken, path: path, depth: 1 });
+                const listRes = await fetch('', { method: 'POST', body: listFd }).then(r => r.json());
+                
+                if (listRes.status === 'OK') {
+                    for (let child of listRes.data) {
+                        if (child.name === '/.recycle_bin') continue;
+                        if (!st.allItems.some(i => i.name === child.name)) st.allItems.push(child);
+                        await addTargetToZip(child.name, newFolder);
+                    }
+                }
+            } else {
+                const dlFd = new URLSearchParams({ myCloud_action: 'get_download_token', myCloud_key: st.key, myCloud_token: window.myCloudCsrfToken, path: path, filename: plainName, preview: '0' });
+                const tokenRes = await fetch('', { method: 'POST', body: dlFd }).then(r => r.json());
+                if (tokenRes.status !== 'OK') throw new Error("Failed to get token for " + plainName);
+                
+                const r2 = await fetch('?myCloud_token=' + tokenRes.token);
+                let blob = await r2.blob();
+                
+                if (root) blob = await myCloudCrypto.decryptFile(root, blob);
+                zipFolder.file(plainName, blob);
+            }
+        };
+        
+        for (let i=0; i<files.length; i++) {
+            if (typeof window.myCloudUpdateProgressUI === 'function') {
+                window.myCloudUpdateProgressUI((i / files.length) * 50);
+            }
+            await addTargetToZip(files[i], zip);
+        }
+        
+        if (typeof window.myCloudUpdateProgressUI === 'function') window.myCloudUpdateProgressUI(50);
+        const textEl = document.getElementById('myCloudProgressText');
+        if (textEl) textEl.textContent = (typeof myCloud_LANG !== 'undefined' && myCloud_LANG.compressing) ? myCloud_LANG.compressing : "Compressing...";
+        
+        const zipBlob = await zip.generateAsync({type: "blob"}, function updateCallback(metadata) {
+            if (typeof window.myCloudUpdateProgressUI === 'function') {
+                window.myCloudUpdateProgressUI(50 + (metadata.percent / 2));
+            }
+        });
+        
+        const firstItem = st.allItems.find(i => i.name === files[0]);
+        let zipBaseName = "Archive";
+        if (firstItem) {
+            const root = myCloudCrypto.getCryptoRoot(files[0]);
+            let pName = files[0].split('/').pop();
+            if (root && pName.endsWith('.enc')) {
+                try { pName = await myCloudCrypto.decryptName(root, pName); } 
+                catch(e) { pName = pName.replace(/\.enc$/, ''); }
+            }
+            zipBaseName = pName;
+        }
+        const finalZipName = zipBaseName + '.zip';
+        
+        let uploadBlob = zipBlob;
+        let uploadName = finalZipName;
+        const targetRoot = myCloudCrypto.getCryptoRoot(targetDir);
+        
+        if (targetRoot) {
+            if (textEl) textEl.textContent = "Encrypting ZIP...";
+            const plainFileObj = new File([zipBlob], finalZipName, { type: zipBlob.type });
+            uploadBlob = await myCloudCrypto.encryptFile(targetRoot, plainFileObj);
+            uploadName = await myCloudCrypto.encryptName(targetDir, finalZipName);
+        }
+        
+        if (textEl) textEl.textContent = "Uploading ZIP...";
+        const upFd = new FormData();
+        upFd.append('myCloud_action', 'upload');
+        upFd.append('dir', targetDir);
+        upFd.append('myCloud_key', st.key);
+        upFd.append('myCloud_token', window.myCloudCsrfToken);
+        upFd.append('file', uploadBlob, uploadName);
+        upFd.append('resolution', 'keep_both');
+        
+        const upRes = await fetch('', { method: 'POST', body: upFd }).then(r => r.json());
+        if (upRes.status !== 'OK') throw new Error("Upload failed: " + (upRes.msg || 'Unknown error'));
+        
+        if (mode === 'move') {
+            if (textEl) textEl.textContent = "Cleaning up...";
+            for (let f of files) {
+                const delFd = new URLSearchParams({ myCloud_action: 'delete', myCloud_key: st.key, myCloud_token: window.myCloudCsrfToken, src: f, permanent: 'true' });
+                await fetch('', { method: 'POST', body: delFd });
+            }
+        }
+        
+        if (typeof window.myCloudCloseProgressUI === 'function') window.myCloudCloseProgressUI();
+        
+        if (typeof window.myCloudFetchDirectory === 'function') {
+            window.myCloudFetchDirectory(st.currentDir);
+            if (targetDir !== st.currentDir) window.myCloudFetchDirectory(targetDir);
+        }
+        
+    } catch (e) {
+        if (typeof window.myCloudCloseProgressUI === 'function') window.myCloudCloseProgressUI();
+        if (typeof window.myCloudShowAlert === 'function') window.myCloudShowAlert("Zip Error", e.message || "An unknown error occurred.");
+    }
+};
+
+// Global interceptor for context menu 'copy to zip' action
+document.addEventListener('DOMContentLoaded', () => {
+    const origZip = window.myCloudAction_Zip;
+    window.myCloudAction_Zip = function(mode) {
+        const st = typeof myCloudState !== 'undefined' ? myCloudState : window.myCloudState;
+        if (!st || !st.selectedFiles || st.selectedFiles.length === 0) return;
+        
+        const isEncrypted = typeof myCloudCrypto !== 'undefined' && st.selectedFiles.some(f => myCloudCrypto.isDirEncrypted(f));
+        const isTargetEncrypted = typeof myCloudCrypto !== 'undefined' && myCloudCrypto.isDirEncrypted(st.currentDir);
+        
+        if (isEncrypted || isTargetEncrypted) {
+            if (typeof window.myCloudE2EZipCreate === 'function') {
+                window.myCloudE2EZipCreate(st.selectedFiles, st.currentDir, mode);
+            }
+            return;
+        }
+        
+        if (origZip) origZip(mode);
+    };
+});
+
 </script>

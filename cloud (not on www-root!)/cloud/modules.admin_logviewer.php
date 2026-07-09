@@ -1,0 +1,549 @@
+<?php
+/**
+ * ============================================================================
+ * MODULE: Embedded Logviewer
+ * ============================================================================
+ * Provides an isolated view into the system log. Integrates into the 
+ * settings modal via the frontend tab architecture.
+ */
+
+if (basename($_SERVER['PHP_SELF']) == basename(__FILE__)) {
+    die('Direct access not permitted');
+}
+
+// -----------------------------------------------------------------------------
+// 1. Handle AJAX request
+// -----------------------------------------------------------------------------
+
+function Logviewer_formatDuration($secs) {
+    if ($secs === null) return '-';
+    if ($secs < 60) return "{$secs}s";
+    $m = floor($secs / 60);
+    $s = $secs % 60;
+    if ($m < 60) return "{$m}m {$s}s";
+    $h = floor($m / 60);
+    $m = $m % 60;
+    return "{$h}h {$m}m";
+}
+
+function Logviewer_handle_ajax() {
+    global $log_file;
+
+    if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+        if (isset($_POST['action']) && $_POST['action'] === 'get_admin_log_stats') {
+
+            $currentUser = $_SESSION['username'] ?? '';
+            $hasLogviewer = false;
+            $fixedFilter = '';
+
+            // Extract exact permissions for the user
+            if (isset($GLOBALS['user_details']) && is_array($GLOBALS['user_details'])) {
+                foreach ($GLOBALS['user_details'] as $ud) {
+                    if (($ud['name'] ?? '') === $currentUser && !empty($ud['logviewer'])) {
+                        $hasLogviewer = true;
+                        $fixedFilter = $ud['logviewer_filter'] ?? '';
+                        break;
+                    }
+                }
+            }
+
+            if (!$hasLogviewer) {
+                echo "<h2>Error</h2><p class='error-message' style='color:var(--danger);'>Access denied.</p>";
+                exit;
+            }
+            
+            if (!isset($log_file) || !file_exists($log_file)) {
+                echo "<h2>Error</h2><p class='error-message' style='color:var(--danger);'>Log file not found or path not configured.</p>";
+                exit;
+            }
+
+            $timeframe = $_POST['timeframe'] ?? '1 month';
+            $now = time();
+            $periods = [
+                '1 week'   => strtotime('-1 week', $now),
+                '1 month'  => strtotime('-1 month', $now),
+                '3 months' => strtotime('-3 months', $now),
+                '6 months' => strtotime('-6 months', $now),
+                '1 year'   => strtotime('-1 year', $now)
+            ];
+
+            if (!isset($periods[$timeframe])) {
+                $timeframe = '1 month';
+            }
+            
+            $cutoff = $periods[$timeframe];
+
+            $activeCols = [];
+            foreach ($periods as $label => $ts) {
+                if ($ts >= $cutoff) {
+                    $activeCols[$label] = $ts;
+                }
+            }
+
+            $userStats = [];
+            $ipStats = [];
+
+            $handle = fopen($log_file, "r");
+            if ($handle) {
+                while (($line = fgets($handle)) !== false) {
+                    // Impose tenant segregation filter immediately before tokenization
+                    if ($fixedFilter !== '') {
+                        if (stripos($line, $fixedFilter) === false) {
+                            continue;
+                        }
+                    }
+
+                    $parts = explode("\t", rtrim($line, "\r\n"));
+                    if (count($parts) < 8) continue;
+
+                    $timestampStr = $parts[0];
+                    $ts = strtotime($timestampStr);
+                    
+                    if (!$ts || $ts < $cutoff) continue; 
+
+                    $status = $parts[1];
+                    $ip = $parts[2];
+                    $country = $parts[3] ?? '';
+                    $component = $parts[4];
+                    $domain = $parts[5];
+                    $module = $parts[6];
+                    $message = $parts[7];
+
+                    // --- 1. User Logins, Logouts, and Failed Attempts ---
+                    if ($module === 'MainLogin') {
+                        if ($status === 'success') {
+                            if (strpos($message, 'Logout for user') !== false) {
+                                if (preg_match('/Logout for user ([^\s]+)/', $message, $m)) {
+                                    $u = $m[1];
+                                    if (isset($userStats[$u]['sessions'])) {
+                                        for ($i = count($userStats[$u]['sessions']) - 1; $i >= 0; $i--) {
+                                            if ($userStats[$u]['sessions'][$i]['logout_ts'] === null && $userStats[$u]['sessions'][$i]['ip'] === $ip) {
+                                                $userStats[$u]['sessions'][$i]['logout_ts'] = $timestampStr;
+                                                $userStats[$u]['sessions'][$i]['duration'] = $ts - strtotime($userStats[$u]['sessions'][$i]['ts']);
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                            } elseif (stripos($message, 'login') !== false && preg_match('/✅ (?:Login without 2FA for|Successful login for user) ([^\s]+)/', $message, $m)) {
+                                $u = $m[1];
+                                if (!isset($userStats[$u])) {
+                                    $userStats[$u] = [
+                                        'last' => '-', 
+                                        'failed_count' => 0,
+                                        'logins' => [],
+                                        'sessions' => [],
+                                        'failed' => []
+                                    ];
+                                    foreach ($activeCols as $lbl => $colTs) {
+                                        $userStats[$u]['logins'][$lbl] = 0;
+                                    }
+                                }
+                                
+                                $userStats[$u]['last'] = $timestampStr;
+                                
+                                foreach ($activeCols as $lbl => $colTs) {
+                                    if ($ts >= $colTs) $userStats[$u]['logins'][$lbl]++;
+                                }
+
+                                $method = 'Standard / 2FA';
+                                if (strpos($message, 'via remembered browser') !== false) $method = 'Remembered Browser';
+                                elseif (strpos($message, 'cloud only') !== false) $method = 'Cloud Only';
+
+                                $userStats[$u]['sessions'][] = [
+                                    'ts' => $timestampStr,
+                                    'ip' => $ip,
+                                    'cc' => $country,
+                                    'domain' => $domain,
+                                    'component' => $component,
+                                    'method' => $method,
+                                    'logout_ts' => null,
+                                    'duration' => null
+                                ];
+                            }
+                        } elseif ($status === 'error' && strpos($message, 'failed for user') !== false && preg_match('/❌ authentication failed for user ([^\s]+)/', $message, $m)) {
+                            $u = $m[1];
+                            if (!isset($userStats[$u])) {
+                                $userStats[$u] = [
+                                    'last' => '-', 
+                                    'failed_count' => 0,
+                                    'logins' => [],
+                                    'sessions' => [],
+                                    'failed' => []
+                                ];
+                                foreach ($activeCols as $lbl => $colTs) $userStats[$u]['logins'][$lbl] = 0;
+                            }
+                            
+                            $userStats[$u]['failed_count']++;
+                            $userStats[$u]['failed'][] = [
+                                'ts' => $timestampStr,
+                                'ip' => $ip,
+                                'cc' => $country,
+                                'domain' => $domain,
+                                'component' => $component
+                            ];
+                        }
+                    }
+
+                    // --- 2. Blocked IPs (Only run if no specific user filter is attached) ---
+                    if ($fixedFilter === '' && $status === 'error' && (strpos($message, 'block') !== false || strpos($message, 'WAF') !== false)) {
+                        $reason = $message;
+                        if (strpos($message, 'Reasons:') !== false && preg_match('/Reasons:\s*(.*)/', $message, $m)) {
+                            $reason = $m[1];
+                        }
+                        
+                        $ipKey = $ip . '|' . $domain . '|' . $component . '|' . $reason;
+                        
+                        if (!isset($ipStats[$ipKey])) {
+                            $ipStats[$ipKey] = [
+                                'ip' => $ip,
+                                'domain' => $domain,
+                                'component' => $component,
+                                'reason' => $reason,
+                                'last' => $timestampStr
+                            ];
+                            foreach ($activeCols as $lbl => $colTs) {
+                                $ipStats[$ipKey][$lbl] = 0;
+                            }
+                        }
+                        $ipStats[$ipKey]['last'] = $timestampStr;
+                        
+                        foreach ($activeCols as $lbl => $colTs) {
+                            if ($ts >= $colTs) $ipStats[$ipKey][$lbl]++;
+                        }
+                    }
+                }
+                fclose($handle);
+            }
+
+            // Sort User stats by Domain, then Username
+            uksort($userStats, function($u1, $u2) {
+                $dom1 = strpos($u1, '@') !== false ? explode('@', $u1)[1] : '';
+                $dom2 = strpos($u2, '@') !== false ? explode('@', $u2)[1] : '';
+                $cmp = strcasecmp($dom1, $dom2);
+                if ($cmp === 0) {
+                    return strcasecmp($u1, $u2);
+                }
+                return $cmp;
+            });
+            
+            // Sort IP stats by most recent
+            uasort($ipStats, function($a, $b) { return strtotime($b['last']) - strtotime($a['last']); });
+
+            $colspanUsers = 4 + count($activeCols);
+            $colspanIps = 5 + count($activeCols);
+
+            // Render Output
+            $html = "<div style='margin-bottom: 30px;'>";
+            $html .= "<h3 style='margin-top: 0; margin-bottom: 15px; color: var(--text-primary); font-size: 1.15em;'>👤 User Logins (Last " . ucwords($timeframe) . ")</h3>";
+            $html .= "<div style='overflow-x:auto;'><table class='log-stats-table sortable-table' id='userStatsTable'>";
+            
+            $html .= "<thead><tr>
+                        <th style='width: 30px; cursor: default;' class='no-sort'></th>
+                        <th style='min-width: 200px;'>User <input type='text' id='userStatsFilter' placeholder='Filter users/domains...' style='font-weight:normal; font-size:12px; padding:4px 8px; margin-left:10px; border:1px solid var(--border-default); border-radius:4px; width:160px; outline:none; background:var(--gray-00); color:var(--text-primary);' onclick='event.stopPropagation();' onkeyup='filterUserStats()'></th>
+                        <th>Last Login</th>
+                        <th>Failed</th>";
+            foreach ($activeCols as $lbl => $colTs) {
+                $html .= "<th>" . ucwords($lbl) . "</th>";
+            }
+            $html .= "</tr></thead>";
+            
+            if (empty($userStats)) {
+                $html .= "<tbody><tr><td colspan='{$colspanUsers}' style='text-align:center;'>No logins found in this timeframe.</td></tr></tbody>";
+            } else {
+                foreach ($userStats as $u => $s) {
+                    $html .= "<tbody class='user-group'>";
+                    
+                    $failBadge = $s['failed_count'] > 0 ? "<span class='stat-badge error'>{$s['failed_count']}</span>" : "<span class='stat-badge' style='background:var(--gray-10); color:var(--text-secondary);'>0</span>";
+                    
+                    $html .= "<tr class='main-row' onclick='toggleDetails(this)' style='cursor: pointer;'>
+                                <td style='text-align:center;'><span class='expand-icon'>▶</span></td>
+                                <td style='font-weight: 500;'>" . htmlspecialchars($u) . "</td>
+                                <td>{$s['last']}</td>
+                                <td>{$failBadge}</td>";
+                    foreach ($activeCols as $lbl => $colTs) {
+                        $html .= "<td><span class='stat-badge'>{$s['logins'][$lbl]}</span></td>";
+                    }
+                    $html .= "</tr>";
+                              
+                    $html .= "<tr class='details-row' style='display: none;'>
+                                <td colspan='{$colspanUsers}' class='details-cell' style='padding: 15px 20px 15px 25px !important;'>
+                                    <table class='log-stats-table inner-details-table' style='width: 100%; margin: 0; box-shadow: none; border: 1px solid var(--border-subtle);'>
+                                        <thead>
+                                            <tr>
+                                                <th class='no-sort' style='background: var(--gray-05); cursor: default; padding: 8px 12px;'>Date</th>
+                                                <th class='no-sort' style='background: var(--gray-05); cursor: default; padding: 8px 12px;'>IP</th>
+                                                <th class='no-sort' style='background: var(--gray-05); cursor: default; padding: 8px 12px;'>CC</th>
+                                                <th class='no-sort' style='background: var(--gray-05); cursor: default; padding: 8px 12px;'>Domain / Component</th>
+                                                <th class='no-sort' style='background: var(--gray-05); cursor: default; padding: 8px 12px;'>Method</th>
+                                                <th class='no-sort' style='background: var(--gray-05); cursor: default; padding: 8px 12px;'>Duration / Logout</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>";
+                                        
+                    $allEvents = [];
+                    foreach ($s['sessions'] as $sess) {
+                        $durStr = '-';
+                        if ($sess['logout_ts']) {
+                            $durStr = Logviewer_formatDuration($sess['duration']) . " <span style='color:var(--text-secondary);'>(out: " . date('H:i:s', strtotime($sess['logout_ts'])) . ")</span>";
+                        }
+                        $ipSafe = htmlspecialchars($sess['ip']);
+                        $ipClick = filter_var($ipSafe, FILTER_VALIDATE_IP) ? "<span class='ip-address' style='background:transparent; color:var(--accent-primary); cursor:pointer;' onclick=\"adminLogHandleIpClick(event, '{$ipSafe}')\">{$ipSafe}</span>" : $ipSafe;
+                        
+                        $allEvents[] = [
+                            'ts' => strtotime($sess['ts']),
+                            'html' => "<tr>
+                                        <td>{$sess['ts']}</td>
+                                        <td>{$ipClick}</td>
+                                        <td>{$sess['cc']}</td>
+                                        <td>{$sess['domain']} <span style='color:var(--text-secondary);'>/ {$sess['component']}</span></td>
+                                        <td>{$sess['method']}</td>
+                                        <td>{$durStr}</td>
+                                      </tr>"
+                        ];
+                    }
+                    foreach ($s['failed'] as $fail) {
+                        $ipSafe = htmlspecialchars($fail['ip']);
+                        $ipClick = filter_var($ipSafe, FILTER_VALIDATE_IP) ? "<span class='ip-address' style='background:transparent; color:var(--danger); font-weight:600; cursor:pointer;' onclick=\"adminLogHandleIpClick(event, '{$ipSafe}')\">{$ipSafe}</span>" : $ipSafe;
+
+                        $allEvents[] = [
+                            'ts' => strtotime($fail['ts']),
+                            'html' => "<tr style='background-color: rgba(232, 17, 35, 0.05);'>
+                                        <td>{$fail['ts']}</td>
+                                        <td>{$ipClick}</td>
+                                        <td>{$fail['cc']}</td>
+                                        <td>{$fail['domain']} <span style='color:var(--text-secondary);'>/ {$fail['component']}</span></td>
+                                        <td colspan='2'><span style='color: var(--danger); font-weight: 600;'>❌ Failed Login Attempt</span></td>
+                                      </tr>"
+                        ];
+                    }
+                    
+                    usort($allEvents, function($a, $b) { return $b['ts'] <=> $a['ts']; });
+                    
+                    if (empty($allEvents)) {
+                        $html .= "<tr><td colspan='6' style='text-align:center; padding: 8px;'>No details available.</td></tr>";
+                    } else {
+                        foreach ($allEvents as $ev) {
+                            $html .= $ev['html'];
+                        }
+                    }
+
+                    $html .= "          </tbody>
+                                    </table>
+                                </td>
+                              </tr>";
+                    $html .= "</tbody>";
+                }
+            }
+            $html .= "</table></div></div>";
+
+            if ($fixedFilter === '') {
+                $html .= "<div>";
+                $html .= "<h3 style='margin-top: 0; margin-bottom: 15px; color: var(--text-primary); font-size: 1.15em;'>🚫 Blocked IPs (Last " . ucwords($timeframe) . ")</h3>";
+                $html .= "<div style='overflow-x:auto;'><table class='log-stats-table sortable-table' id='ipStatsTable'>";
+                
+                $html .= "<thead><tr><th>Last Blocked</th><th>IP Address</th><th>Domain</th><th>Component</th><th>Reason</th>";
+                foreach ($activeCols as $lbl => $colTs) {
+                    $html .= "<th>" . ucwords($lbl) . "</th>";
+                }
+                $html .= "</tr></thead><tbody class='standard-group'>";
+                
+                if (empty($ipStats)) {
+                    $html .= "<tr><td colspan='{$colspanIps}' style='text-align:center;'>No blocks found in this timeframe.</td></tr>";
+                } else {
+                    foreach ($ipStats as $s) {
+                        $safeIp = htmlspecialchars($s['ip']);
+                        $ipClick = filter_var($safeIp, FILTER_VALIDATE_IP) ? "<span class='ip-address' style='background:transparent; color:var(--accent-primary); text-decoration:underline; cursor:pointer;' onclick=\"adminLogHandleIpClick(event, '{$safeIp}')\">{$safeIp}</span>" : $safeIp;
+                        
+                        $html .= "<tr>
+                                    <td>{$s['last']}</td>
+                                    <td>{$ipClick}</td>
+                                    <td>" . htmlspecialchars($s['domain']) . "</td>
+                                    <td>" . htmlspecialchars($s['component']) . "</td>
+                                    <td style='max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;' title='" . htmlspecialchars($s['reason']) . "'>" . htmlspecialchars($s['reason']) . "</td>";
+                        foreach ($activeCols as $lbl => $colTs) {
+                            $html .= "<td><span class='stat-badge error'>{$s[$lbl]}</span></td>";
+                        }
+                        $html .= "</tr>";
+                    }
+                }
+                $html .= "</tbody></table></div></div>";
+            }
+
+            echo $html;
+            exit;
+        }
+    }
+}
+
+// -----------------------------------------------------------------------------
+// 2. Output HTML and JS for the Settings Tab
+// -----------------------------------------------------------------------------
+
+function Logviewer_render_html() {
+    return '
+    <div id="adminLogStatsBox" style="height:100%; display:flex; flex-direction:column;">
+        <div id="adminLogStatsHeader">
+            <div style="display: flex; align-items: center; justify-content:space-between; width:100%; flex-wrap:wrap; gap:15px;">
+                <h2 style="margin:0; font-size:1.25em; color:var(--text-primary);">📈 System Logs</h2>
+                <select id="adminLogTimeframe" class="admin-log-select" onchange="fetchAdminLogStats()">
+                    <option value="1 week" selected>Last Week</option>
+                    <option value="1 month">Last Month</option>
+                    <option value="3 months">Last 3 Months</option>
+                    <option value="6 months">Last 6 Months</option>
+                    <option value="1 year">Last Year</option>
+                </select>
+            </div>
+        </div>
+        <div id="adminLogStatsContent">
+            <div class="admin-log-loader"><div class="admin-log-spinner"></div><div style="font-weight:500;">Analyzing log files...</div></div>
+        </div>
+    </div>
+    
+    <style>
+        #adminLogStatsHeader {
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border-default);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+            margin-bottom: 20px;
+        }
+        .admin-log-select {
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border-default);
+            font-family: inherit;
+            font-size: 13px;
+            color: var(--text-primary);
+            outline: none;
+            cursor: pointer;
+            background: var(--gray-00);
+        }
+        .admin-log-select:hover {
+            border-color: var(--border-strong);
+        }
+        #adminLogStatsContent {
+            overflow-y: auto;
+            flex: 1;
+            padding-bottom: 20px;
+        }
+        .log-stats-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13.5px;
+            background: var(--gray-00);
+            border: 1px solid var(--border-default);
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            color: var(--text-primary);
+        }
+        .log-stats-table th {
+            background: var(--gray-05);
+            font-weight: 600;
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid var(--border-default);
+            white-space: nowrap;
+            position: relative;
+        }
+        .sortable-table > thead > tr > th:not(.no-sort) {
+            cursor: pointer;
+            user-select: none;
+            padding-right: 20px;
+            transition: background 0.2s;
+        }
+        .sortable-table > thead > tr > th:not(.no-sort):hover {
+            background: var(--hover-bg-light);
+        }
+        .sortable-table > thead > tr > th:not(.no-sort)::after {
+            content: \'↕\';
+            position: absolute;
+            right: 5px;
+            color: var(--text-secondary);
+            font-size: 12px;
+        }
+        .sortable-table > thead > tr > th.sort-asc::after { content: \'▲\'; color: var(--accent-primary); }
+        .sortable-table > thead > tr > th.sort-desc::after { content: \'▼\'; color: var(--accent-primary); }
+        .log-stats-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        .user-group:hover .main-row, .standard-group tr:hover {
+            background: var(--hover-bg-light);
+        }
+        .expand-icon {
+            display: inline-block;
+            font-size: 10px;
+            color: var(--text-secondary);
+            transition: transform 0.2s ease, color 0.2s ease;
+        }
+        .details-cell {
+            background: var(--gray-05);
+            padding: 0 !important;
+            border-bottom: 1px solid var(--border-default) !important;
+        }
+        .inner-details-table th::after { display: none !important; }
+        .inner-details-table tr:hover { background: transparent !important; }
+        .stat-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            background: var(--gray-10);
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-primary);
+            text-align: center;
+            min-width: 20px;
+        }
+        .stat-badge.error {
+            background: rgba(232, 17, 35, 0.1);
+            color: var(--danger);
+        }
+        .admin-log-loader {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            color: var(--text-secondary);
+        }
+        .admin-log-spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid var(--border-subtle);
+            border-top: 3px solid var(--accent-primary);
+            border-radius: 50%;
+            animation: al-spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+        @keyframes al-spin {
+            to { transform: rotate(360deg); }
+        }
+        @media (max-width: 768px) {
+            .log-stats-table th, .log-stats-table td {
+                padding: 6px 8px !important; 
+                font-size: 12px; 
+            }
+            .log-stats-table th:nth-child(2) input {
+                width: 120px !important;
+                font-size: 11px !important;
+                padding: 2px 4px !important;
+            }
+            .stat-badge {
+                font-size: 10px;
+                padding: 1px 6px;
+                min-width: 15px;
+            }
+            .details-cell {
+                padding: 8px !important;
+            }
+            .inner-details-table th, .inner-details-table td {
+                font-size: 11px;
+                padding: 4px 6px !important;
+            }
+        }
+    </style>
+    ';
+}

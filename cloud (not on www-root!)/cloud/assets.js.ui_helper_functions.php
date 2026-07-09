@@ -572,6 +572,9 @@ function myCloudRenderCloudSwitcher() {
 	}, { passive: false }); 
 
 	myCloudUserKeys.forEach(k => {
+
+        if (typeof myCloudCloudConfig !== 'undefined' && myCloudCloudConfig[k] && myCloudCloudConfig[k].interface === 'hidden') return;
+
         const btn = document.createElement('button');
         btn.className = 'ce-cloud-btn';
         btn.dataset.key = k;
@@ -838,7 +841,6 @@ function myCloudFetchDirectory(path, depth = 2, silent = false) {
 window.myCloudAction_EncryptPrompt = function(dirPath, forceUnlock = false, onSuccess = null, onCancel = null) {
     const isAlreadyEncrypted = forceUnlock || (myCloudState.encryptedDirs && myCloudState.encryptedDirs.has(dirPath));
     
-    // [NEW] Toggle to Lock Vault if it is already open
     if (isAlreadyEncrypted && !forceUnlock && typeof myCloudCrypto !== 'undefined' && myCloudCrypto.isDirUnlocked(dirPath)) {
         const root = myCloudCrypto.getCryptoRoot(dirPath);
         myCloudShowAlert(
@@ -847,25 +849,20 @@ window.myCloudAction_EncryptPrompt = function(dirPath, forceUnlock = false, onSu
             function() {
                 myCloudCrypto.lockDirectory(root);
                 
-                // --- CACHE PURGE: Remove subtree from memory to ensure security ---
                 const rootPrefix = root === '/' ? '/' : root + '/';
                 
                 if (myCloudState.allItems) {
-                    // Keep the root folder itself, but drop everything inside it
                     myCloudState.allItems = myCloudState.allItems.filter(item => item.name === root || !item.name.startsWith(rootPrefix));
                 }
                 if (myCloudState.loadedDirs) {
-                    // Remove root and children so they are forced to fetch again upon unlock
                     myCloudState.loadedDirs = myCloudState.loadedDirs.filter(dir => dir !== root && !dir.startsWith(rootPrefix));
                 }
                 if (myCloudState.pathNames) {
-                    // Clear decrypted filename cache
                     Object.keys(myCloudState.pathNames).forEach(path => {
                         if (path === root || path.startsWith(rootPrefix)) delete myCloudState.pathNames[path];
                     });
                 }
                 if (myCloudState.previewCache) {
-                    // Clear decrypted image blobs and free up RAM
                     Object.keys(myCloudState.previewCache).forEach(key => {
                         if (key.startsWith(rootPrefix) || key.startsWith(root + '_')) {
                             if (myCloudState.previewCache[key].startsWith('blob:')) {
@@ -876,12 +873,10 @@ window.myCloudAction_EncryptPrompt = function(dirPath, forceUnlock = false, onSu
                     });
                 }
                 
-                // If the user is currently inside the vault, kick them out to the parent directory
                 if (myCloudState.currentDir.startsWith(root)) {
                     const parentDir = root === '/' ? '/' : root.substring(0, root.lastIndexOf('/')) || '/';
                     myCloudHandleEnter({ name: parentDir, size: 'DIR' });
                 } else {
-                    // Otherwise just refresh the current view to update the lock icons
                     myCloudFetchDirectory(myCloudState.currentDir);
                 }
             }
@@ -892,7 +887,6 @@ window.myCloudAction_EncryptPrompt = function(dirPath, forceUnlock = false, onSu
     const header = isAlreadyEncrypted ? (myCloud_LANG.unlock_dir ?? 'Unlock Directory') : (myCloud_LANG.encrypt_dir ?? 'Encrypt / Unlock');
     const label = isAlreadyEncrypted ? (myCloud_LANG.enter_password ?? 'Enter Encryption Password:') : (myCloud_LANG.set_password ?? 'Set Encryption Password (DO NOT LOSE THIS):');
     
-    // USE THE PASSWORD MODAL FROM UI_HELPERS
     myCloudShowPasswordModal(header, label, async function(password) {
     myCloudShowLoading();
         try {
@@ -908,9 +902,8 @@ window.myCloudAction_EncryptPrompt = function(dirPath, forceUnlock = false, onSu
                 
                 if (res.status !== 'OK') throw new Error(res.msg || "Could not fetch directory salt from server.");
                 
-                // res.salt now contains the JSON payload for V2, or the raw string for V1
                 await myCloudCrypto.unlockDirectory(dirPath, password, res.salt);
-				
+                
                 if (!myCloudState.encryptedDirs) myCloudState.encryptedDirs = new Set();
                 myCloudState.encryptedDirs.add(dirPath);
 
@@ -923,12 +916,14 @@ window.myCloudAction_EncryptPrompt = function(dirPath, forceUnlock = false, onSu
                     myCloudHandleEnter({ name: dirPath, size: 'DIR' });
                 }
                 
+                // Silently migrate legacy unencrypted folders/files upon unlock
+                myCloudMigrateDirectory(dirPath, true);
+                
             } else {
                 // 2. SETUP/ENCRYPT PHASE
                 const { payload } = await myCloudCrypto.unlockDirectory(dirPath, password, null);
                
-                // Tell server to create the .enc_salt file and mark this as an encryption root
-                const fd = new URLSearchParams({ 
+                const fd = newSearchParams({ 
                     myCloud_action: 'crypto_init', 
                     myCloud_key: myCloudState.key, 
                     myCloud_token: typeof myCloudCsrfToken !== 'undefined' ? myCloudCsrfToken : '', 
@@ -942,10 +937,10 @@ window.myCloudAction_EncryptPrompt = function(dirPath, forceUnlock = false, onSu
                 if (!myCloudState.encryptedDirs) myCloudState.encryptedDirs = new Set();
                 myCloudState.encryptedDirs.add(dirPath);
                 
-                // --- MIGRATE EXISTING FILES ---
-				myCloudShowAlert(myCloud_LANG.setup_complete ?? 'Setup Complete', myCloud_LANG.setup_complete_msg ?? 'Directory initialized. We will now encrypt existing files. Please do not close the page.', async function() {
-					await myCloudMigrateDirectory(dirPath);
-					if (onSuccess) onSuccess();
+                // Migrate existing files
+                myCloudShowAlert(myCloud_LANG.setup_complete ?? 'Setup Complete', myCloud_LANG.setup_complete_msg ?? 'Directory initialized. We will now encrypt existing files. Please do not close the page.', async function() {
+                    await myCloudMigrateDirectory(dirPath);
+                    if (onSuccess) onSuccess();
                 });
             }
             
@@ -1396,14 +1391,14 @@ async function _cloudExProceedDownload(path, filename, isPreview) {
                     throw new Error("Decryption failed. " + decErr.message);
                 }
             } else {
-                 // CLIENT-SIDE ARCHIVE DECRYPTION
+// CLIENT-SIDE ARCHIVE DECRYPTION
                  if (!isPreview && typeof document !== 'undefined') {
                      const textEl = document.getElementById('myCloudProgressText');
                      if (textEl) textEl.textContent = 'Decrypting Archive...';
                  }
                  
                  try {
-                     // FIX 1: Fetch the ZIP strictly as an ArrayBuffer. JSZip silently fails 
+                     // Fetch the ZIP strictly as an ArrayBuffer. JSZip silently fails 
                      // to read Blobs asynchronously in loops on some browsers, resulting in 0-byte files.
                      const encryptedZipBuffer = await fetch(downloadUrl).then(r => r.arrayBuffer());
                      const root = myCloudCrypto.getCryptoRoot(path);
@@ -1423,26 +1418,30 @@ async function _cloudExProceedDownload(path, filename, isPreview) {
                      for (let i = 0; i < files.length; i++) {
                          const relativePath = files[i];
                          const zipEntry = encZip.files[relativePath];
-                         if (zipEntry.dir) continue;
                          
-                         const fName = relativePath.split('/').pop();
-                         if (fName === '.mycloud_crypto_salt') continue; 
-                         
-                         // FIX 2: Extract exactly as Uint8Array for perfect binary bridging
-                         const encFileData = await zipEntry.async("uint8array");
-                         let decFileData = encFileData;
-                         
-                         const pathParts = relativePath.split('/');
+                         // DECRYPT DIRECTORY NAMES ALONG THE ENTIRE RELATIVE PATH
+                         const pathParts = relativePath.split('/').filter(x => x);
                          const decPathParts = [];
                          for (let p of pathParts) {
                              if (p.endsWith('.enc')) {
                                  try { decPathParts.push(await myCloudCrypto.decryptName(root, p)); } 
-                                 catch(e) { decPathParts.push(p); }
+                                 catch(e) { decPathParts.push(p.replace(/\.enc$/, '')); }
                              } else {
                                  decPathParts.push(p);
                              }
                          }
-                         const finalRelativePath = decPathParts.join('/');
+                         const finalRelativePath = decPathParts.join('/') + (zipEntry.dir ? '/' : '');
+
+                         if (zipEntry.dir) {
+                             if (finalRelativePath) decZip.folder(finalRelativePath);
+                             continue;
+                         }
+                         
+                         const fName = relativePath.split('/').filter(x => x).pop();
+                         if (fName === '.mycloud_crypto_salt') continue; 
+                         
+                         const encFileData = await zipEntry.async("uint8array");
+                         let decFileData = encFileData;
                          
                          if (fName.endsWith('.enc')) {
                              try { 
@@ -1458,10 +1457,10 @@ async function _cloudExProceedDownload(path, filename, isPreview) {
                      const finalZipBlob = await decZip.generateAsync({type:"blob"});
                      downloadUrl = URL.createObjectURL(finalZipBlob);
                      isDecryptedBlob = true;
-					 memoryBlob = finalZipBlob;
+                     memoryBlob = finalZipBlob;
                  } catch (decErr) {
                      throw new Error("Folder decryption failed. " + decErr.message);
-               }
+                 }
 			}
         }
 
@@ -3211,14 +3210,15 @@ window.myCloudMigrateDirectory = async function(rootDirPath, silent = false) {
     
     const res = await fetch('', { method: 'POST', body: fd }).then(r => r.json());
     if (res.status !== 'OK') {
-        myCloudCloseProgressUI();
-        return myCloudShowAlert('Error', 'Failed to scan directory for migration.');
+        if (!silent) myCloudCloseProgressUI();
+        return silent ? null : myCloudShowAlert('Error', 'Failed to scan directory for migration.');
     }
     
-    
+    // Skip .enc files, the salt file, and crucially: the root vault folder itself
     const filesToEncrypt = res.data.filter(i => 
         !i.name.endsWith('.enc') && 
-        !i.name.endsWith('.mycloud_crypto_salt')
+        !i.name.endsWith('.mycloud_crypto_salt') &&
+        i.name !== rootDirPath
     );
     
     if (filesToEncrypt.length === 0) {
@@ -3237,12 +3237,14 @@ window.myCloudMigrateDirectory = async function(rootDirPath, silent = false) {
         const filename = file.name.split('/').pop();
         const fileParent = file.name.substring(0, file.name.lastIndexOf('/')) || '/';
         const isDir = file.size === 'DIR';
-		
-        myCloudUpdateProgressUI((i / filesToEncrypt.length) * 100);
-        const textEl = document.getElementById('myCloudProgressText');
-        let msg = myCloud_LANG.encrypting_file ?? 'Encrypting %s1/%s2: %s3';
-        msg = msg.replace('%s1', i+1).replace('%s2', filesToEncrypt.length).replace('%s3', filename);
-        if (textEl) textEl.textContent = msg;
+        
+        if (!silent) {
+            myCloudUpdateProgressUI((i / filesToEncrypt.length) * 100);
+            const textEl = document.getElementById('myCloudProgressText');
+            let msg = myCloud_LANG.encrypting_file ?? 'Encrypting %s1/%s2: %s3';
+            msg = msg.replace('%s1', i+1).replace('%s2', filesToEncrypt.length).replace('%s3', filename);
+            if (textEl) textEl.textContent = msg;
+        }
         
         try {
             const encName = await myCloudCrypto.encryptName(rootDirPath, filename);
@@ -3252,44 +3254,43 @@ window.myCloudMigrateDirectory = async function(rootDirPath, silent = false) {
                 const renRes = await fetch('', { method: 'POST', body: renFd }).then(r => r.json());
                 if (renRes.status !== 'OK') throw new Error("Rename failed");
             } else {            
-				const dlFd = new URLSearchParams({
-					myCloud_action: 'get_download_token',
-					myCloud_key: myCloudState.key,
-					myCloud_token: typeof myCloudCsrfToken !== 'undefined' ? myCloudCsrfToken : '',
-					path: file.name,
-					filename: filename,
-					preview: '0'
-				});
-				const tokenRes = await fetch('', { method: 'POST', body: dlFd }).then(r => r.json());
-				if (tokenRes.status !== 'OK') throw new Error("Could not get download token");
-				
-				const blob = await fetch('?myCloud_token=' + tokenRes.token).then(r => r.blob());
-				
-				const plainFileObj = new File([blob], filename, { type: blob.type });
-				const encBlob = await myCloudCrypto.encryptFile(rootDirPath, plainFileObj);
-				
-				const upFd = new FormData();
-				upFd.append('myCloud_action', 'upload');
-				upFd.append('dir', fileParent);
-				upFd.append('myCloud_key', myCloudState.key);
-				upFd.append('myCloud_token', typeof myCloudCsrfToken !== 'undefined' ? myCloudCsrfToken : '');
-				upFd.append('file', encBlob, encName);
-				
-				const upRes = await fetch('', { method: 'POST', body: upFd }).then(r => r.json());
-				if (upRes.status !== 'OK') throw new Error("Upload failed");
-				
-				const delFd = new URLSearchParams({
-					myCloud_action: 'delete',
-					myCloud_key: myCloudState.key,
-					myCloud_token: typeof myCloudCsrfToken !== 'undefined' ? myCloudCsrfToken : '',
-					src: file.name,
-					permanent: 'true'
-				});
-				await fetch('', { method: 'POST', body: delFd });
-			}    
+                const dlFd = new URLSearchParams({
+                    myCloud_action: 'get_download_token',
+                    myCloud_key: myCloudState.key,
+                    myCloud_token: typeof myCloudCsrfToken !== 'undefined' ? myCloudCsrfToken : '',
+                    path: file.name,
+                    filename: filename,
+                    preview: '0'
+                });
+                const tokenRes = await fetch('', { method: 'POST', body: dlFd }).then(r => r.json());
+                if (tokenRes.status !== 'OK') throw new Error("Could not get download token");
+                
+                const blob = await fetch('?myCloud_token=' + tokenRes.token).then(r => r.blob());
+                
+                const plainFileObj = new File([blob], filename, { type: blob.type });
+                const encBlob = await myCloudCrypto.encryptFile(rootDirPath, plainFileObj);
+                
+                const upFd = new FormData();
+                upFd.append('myCloud_action', 'upload');
+                upFd.append('dir', fileParent);
+                upFd.append('myCloud_key', myCloudState.key);
+                upFd.append('myCloud_token', typeof myCloudCsrfToken !== 'undefined' ? myCloudCsrfToken : '');
+                upFd.append('file', encBlob, encName);
+                
+                const upRes = await fetch('', { method: 'POST', body: upFd }).then(r => r.json());
+                if (upRes.status !== 'OK') throw new Error("Upload failed");
+                
+                const delFd = new URLSearchParams({
+                    myCloud_action: 'delete',
+                    myCloud_key: myCloudState.key,
+                    myCloud_token: typeof myCloudCsrfToken !== 'undefined' ? myCloudCsrfToken : '',
+                    src: file.name,
+                    permanent: 'true'
+                });
+                await fetch('', { method: 'POST', body: delFd });
+            }   
         } catch (err) {
             console.error("Migration failed for", file.name, err);
-            // We continue the loop so one broken file doesn't halt the whole migration
         }
     }
     

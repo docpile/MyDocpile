@@ -141,6 +141,8 @@ if (!function_exists('CloudAdmin_handle_ajax')) {
                             $det['role'] = $ud['role'] ?? 'user';
                             $det['cloud_webdav'] = !empty($ud['cloud_webdav']);
                             $det['cloud'] = $ud['cloud'] ?? [];
+                            $det['logviewer'] = !empty($ud['logviewer']);
+                            $det['logviewer_filter'] = $ud['logviewer_filter'] ?? '';
                             if (!in_array($det['role'], $roles_avail)) $roles_avail[] = $det['role'];
                             break;
                         }
@@ -257,6 +259,8 @@ if (!function_exists('CloudAdmin_handle_ajax')) {
                 $new_det['role'] = $p['role'];
                 $new_det['cloud_webdav'] = $p['webdav'];
                 $new_det['cloud'] = $p['clouds'] ?? [];
+                $new_det['logviewer'] = !empty($p['logviewer']);
+                $new_det['logviewer_filter'] = $p['logviewer_filter'] ?? '';
                 
                 $user_details[$i] = $new_det; 
                 $found = true; break; 
@@ -266,7 +270,8 @@ if (!function_exists('CloudAdmin_handle_ajax')) {
         if (!$found) {
             $user_details[] = [
                 'name' => $new, 'email' => $p['email'], 'role' => $p['role'], 
-                'cloud_webdav' => $p['webdav'], 'cloud' => $p['clouds'] ?? []
+                'cloud_webdav' => $p['webdav'], 'cloud' => $p['clouds'] ?? [],
+                'logviewer' => !empty($p['logviewer']), 'logviewer_filter' => $p['logviewer_filter'] ?? ''
             ];
         }
 
@@ -483,6 +488,19 @@ if (!function_exists('CloudAdmin_handle_ajax')) {
 
 
   function CloudAdmin_render_html() {
+    $logviewerHtml = '';
+    if (file_exists(__DIR__ . '/modules.admin_logviewer.php')) {
+        $logviewerHtml = '
+        <div class="ca-form-group" style="margin:0; border:none; padding:0; grid-column: 1 / -1; display:flex; gap:15px; align-items:center; border-top: 1px solid var(--ca-border-subtle); padding-top: 15px;">
+            <label class="ca-label ca-hover-tooltip" data-tooltip="Enable Logviewer for this user." style="margin:0; display:flex; align-items:center; gap:6px;">
+                Enable Logviewer
+                <div class="ca-toggle-switch"><input type="checkbox" id="ca_inp_logviewer" onchange="ca_mark_dirty(this)"><span class="ca-slider"></span></div>
+            </label>
+            <div style="flex:1;">
+                <input type="text" id="ca_inp_logviewer_filter" class="ca-input" placeholder="Fixed Filter (leave empty for all)" oninput="ca_mark_dirty(this)" autocomplete="off">
+            </div>
+        </div>';
+    }
     return '
     <div class="ca-layout">
         <div class="ca-tabs">
@@ -538,6 +556,7 @@ if (!function_exists('CloudAdmin_handle_ajax')) {
                             <label class="ca-label ca-hover-tooltip" data-name="Global Role" data-tooltip="Base system privileges. \'Admin\' grants full configuration access.">Global Role</label>
                             <select id="ca_inp_role" class="ca-select" data-name="Global Role"></select>
                         </div>
+                        ' . $logviewerHtml . '
                     </div>
 
                     <div class="ca-section-heading">
@@ -782,6 +801,8 @@ if (isset($_GET['myCloud_dynamic_js'])):
             document.getElementById('ca_cloud_container').innerHTML = '';
             document.getElementById('ca_btn_delete').style.display = 'none';
             document.getElementById('ca_inp_role').value = 'user';
+            const lv = document.getElementById('ca_inp_logviewer'); if(lv) lv.checked = false;
+            const lf = document.getElementById('ca_inp_logviewer_filter'); if(lf) lf.value = '';
             
             document.getElementById('ca_editor_area').style.display = 'block';
             document.querySelectorAll('.ca-user-li').forEach(el => el.classList.remove('active'));
@@ -801,6 +822,8 @@ if (isset($_GET['myCloud_dynamic_js'])):
         document.getElementById('ca_inp_role').value = u.role;
         document.getElementById('ca_inp_webdav').checked = !!u.cloud_webdav;
         document.getElementById('ca_btn_delete').style.display = 'inline-block';
+        const lv = document.getElementById('ca_inp_logviewer'); if(lv) lv.checked = !!u.logviewer;
+        const lf = document.getElementById('ca_inp_logviewer_filter'); if(lf) lf.value = u.logviewer_filter || '';
         
         const cb = document.getElementById('ca_cloud_container'); cb.innerHTML = '';
         if(u.cloud) Object.keys(u.cloud).forEach(k => ca_add_cloud_row(k, u.cloud[k]));
@@ -844,6 +867,7 @@ if (isset($_GET['myCloud_dynamic_js'])):
                         '<option value="gallery">Gallery</option>' +
                         '<option value="symbol">Symbol</option>' +
                         '<option value="symbol-dark">Symbol Dark</option>' +
+						'<option value="hidden">Hidden (Mail Attachments only)</option>' +
 						'<option value="email">Email</option>' +
                     '</select>' +
                 '</div>' +
@@ -961,6 +985,10 @@ if (isset($_GET['myCloud_dynamic_js'])):
             webdav: document.getElementById('ca_inp_webdav').checked,
             clouds: {}
         };
+
+        const lv = document.getElementById('ca_inp_logviewer'); if(lv) p.logviewer = lv.checked;
+        const lf = document.getElementById('ca_inp_logviewer_filter'); if(lf) p.logviewer_filter = lf.value;
+
         if(!p.name) {
             myCloudShowAlert('Validation Error', 'Username is required.');
             return;

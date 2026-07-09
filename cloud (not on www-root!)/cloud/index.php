@@ -49,6 +49,14 @@ if (isset($_SESSION['username']) && function_exists('getUserRole') && strtolower
     CloudAdmin_handle_ajax(); // Intercepts 'ca_action' POST requests
 }
 
+// --- Logviewer Module Intercept ---
+if (file_exists(__DIR__ . '/modules.admin_logviewer.php')) {
+    include_once __DIR__ . '/modules.admin_logviewer.php';
+    if (function_exists('Logviewer_handle_ajax')) {
+        Logviewer_handle_ajax();
+    }
+}
+
 // --- Email Image Proxy Intercept ---
 if (!empty($_GET['myCloud_email_proxy_img'])) {
     $proxyPath = __DIR__ . '/controller.server.email.img_proxy.php';
