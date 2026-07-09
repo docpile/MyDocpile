@@ -17,6 +17,14 @@ if (basename($_SERVER['PHP_SELF']) == basename(__FILE__)) {
 	// In Maintenance Mode: Non-admin users cannot access the application	
 	$maintenance_mode = false;	
 	
+	
+// ###############################################################################
+// HOME NAS SETTINGS
+// ###############################################################################
+	$home_NAS_network   = false;  // Set to true to enable home NAS
+	$home_NAS_autologin = false;  // Set to true to enable home NAS autologin (takes the first user account in the users.php file)
+	
+	
 // ===============================================================================
 // PATHS & FILES
 // ===============================================================================

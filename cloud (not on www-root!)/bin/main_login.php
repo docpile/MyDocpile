@@ -1488,6 +1488,38 @@ class Login {
 		function_exists('checkAndProcessHeartbeat') && checkAndProcessHeartbeat();
 
 		$this->checkGlobalSecurity();
+
+
+		// --- HOME NAS AUTOLOGIN ---
+		// Enforces strict internal-IP validation before evaluating config flags
+		$server_ip = $_SERVER['SERVER_ADDR'] ?? '';
+		if (function_exists('isPrivateIp') && isPrivateIp($server_ip) && isset($GLOBALS['home_NAS_network']) && $GLOBALS['home_NAS_network'] === true) {
+			if (isset($GLOBALS['home_NAS_autologin']) && $GLOBALS['home_NAS_autologin'] === true && (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true)) {
+				if (!empty($this->users) && is_array($this->users)) {
+					$first_user = array_key_first($this->users); 
+					if ($first_user) {
+						session_regenerate_id(true);
+						$_SESSION = [];
+						$_SESSION['loggedin'] = true;
+						$_SESSION['username'] = $first_user;
+						
+						if (isset($GLOBALS['cookie_is_ip_bound']) && $GLOBALS['cookie_is_ip_bound'] === true) {
+							$_SESSION['ip_address'] = $_SERVER['REMOTE_ADDR'];
+						}
+						$_SESSION['fingerprint'] = hash('sha256', ($_SERVER['HTTP_USER_AGENT'] ?? ''));
+						$this->reset_login_failures($_SERVER['REMOTE_ADDR'], $this->login_bruteforce_file);
+						
+						WriteLogLine($this->log_file, "success", "MainLogin: ✅ Home NAS Auto-Login for $first_user");
+						session_write_close();
+						
+						$target = $this->get_secure_processing_url('login');
+						echo '<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=' . htmlspecialchars($target, ENT_QUOTES, 'UTF-8') . '"></head><body><script>window.location.replace("' . $target . '");</script></body></html>';
+						exit();
+					}
+				}
+			}
+		}
+
 		$this->checkRememberMe();
 		$this->handleLogout();
 		$this->handleCheck2FA();

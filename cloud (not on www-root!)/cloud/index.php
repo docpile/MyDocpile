@@ -261,6 +261,13 @@ echo '<script src="?myCloud_dynamic_js=core.heartbeat.php&t=' . microtime(true) 
 </html>
 <?php 	
 // +.+.+.+.+.+.+.+.+.+.+.+.+.+.+.+.+.+.+.+.+.+.+.+.+.+.+.+.+.+.+
-echo myCloudMinifySafe_Html(myCloudMinifyHtmlBlocks(ob_get_clean()));
+$is_home_nas = (isset($_SERVER['SERVER_ADDR']) && function_exists('isPrivateIp') && isPrivateIp($_SERVER['SERVER_ADDR']) && isset($GLOBALS['home_NAS_network']) && $GLOBALS['home_NAS_network'] === true);
+
+if ($is_home_nas) {
+    // Skip minification on fast local/IoT networks to conserve CPU
+    echo ob_get_clean(); 
+} else {
+    echo myCloudMinifySafe_Html(myCloudMinifyHtmlBlocks(ob_get_clean()));
+}
 //echo ob_get_clean();
 // +.+.+.+.+.+.+.+.+.+.+.+.+.+.+.+.+.+.+.+.+.+.+.+.+.+.+.+.+.+.+

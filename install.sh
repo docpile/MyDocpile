@@ -52,7 +52,7 @@ touch "$LOG_FILE"
 
 # Redirect normal stdout/stderr to tee. 
 # This logs UI messages to the file with timestamps while keeping them visible on screen.
-exec > >(tee >(while IFS= read -r line; do echo "[$(date +'%Y-%m-%d %H:%M:%S')] $line" >> "$LOG_FILE" 2>/dev/null; done)) 2>&1
+exec > >(tee >(while IFS= read -r line; do echo "[$(date +'%Y-%m-%d %H:%M:%S')] $line" | sed 's/\x1b\[[0-9;]*m//g' >> "$LOG_FILE" 2>/dev/null; done)) 2>&1
 echo -e "\n--- MyDocpile Setup Session Started ---"
 
 msg_header "System Configuration & Installer: MyDocpile"
@@ -102,6 +102,8 @@ opt_cloud="$opt_cloud"
 ocr_langs="${ocr_langs[*]}"
 opt_mailparse="$opt_mailparse"
 PHP_BIN="$PHP_BIN"
+home_NAS_network="$home_NAS_network"
+home_NAS_autologin="$home_NAS_autologin"
 EOF
     msg_success "State saved to $STATE_FILE."
 }
@@ -371,6 +373,24 @@ function gather_configuration() {
     msg_ask "Install Mailparse PHP extension (performance enhancement for webmail? (Y/n): " 
     read opt_mailparse
     opt_mailparse=${opt_mailparse:-Y}
+	
+    home_NAS_network="false"
+    home_NAS_autologin="false"
+    PRIMARY_IP=$(ip route get 1.1.1.1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="src") print $(i+1)}')
+    if [[ "$PRIMARY_IP" =~ ^10\..* ]] || [[ "$PRIMARY_IP" =~ ^192\.168\..* ]] || [[ "$PRIMARY_IP" =~ ^172\.(1[6-9]|2[0-9]|3[0-1])\..* ]]; then
+        echo ""
+        msg_ask_nl "Private network detected ($PRIMARY_IP)."
+        msg_ask "Enable Home NAS mode (allows non-SSL & disables minification)? (y/N): "
+        read ask_nas
+        if [[ "$ask_nas" =~ ^[Yy]$ ]]; then
+            home_NAS_network="true"
+            msg_ask "Enable automatic login for the first user without password? (y/N): "
+            read ask_autologin
+            if [[ "$ask_autologin" =~ ^[Yy]$ ]]; then
+                home_NAS_autologin="true"
+            fi
+        fi
+    fi
 
     prompt_admin_password
 }
@@ -539,6 +559,9 @@ function show_configuration_summary() {
         echo "  OCR Languages:     ${ocr_langs[*]}"
     fi
     echo "  Install Mailparse: $opt_mailparse"
+    if [[ "$home_NAS_network" == "true" ]]; then
+        echo "  Home NAS Mode:     Enabled (Autologin: $home_NAS_autologin)"
+    fi
     echo ""
 
     msg_info "System Packages to be installed ($PKG_MNGR):"
@@ -682,6 +705,8 @@ date_default_timezone_set('$timezone');
 
 \$MYCLOUD_O365_CLIENT_ID = '$o365_client_id';
 \$MYCLOUD_O365_CLIENT_SECRET = '$o365_client_secret';
+\$home_NAS_network = $home_NAS_network;
+\$home_NAS_autologin = $home_NAS_autologin;
 EOF
 
     if [[ "$use_oo" =~ ^[Yy]$ ]]; then
@@ -736,21 +761,28 @@ function apply_admin_password() {
 
 function install_composer_components() {
     msg_info "Installing Composer components locally..."
-    mkdir -p "$CLOUD_DIR" 2>/dev/null
+    mkdir -p "$CLOUD_DIR/.composer" 2>/dev/null
     chown "$wwwuser":"$www_group" "$CLOUD_DIR"
+	chown "$wwwuser":"$www_group" "$CLOUD_DIR/.composer"
     cd "$CLOUD_DIR" || exit
     
     msg_info "Downloading local composer.phar to ensure exact PHP binary match..."
     execute_logged sudo -u "$wwwuser" "$PHP_BIN" -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
-    execute_logged sudo -u "$wwwuser" "$PHP_BIN" composer-setup.php --quiet
+    execute_logged sudo -u "$wwwuser" COMPOSER_HOME="$CLOUD_DIR/.composer" "$PHP_BIN" composer-setup.php --quiet
     execute_logged sudo -u "$wwwuser" "$PHP_BIN" -r "unlink('composer-setup.php');"
     
     local composer_cmd="$PHP_BIN composer.phar"
+
+    if [ ! -f "composer.phar" ]; then
+        msg_error "Composer installation failed! composer.phar not found."
+        return 1
+    fi
+
     msg_success "Local Composer downloaded."
     
     for pkg in "${composer_packages[@]}"; do
         msg_info "Requiring Composer package: $pkg..."
-        execute_logged sudo -u "$wwwuser" $composer_cmd require --no-interaction "$pkg"
+        execute_logged sudo -u "$wwwuser" COMPOSER_HOME="$CLOUD_DIR/.composer" $composer_cmd require --no-interaction "$pkg"
     done
     msg_success "Composer dependencies installed."
 }
@@ -823,8 +855,8 @@ function setup_cronjobs() {
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 
-# Cache refresh and recyclers cleanup (every 5 minutes)
-*/5 * * * * root MEM=\$(free -m | awk '/^Mem:/{print \$7}'); [[ -z "\$MEM" || "\$MEM" -lt 512 ]] && MEM=512; sudo -u $wwwuser $PHP_BIN -d memory_limit=\${MEM}M -d max_execution_time=3550 -d opcache.enable_cli=0 -d opcache.jit=disable /var/lib/mydocpile/cloud/cronjobs.php --cache-refresh --delete-recyclers >> $list_dir/cloud.housekeeping.log 2>&1
+# Cache refresh and recyclers cleanup (every 60 minutes)
+*/60 * * * * root MEM=\$(free -m | awk '/^Mem:/{print \$7}'); [[ -z "\$MEM" || "\$MEM" -lt 512 ]] && MEM=512; sudo -u $wwwuser $PHP_BIN -d memory_limit=\${MEM}M -d max_execution_time=3550 -d opcache.enable_cli=0 -d opcache.jit=disable /var/lib/mydocpile/cloud/cronjobs.php --cache-refresh --delete-recyclers >> $list_dir/cloud.housekeeping.log 2>&1
 
 # Weekly automated MyDocpile update (Sunday at 04:00 AM)
 0 4 * * 0 root $CLOUD_DIR/install.sh --update > /dev/null 2>&1

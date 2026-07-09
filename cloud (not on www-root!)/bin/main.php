@@ -85,12 +85,16 @@ if (strpos($_SERVER['REQUEST_URI'], '/myCloudOfficeFetch/') !== false ||
  
 $timeout_duration = $timeout_in_minutes * 60; 
 
+// Determine if operating securely inside a Home NAS environment
+$is_home_nas = (isset($_SERVER['SERVER_ADDR']) && function_exists('isPrivateIp') && isPrivateIp($_SERVER['SERVER_ADDR']) && isset($home_NAS_network) && $home_NAS_network === true);
+
+
 // --- LOGGED IN, SESSION AND ROLE CHECKS ---
 session_set_cookie_params([
     'lifetime' => $timeout_duration,  
     'path'     => '/',
     'domain'     => '',
-    'secure'   => true,         // if you are using HTTPS
+    'secure'   => !$is_home_nas,   // true if using HTTPS, false on private Home NAS
     'httponly' => true,
     'samesite' => 'Lax',
 ]);
