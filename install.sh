@@ -808,7 +808,7 @@ function optional_component_mailparse() {
         printf "\n" | execute_logged pecl install mailparse
         
         if [[ "$PKG_MNGR" == "apt" ]]; then
-            echo "extension=mailparse.so" > "/etc/php/$SYS_PHP_VERSION/mods-available/mailparse.ini"
+            echo -e "; priority=30\nextension=mailparse.so" > "/etc/php/$SYS_PHP_VERSION/mods-available/mailparse.ini"
             execute_logged phpenmod mailparse || true
         elif [[ "$PKG_MNGR" == "dnf" || "$PKG_MNGR" == "yum" || "$PKG_MNGR" == "zypper" ]]; then
             echo "extension=mailparse.so" > "/etc/php.d/mailparse.ini"
@@ -1063,7 +1063,6 @@ case $MODE in
 		fetch_repository_if_missing
         deploy_application_files "-u"
         install_composer_components
- 		setup_cronjobs
         msg_success "Update complete."
         show_post_install_instructions
         ;;
