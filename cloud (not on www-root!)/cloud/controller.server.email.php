@@ -3488,14 +3488,37 @@ class MyCloudEmailServer {
                      if (preg_match('/X-Spam-Report:.*?(PHISH|FRAUD|SPOOF|DECEPTIVE)/si', $rawHeader)) $isPhishing = true;
                      elseif (preg_match('/X-Rspamd-Report:.*?(PHISH|FRAUD|SPOOF|DECEPTIVE)/si', $rawHeader)) $isPhishing = true;
 
-                     $transportSec = 'internal'; 
-                     if (preg_match('/Received:.*?\(.*?TLS/si', $rawHeader, $tlsMatch)) {
-                         $transportSec = 'tls';
-                         if (preg_match('/verified DANE/i', $tlsMatch[0])) {
-                             $transportSec = 'dane';
+                     $rawHeader = str_replace(["\r\n", "\r"], "\n", $rawHeader);
+					 $transportSec = 'internal';
+                     $isDane = false;
+                     $hasUnencryptedHop = false;
+                     $hasExternalEncryptedHop = false;
+
+                     // Verify the entire chain by evaluating every Received header independently
+                     if (preg_match_all('/^Received:\s*(.*?)(?=\n[A-Z0-9a-z\-]+:|\n\n|$)/ms', $rawHeader, $receivedMatches)) {
+                         foreach ($receivedMatches[0] as $recvHeader) {
+                             // Skip purely internal localhost/loopback handoffs
+                             if (preg_match('/Received:\s*from\s+(localhost|\[?127\.0\.0\.1\]?|\[?::1\]?)\b/i', $recvHeader)) {
+                                 continue;
+                             }
+
+                            $isEncryptedHop = preg_match('/with\s+(ESMTPS|ESMTPSA|SMTPS|SMTPSA|ESMTPS-TLS)\b/i', $recvHeader) || preg_match('/\(.*?TLS.*?\)/i', $recvHeader);
+							 //$isEncryptedHop = preg_match('/with\s+(ESMTP|ESMTPS|SMTPS|ESMTPSA|SMTPSA)/i', $recvHeader) || preg_match('/\(.*?TLS.*?\)/i', $recvHeader);
+
+                             if ($isEncryptedHop) {
+                                 $hasExternalEncryptedHop = true;
+                                 if (preg_match('/verified DANE/i', $recvHeader)) $isDane = true;
+                             } elseif (preg_match('/with\s+(SMTP|Microsoft SMTP)\b/i', $recvHeader)) {
+                                 // If even ONE external hop is unencrypted, the chain is broken
+                                 $hasUnencryptedHop = true;
+                             }
                          }
-                     } elseif (preg_match('/Received:\s*from\s+(?!localhost|\[?127\.0\.0\.1\]?|\[?::1\]?).*?with (ESMTP(?!A)|SMTP|Microsoft SMTP)/si', $rawHeader)) {
+                     }
+
+                     if ($hasUnencryptedHop) {
                          $transportSec = 'none';
+                     } elseif ($hasExternalEncryptedHop) {
+                         $transportSec = $isDane ? 'dane' : 'tls';
                      }
 
                     $addrs = $this->extractMessageAddresses($msg);

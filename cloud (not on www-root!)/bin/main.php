@@ -43,20 +43,25 @@ if (file_exists($work_dir.'/cloud/modules.share_public_ui.php')) {
 
 // ----------------------------------------------------------------------
 // Content Security Policy (balanced, production-safe)
+// Bulletproof scope and type check for the NAS flag
+$is_nas_csp = ((isset($home_NAS_network) && $home_NAS_network == true) || (isset($GLOBALS['home_NAS_network']) && $GLOBALS['home_NAS_network'] == true));
+$csp_scheme = $is_nas_csp ? "http: https:" : "https:";
+$csp_ws     = $is_nas_csp ? "ws: wss:" : "wss:";
+
 header(
     "Content-Security-Policy: ".
     "default-src 'self'; ".
-    "script-src 'self' https: 'unsafe-inline' 'unsafe-eval'; ".
+    "script-src 'self' $csp_scheme 'unsafe-inline' 'unsafe-eval'; ".
     "worker-src 'self' blob:; ".
-    "style-src 'self' https: 'unsafe-inline' blob:; ".
-    "font-src 'self' https: data: blob:; ".
-    "img-src 'self' https: data: blob:; ".
-    "connect-src 'self' https: wss: blob:; ".
-    "frame-src 'self' https: blob:; ".
+    "style-src 'self' $csp_scheme 'unsafe-inline' blob:; ".
+    "font-src 'self' $csp_scheme data: blob:; ".
+    "img-src 'self' $csp_scheme data: blob:; ".
+    "connect-src 'self' $csp_scheme $csp_ws blob:; ".
+    "frame-src 'self' $csp_scheme blob:; ".
     "frame-ancestors 'self'; ".
     "object-src 'none'; ".
     "base-uri 'self'; ".
-    "form-action 'self' https:;"
+    "form-action 'self' $csp_scheme;"
 );
 
 // ----------------------------------------------------------------------

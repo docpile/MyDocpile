@@ -3720,18 +3720,18 @@ window.myCloudEmailReadMessage = function(msgId, meta) {
 
             if (tScore === 'bimi') trustBadge = '<span title="' + (L.trust_bimi || 'Verified Sender (BIMI)') + '" style="background:' + (isSuspect ? 'var(--gray-50)' : '#004d00') + '; color:#fff; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:bold; margin-inline-start:8px; cursor: pointer;">✓' + '</span>';
             else if (tScore === 'perfect') trustBadge = '<span title="' + (L.trust_perfect || 'Passed DMARC & SPF') + '" style="background:' + (isSuspect ? 'var(--gray-50)' : '#107c10') + '; color:#fff; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:bold; margin-inline-start:8px; cursor: pointer;">✓' + '</span>';
-            else if (tScore === 'good') trustBadge = '<span title="' + (L.trust_good || 'Passed Partial Authentication') + '" style="background:' + (isSuspect ? 'var(--gray-50)' : '#fbc02d') + '; color:' + (isSuspect ? '#fff' : '#000') + '; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:bold; margin-inline-start:8px; cursor: pointer;">' + (isSuspect ? (L.auth_sender || 'Authenticated') : (L.trust_standard || 'Standard')) + '</span>';
+            else if (tScore === 'good') trustBadge = '<span title="' + (L.trust_good || 'Passed Partial Authentication') + '" style="background:' + (isSuspect ? 'var(--gray-50)' : '#fbc02d') + '; color:' + (isSuspect ? '#fff' : '#000') + '; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:bold; margin-inline-start:8px; cursor: pointer;">' + (isSuspect ? (L.auth_sender || 'Authenticated') : ' ❓❓ ') + '</span>';
             else if (tScore === 'fail' && showFailBadge) trustBadge = '<span title="' + (L.trust_fail || 'Authentication Failed') + '" style="background:#e81123; color:#fff; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:bold; margin-inline-start:8px; cursor: pointer;">  ' + (L.trust_untrusted || 'Untrusted') + '</span>';
 
-            if (tSec === 'dane') {
-                 transportBadge = '<span title="' + (L.sec_dane || 'Transport secured and verified via DNSSEC (DANE)') + '" style="background:' + (isSuspect ? 'var(--gray-50)' : '#c0d8c0') + '; color:#000; padding:2px 6px; border-radius:4px; font-size:15px; font-weight:bold; margin-inline-start:8px; cursor: pointer;">📤-🔒->📥<span style="font-size:9px; vertical-align:super;">DANE</span></span>';
-            } else if (tSec === 'tls') {
-                transportBadge = '<span title="' + (L.sec_tls || 'Transport secured via Standard TLS') + '" style="background:' + (isSuspect ? 'var(--gray-50)' : '#c0d8c0') + '; color:#000; padding:2px 6px; border-radius:4px; font-size:15px; font-weight:bold; margin-inline-start:8px; cursor: pointer;">📤-🔒->📥</span>';
-            } else if (tSec === 'internal') {
-                transportBadge = '<span title="' + (L.sec_internal || 'Message routed internally within the server') + '" style="background:#c0d8c0; color:var(--text-primary); padding:2px 6px; border-radius:4px; font-size:14px; font-weight:bold; margin-inline-start:8px; border:1px solid var(--border-medium); cursor: pointer;">✔️ ' + (L.internal || 'Internal') + '</span>';
-            } else {
-                transportBadge = '<span title="' + (L.sec_none || 'Message transported unencrypted over the internet') + '" style="background:#e81123; color:#fff; padding:2px 6px; border-radius:4px; font-size:14px; font-weight:bold; margin-inline-start:8px; cursor: pointer;">📤-🔓->📥 ' + (L.unencrypted || 'Unencrypted') + '</span>';
-            }
+//            if (tSec === 'dane') {
+//                 transportBadge = '<span title="' + (L.sec_dane || 'Transport secured and verified via DNSSEC (DANE)') + '" style="background:' + (isSuspect ? 'var(--gray-50)' : '#c0d8c0') + '; color:#000; padding:2px 6px; border-radius:4px; font-size:15px; font-weight:bold; margin-inline-start:8px; cursor: pointer;">📤-🔒->📥<span style="font-size:9px; vertical-align:super;">DANE</span></span>';
+//            } else if (tSec === 'tls') {
+//                transportBadge = '<span title="' + (L.sec_tls || 'Transport secured via Standard TLS') + '" style="background:' + (isSuspect ? 'var(--gray-50)' : '#c0d8c0') + '; color:#000; padding:2px 6px; border-radius:4px; font-size:15px; font-weight:bold; margin-inline-start:8px; cursor: pointer;">📤-🔒->📥</span>';
+//            } else if (tSec === 'internal') {
+//                transportBadge = '<span title="' + (L.sec_internal || 'Message routed internally within the server') + '" style="background:#c0d8c0; color:var(--text-primary); padding:2px 6px; border-radius:4px; font-size:14px; font-weight:bold; margin-inline-start:8px; border:1px solid var(--border-medium); cursor: pointer;">✔️ ' + (L.internal || 'Internal') + '</span>';
+//            } else {
+//                transportBadge = '<span title="' + (L.sec_none || 'Message transported unencrypted over the internet') + '" style="background:#e81123; color:#fff; padding:2px 6px; border-radius:4px; font-size:14px; font-weight:bold; margin-inline-start:8px; cursor: pointer;">📤-🔓->📥 ' + (L.unencrypted || 'Unencrypted') + '</span>';
+//            }
         }
 
         const renderAddressPill = (rawAddr, isFromBec = false, becMsg = '') => {

@@ -1,3 +1,6 @@
+4.1.273
+	Fix: Webmail: Delivery encryption status sometimes wrong - disabled the badge as it might be misleading
+
 4.1.272
 	Feature: Home NAS install options
 
