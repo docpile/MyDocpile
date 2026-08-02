@@ -1,3 +1,6 @@
+4.1.279
+	Improvement: Webmail: Concurrent mailbox refresh on different servers and on localhost (not for several mailboxes on the same server except for localhost)
+
 4.1.278
 	Fix: Webmail: Picture loading sometimes slow
 	Improvement: Webmail: Reduce the server side IO for caching. In some functions, tons of read and write happens

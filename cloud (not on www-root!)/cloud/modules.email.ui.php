@@ -103,6 +103,36 @@ window._emailGetAccColor = function(accId) {
     return color;
 };
 
+// --- SMART CONCURRENCY MANAGER ---
+window._emailExecuteSyncTasks = async function(tasks) {
+    const groups = {};
+    const localhostIps = ['127.0.0.1', 'localhost', '::1'];
+    
+    tasks.forEach(task => {
+        const acc = myCloudEmailState.accounts[task.accId];
+        if (!acc) return;
+        let host = (acc.imap_host || '').toLowerCase().trim();
+        if (localhostIps.includes(host)) {
+            host = 'localhost_' + task.accId; // Force parallel execution for loopback interfaces
+        }
+        if (!groups[host]) groups[host] = [];
+        groups[host].push(task.fn);
+    });
+
+    const groupPromises = Object.keys(groups).map(async (host) => {
+        const results = [];
+        // Execute sequentially to respect external IMAP server connection limits
+        for (const fn of groups[host]) {
+            try { results.push(await fn()); } 
+            catch (e) { results.push({ status: 'ERR', error: e }); }
+        }
+        return results;
+    });
+
+    const nestedResults = await Promise.all(groupPromises);
+    return nestedResults.flat();
+};
+
 // --- MOBILE VIEW SWITCHER ---
 window._emailSetMobileView = function(view, isPopState) {
     myCloudEmailState.mobileView = view;
@@ -1061,7 +1091,7 @@ window.myCloudRenderEmailApp = function(container) {
 
         let changeDetected = false;
 
-        const pollPromises = accountsToPoll.map(accId => {
+        const pollTasks = accountsToPoll.map(accId => {
             const folder = (myCloudEmailState.activeAccount === 'smartbox') ? 'INBOX' : (myCloudEmailState.activeFolder || 'INBOX');
             const hashKey = accId + '|' + folder;
 
@@ -1073,19 +1103,22 @@ window.myCloudRenderEmailApp = function(container) {
                 folder: folder
             });
 
-            return fetch('', { method: 'POST', body: fd })
-                .then(r => r.json())
-                .then(res => {
-                    if (res.status === 'OK' && res.hash) {
-                        if (window.myCloudEmailState.lastPolledHashes[hashKey] && window.myCloudEmailState.lastPolledHashes[hashKey] !== res.hash) {
-                            changeDetected = true;
+            return {
+                accId: accId,
+                fn: () => fetch('', { method: 'POST', body: fd })
+                    .then(r => r.json())
+                    .then(res => {
+                        if (res.status === 'OK' && res.hash) {
+                            if (window.myCloudEmailState.lastPolledHashes[hashKey] && window.myCloudEmailState.lastPolledHashes[hashKey] !== res.hash) {
+                                changeDetected = true;
+                            }
+                            window.myCloudEmailState.lastPolledHashes[hashKey] = res.hash;
                         }
-                        window.myCloudEmailState.lastPolledHashes[hashKey] = res.hash;
-                    }
-                }).catch(() => {});
+                    }).catch(() => {})
+            };
         });
 
-        await Promise.all(pollPromises);
+        await window._emailExecuteSyncTasks(pollTasks);
 
         if (changeDetected) {
             myCloudEmailState.folderHashes = {}; 
@@ -1208,22 +1241,23 @@ window.myCloudEmailFetchFolders = function(silent = false, specificAccId = null)
         if (!myCloudEmailState.foldersData) myCloudEmailState.foldersData = {};
         myCloudEmailState.foldersData['smartbox'] = [];
 
-        // Fetch all underlying accounts silently to populate definitive IMAP unread counts
+        // Group fetch requests by server to prevent connection drops on external servers
+        const folderTasks = [];
         Object.keys(myCloudEmailState.accounts).forEach(accId => {
             if (!myCloudEmailState.accounts[accId].is_inactive) {
-                window.myCloudEmailFetchFolders(true, accId);
+                folderTasks.push({ accId: accId, fn: () => window.myCloudEmailFetchFolders(true, accId) });
             }
         });
-
-        myCloudEmailRenderTree();
-        if (!silent && !specificAccId) myCloudEmailFetchMessages('SMARTBOX');
-        return;
+        return window._emailExecuteSyncTasks(folderTasks).then(() => {
+            myCloudEmailRenderTree();
+            if (!silent && !specificAccId) myCloudEmailFetchMessages('SMARTBOX');
+        });
     }
 
     if (!silent && tree && !specificAccId) tree.classList.add('ce-pane-loading');
 
     const fd = new URLSearchParams({ myCloud_action: 'email_get_folders', myCloud_key: myCloudState.key, myCloud_token: window.myCloudCsrfToken, account_id: targetAcc });
-    fetch('', { method: 'POST', body: fd }).then(myCloudCheckResponse).then(res => {
+    return fetch('', { method: 'POST', body: fd }).then(myCloudCheckResponse).then(res => {
         if (myCloudState.interface !== 'email') return;
         if (tree && !specificAccId) tree.classList.remove('ce-pane-loading');
         
@@ -1998,9 +2032,9 @@ window.myCloudEmailFetchMessages = function(folderId, silent = false, loadMore =
                         syncTargets = [myCloudEmailState.activeAccount];
                     }
 
-                    // Fan out concurrent requests for true parallel processing
-                    const syncPromises = syncTargets.map(targetAcc => {
-                        const syncFd = new URLSearchParams(fd);
+                    // Group concurrent requests to respect IMAP connection limits
+                    const syncTasks = syncTargets.map(targetAcc => {
+	                    const syncFd = new URLSearchParams(fd);
                         syncFd.set('force_sync', '1');
                         syncFd.set('account_id', targetAcc);
 						syncFd.set('rebuild_cache', rebuildCache ? '1' : '0');
@@ -2011,18 +2045,21 @@ window.myCloudEmailFetchMessages = function(folderId, silent = false, loadMore =
                         const tk = targetAcc + '|' + targetFld;
                         syncFd.set('folder_state_hash', myCloudEmailState.folderHashes[tk] || '');
                         
-                        return fetch('', { method: 'POST', body: syncFd, signal: currentSignal })
-                            .then(r => r.json())
-                            .then(res => {
-                                if (res.status === 'OK' && res.folder_state_hash) {
-                                    myCloudEmailState.folderHashes[tk] = res.folder_state_hash;
-                                }
-                                return res;
-                            })
-                            .catch(err => ({ status: 'ERR', error: err }));
+                        return {
+                            accId: targetAcc,
+                            fn: () => fetch('', { method: 'POST', body: syncFd, signal: currentSignal })
+                                .then(r => r.json())
+                                .then(res => {
+                                    if (res.status === 'OK' && res.folder_state_hash) {
+                                        myCloudEmailState.folderHashes[tk] = res.folder_state_hash;
+                                    }
+                                    return res;
+                                })
+                                .catch(err => ({ status: 'ERR', error: err }))
+                        };
                     });
 
-                    Promise.all(syncPromises).then(results => {
+                    window._emailExecuteSyncTasks(syncTasks).then(results => {
                         if (list) list.classList.remove('ce-pane-refreshing');
                         
                         // If it's a single account, process normally
