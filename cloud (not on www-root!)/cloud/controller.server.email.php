@@ -47,6 +47,7 @@ class MyCloudEmailServer {
 	private $auto_contacts_file;
     private $cache_file_cache = [];
     private $body_cache_file_cache = [];
+	private $dirty_caches = [];
 
     public function __construct($key, $username) {
         $this->key = $key;
@@ -956,11 +957,21 @@ class MyCloudEmailServer {
         return [];
     }
 
+    public function __destruct() {
+        foreach ($this->dirty_caches as $filename => $data) {
+            $this->writeCacheToDisk($filename, $data);
+        }
+    }
+
     private function saveCacheData($filename, $data) {
         if (array_key_exists($filename, $this->cache_file_cache) && $this->cache_file_cache[$filename] === $data && file_exists($filename)) {
             return;
         }
-
+        $this->cache_file_cache[$filename] = $data;
+        $this->dirty_caches[$filename] = $data;
+    }
+ 
+    private function writeCacheToDisk($filename, $data) {
         $lines = [];
         foreach ($data as $k => $v) {
             $encoded = json_encode($k === '__FOLDER_STATE__' ? ['__FOLDER_STATE__' => $v] : $v, JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
@@ -981,7 +992,6 @@ class MyCloudEmailServer {
         $tmpFile = $filename . '.' . bin2hex(random_bytes(16)) . '.tmp';
         file_put_contents($tmpFile, $payload);
         rename($tmpFile, $filename); // REFINEMENT 1: Atomic File Swapping
-        $this->cache_file_cache[$filename] = $data;
     }
 
      private function getBodyCachePath($accId, $folder, $msgId) {
@@ -1314,6 +1324,26 @@ class MyCloudEmailServer {
             } catch (\Throwable $e) {}
         }
 
+        //  Correct MTA rewrites where BCC addresses are injected into the To field
+        if (preg_match('/^bcc:\s*(.*)$/i', $toStr, $m)) {
+            $extractedBcc = trim($m[1]);
+            if ($extractedBcc === ';' || $extractedBcc === '') {
+                $toStr = '';
+            } else {
+                if (empty($bccStr)) {
+                    $bccStr = $extractedBcc;
+                } else {
+                    $merged = array_unique(array_merge(
+                        array_map('trim', explode(',', $bccStr)), 
+                        array_map('trim', explode(',', $extractedBcc))
+                    ));
+                    $bccStr = implode(', ', array_filter($merged));
+                }
+                $toStr = '';
+            }
+        } elseif (preg_match('/^undisclosed-recipients:\s*;?/i', $toStr)) {
+            $toStr = '';
+        }
 
         return [
             'from_name' => $fromObj ? ($fromObj->personal ?: ($fromObj->mail ?? 'Unknown')) : 'Unknown',
@@ -2399,23 +2429,46 @@ class MyCloudEmailServer {
                             }
 
                             $missingUids = [];
+							$missingAttCheckUids = [];
                             foreach ($blockUids as $uid) {
                                 if (!isset($cache[$uid])) {
                                     $missingUids[] = $uid;
                                 } else {
                                     if (!isset($cache[$uid]['has_attachments']) || $cache[$uid]['has_attachments'] === null) {
-                                        try {
-                                            $msg = $folderObj->query()->getMessageByUid($uid);
-                                            if ($msg) {
-                                                $cache[$uid]['has_attachments'] = $msg->hasAttachments();
-                                                $cacheChanged = true;
-                                                $globalCacheChanged = true;
-                                            }
-                                        } catch (\Throwable $e) {}
+                                        $missingAttCheckUids[] = $uid;
                                     }
                                     $pageMessages[$uid] = $cache[$uid];
                                 }
                             }
+							
+                            if (!empty($missingAttCheckUids)) {
+                                $chunks = array_chunk($missingAttCheckUids, 50);
+                                foreach ($chunks as $chunk) {
+                                    try {
+                                        $range = implode(',', $chunk);
+                                        $attMsgs = $folderObj->query()->whereUid($range)->leaveUnread()->get();
+                                        foreach ($attMsgs as $msg) {
+                                            $mUid = $msg->getUid();
+                                            if (isset($cache[$mUid])) {
+                                                $cache[$mUid]['has_attachments'] = $msg->hasAttachments();
+                                                $pageMessages[$mUid]['has_attachments'] = $cache[$mUid]['has_attachments'];
+                                                $cacheChanged = true;
+                                                $globalCacheChanged = true;
+                                            }
+                                        }
+                                    } catch (\Throwable $e) {}
+                                }
+                                
+                                foreach ($missingAttCheckUids as $mUid) {
+                                    if (isset($cache[$mUid]) && (!isset($cache[$mUid]['has_attachments']) || $cache[$mUid]['has_attachments'] === null)) {
+                                        $cache[$mUid]['has_attachments'] = false;
+                                        $pageMessages[$mUid]['has_attachments'] = false;
+                                        $cacheChanged = true;
+                                        $globalCacheChanged = true;
+                                    }
+                                }
+                            }
+							
 
                             if (!empty($missingUids)) {
                                 $chunks = array_chunk($missingUids, 50);
@@ -3478,6 +3531,14 @@ class MyCloudEmailServer {
                 $bodyPath = $this->getBodyCachePath($accId, $folder, $msgId);
                 $cachedBody = $this->loadBodyCacheData($bodyPath);
 
+                // ==========================================
+                // SQUARE ONE CACHE FIX: Delete corrupted empty cache
+                // ==========================================
+                if ($cachedBody !== null && trim($cachedBody['body'] ?? '') === '') {
+                    $cachedBody = null;
+                    @unlink($bodyPath);
+                }
+
                 if (($configs[$accId]['server_type'] ?? 'imap') === 'eas') {
                     try {
                          if ($cachedBody !== null) {
@@ -3533,14 +3594,14 @@ class MyCloudEmailServer {
                      if (preg_match('/X-Spam-Report:.*?(PHISH|FRAUD|SPOOF|DECEPTIVE)/si', $rawHeader)) $isPhishing = true;
                      elseif (preg_match('/X-Rspamd-Report:.*?(PHISH|FRAUD|SPOOF|DECEPTIVE)/si', $rawHeader)) $isPhishing = true;
 
-                     $rawHeader = str_replace(["\r\n", "\r"], "\n", $rawHeader);
-					 $transportSec = 'internal';
+                     $rawHeaderClean = str_replace(["\r\n", "\r"], "\n", $rawHeader);
+                     $transportSec = 'internal';
                      $isDane = false;
                      $hasUnencryptedHop = false;
                      $hasExternalEncryptedHop = false;
 
                      // Verify the entire chain by evaluating every Received header independently
-                     if (preg_match_all('/^Received:\s*(.*?)(?=\n[A-Z0-9a-z\-]+:|\n\n|$)/ms', $rawHeader, $receivedMatches)) {
+                     if (preg_match_all('/^Received:\s*(.*?)(?=\n[A-Z0-9a-z\-]+:|\n\n|$)/ms', $rawHeaderClean, $receivedMatches)) {
                          foreach ($receivedMatches[0] as $recvHeader) {
                              // Skip purely internal localhost/loopback handoffs
                              if (preg_match('/Received:\s*from\s+(localhost|\[?127\.0\.0\.1\]?|\[?::1\]?)\b/i', $recvHeader)) {
@@ -3548,7 +3609,6 @@ class MyCloudEmailServer {
                              }
 
                             $isEncryptedHop = preg_match('/with\s+(ESMTPS|ESMTPSA|SMTPS|SMTPSA|ESMTPS-TLS)\b/i', $recvHeader) || preg_match('/\(.*?TLS.*?\)/i', $recvHeader);
-							 //$isEncryptedHop = preg_match('/with\s+(ESMTP|ESMTPS|SMTPS|ESMTPSA|SMTPSA)/i', $recvHeader) || preg_match('/\(.*?TLS.*?\)/i', $recvHeader);
 
                              if ($isEncryptedHop) {
                                  $hasExternalEncryptedHop = true;
@@ -3600,7 +3660,15 @@ class MyCloudEmailServer {
 
                     $client->disconnect();
 
+                    // ==========================================
+                    // SQUARE ONE EXTRACTION: Exactly as your original code
+                    // ==========================================
                     $htmlContent = $msg->hasHTMLBody() ? $msg->getHTMLBody() : nl2br(htmlspecialchars((string)$msg->getTextBody() ?: '', ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+                    
+                    // Failsafe: Webklex string casting if it returned an array for some reason
+                    if (is_array($htmlContent)) {
+                        $htmlContent = implode('<br>', $htmlContent);
+                    }
 
                     if (class_exists('HTMLPurifier')) {
                         $config = \HTMLPurifier_Config::createDefault();
@@ -3609,20 +3677,26 @@ class MyCloudEmailServer {
                         $config->set('CSS.AllowTricky', true);
 
                         // PERFORMANCE 1: Enable strict Definition Caching. 
-                        // Prevents HTMLPurifier from recompiling its rule dictionary on every email open.
                         $purifierCache = $this->cache_dir . '/htmlpurifier';
                         if (!is_dir($purifierCache)) @mkdir($purifierCache, 0770, true);
                         $config->set('Cache.SerializerPath', $purifierCache);
 
                         // PERFORMANCE 2: Disable the heavy DOM formatter. 
-                        // We only want security stripping, not beautiful HTML indentation.
                         $config->set('HTML.TidyLevel', 'none');
-                        $config->set('Core.EscapeInvalidTags', false); // Drop invalid tags instantly instead of escaping them
+                        $config->set('Core.EscapeInvalidTags', false);
 
                         $purifier = new \HTMLPurifier($config);
                         $cleanHtml = $purifier->purify($htmlContent);
+                        
+                        // ==========================================
+                        // SQUARE ONE FAILSAFE: If Purifier strips valid HTML
+                        // ==========================================
+                        if (trim($cleanHtml) === '' && trim((string)$htmlContent) !== '') {
+                            $cleanHtml = '<pre style="white-space:pre-wrap; font-family:inherit;">' . htmlspecialchars((string)$htmlContent, ENT_QUOTES | ENT_HTML5, 'UTF-8') . '</pre>';
+                        }
                     } else {
-                        $cleanHtml = '<pre style="white-space:pre-wrap; font-family:inherit;">' . htmlspecialchars(strip_tags($htmlContent), ENT_QUOTES | ENT_HTML5, 'UTF-8') . '</pre>';
+                        // Original code stripped tags here, but we will preserve it cleanly
+                        $cleanHtml = '<pre style="white-space:pre-wrap; font-family:inherit;">' . htmlspecialchars((string)$htmlContent, ENT_QUOTES | ENT_HTML5, 'UTF-8') . '</pre>';
                     }
 
                     $listUnsubscribe = '';

@@ -2547,7 +2547,7 @@ window._emailRenderMessageList = function(isAppendOnly = false) {
         let item = existingNodes.get(msgKey);
 
         const isSentFld = /sent|gesendet|enviados|envoy/i.test(m.folder || myCloudEmailState.activeFolder);
-        const displayEntity = isSentFld ? (m.to || m.fromName || m.fromEmail) : (m.fromName || m.fromEmail);
+        const displayEntity = isSentFld ? (m.to || m.bcc || m.fromName || m.fromEmail) : (m.fromName || m.fromEmail)
 
         const innerContent = accBadge + fldBadge + dotHtml +
             '<div class="ce-email-list-sender ' + readClass + '">' +
@@ -3836,11 +3836,29 @@ window.myCloudEmailReadMessage = function(msgId, meta) {
             });
         }
 
+        // Make sure of Indirect Prompt Injection (IDPI) protection by stripping invisible elements
+        window.DOMPurify.addHook('uponSanitizeAttribute', function (node, data) {
+            if (data.attrName === 'style') {
+                let style = data.attrValue.toLowerCase().replace(/\s+/g, '');
+                if (style.includes('display:none') || 
+                    style.includes('visibility:hidden') || 
+                    style.includes('opacity:0') || 
+                    style.includes('font-size:0') || 
+                    style.includes('color:transparent')) {
+						node.removeAttribute('style');
+						if (node.tagName && node.tagName.toLowerCase() === 'style') {
+							node.innerHTML = '';
+						}
+                }
+            }
+        });
         const cleanHtml = window.DOMPurify.sanitize(originalHtml, {
             FORBID_TAGS: ['script', 'link', 'iframe', 'object', 'embed', 'applet', 'meta', 'base', 'video', 'audio', 'source', 'track', 'picture', 'form', 'math', 'frameset', 'frame'],
             ALLOW_DATA_ATTR: false,
             WHOLE_DOCUMENT: true
         });
+		
+		window.DOMPurify.removeHook('uponSanitizeAttribute');
 
         const parser = new DOMParser();
         const doc = parser.parseFromString(cleanHtml, 'text/html');
@@ -4097,7 +4115,8 @@ window.myCloudEmailReadMessage = function(msgId, meta) {
         const fromRaw = meta.fromName ? meta.fromName + ' <' + meta.fromEmail + '>' : meta.fromEmail;
         const rawMessageContent = res.raw_message ? window._emailHighlightRawSource(res.raw_message) : (L.raw_not_avail || 'Raw message not available.');
 
-        const processedHtmlString = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{margin:0;padding:15px;font-family:Arial,sans-serif;font-size:14px;color:#333;background:#ffffff;overflow-wrap:break-word;} a{color:var(--accent-primary, #0078d4);}</style></head><body>' + doc.body.innerHTML + '</body></html>';
+        const extractedBody = doc.body ? doc.body.innerHTML : cleanHtml;
+        const processedHtmlString = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{margin:0;padding:15px;font-family:Arial,sans-serif;font-size:14px;color:#333;background:#ffffff;overflow-wrap:break-word;} a{color:var(--accent-primary, #0078d4);}</style></head><body>' + extractedBody + '</body></html>';
         
         const escapeSrcDoc = (str) => {
             return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -4811,6 +4830,17 @@ window.myCloudEmailAction = function(action, msgId, metaObjStr) {
                 document.body.appendChild(tc);
             }
             
+            window._emailPendingUndoActions = (window._emailPendingUndoActions || 0) + 1;
+            if (window._emailPendingUndoActions === 1) {
+                window._emailBeforeUnloadHandler = (e) => { e.preventDefault(); e.returnValue = ''; return ''; };
+                window.addEventListener('beforeunload', window._emailBeforeUnloadHandler);
+            }
+
+            const clearUndoBlock = () => {
+                window._emailPendingUndoActions = Math.max(0, window._emailPendingUndoActions - 1);
+                if (window._emailPendingUndoActions === 0 && window._emailBeforeUnloadHandler) window.removeEventListener('beforeunload', window._emailBeforeUnloadHandler);
+            };
+
             let timeLeft = 4;
             const toast = document.createElement('div');
             toast.className = 'ce-email-undo-toast';
@@ -4838,6 +4868,7 @@ window.myCloudEmailAction = function(action, msgId, metaObjStr) {
                         toast.style.opacity = '0';
                         toast.style.transform = 'translateY(20px)';
                         setTimeout(() => toast.remove(), 300);
+						clearUndoBlock();
                         doBackendDelete(); // Execute after countdown
                     }
                 }
@@ -4849,6 +4880,7 @@ window.myCloudEmailAction = function(action, msgId, metaObjStr) {
                 toast.style.opacity = '0';
                 toast.style.transform = 'translateY(20px)';
                 setTimeout(() => toast.remove(), 300);
+				clearUndoBlock();
                 
                 // Revert Visual Flow
                 targetKeys.forEach(k => {

@@ -1,3 +1,12 @@
+4.1.278
+	Fix: Webmail: Picture loading sometimes slow
+	Improvement: Webmail: Reduce the server side IO for caching. In some functions, tons of read and write happens
+	Improvement: Webmail: As long as the undo toast is there, disallow the closing of the window/tab
+	Fix: Webmail:  N+1 Query in missing cache fallback (has_attachments)
+	Security: Webmail: Indirect Prompt Injection (IDPI) protection
+	Security: Webmail: Arbitrary File Read / SSRF via URL in controller.server.email.img_proxy.php
+	Fix: Webmail: Sometimes parts of mails are not correctly identified, e.g. with server send errors; other mails are empty because the part was not correctly identified
+
 4.1.277
 	Fix: PDF generation: No PDF/A created; all fonts must be embedded
 	Security: Arbitrary File Copy / Ingestion via actionCloudIngestAtt

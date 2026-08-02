@@ -685,6 +685,17 @@ window.myCloudShowEmailComposer = function(prefill = null) {
                              document.body.appendChild(tc);
                          }
                          
+                         window._emailPendingUndoActions = (window._emailPendingUndoActions || 0) + 1;
+                         if (window._emailPendingUndoActions === 1) {
+                             window._emailBeforeUnloadHandler = (e) => { e.preventDefault(); e.returnValue = ''; return ''; };
+                             window.addEventListener('beforeunload', window._emailBeforeUnloadHandler);
+                         }
+
+                         const clearUndoBlock = () => {
+                             window._emailPendingUndoActions = Math.max(0, window._emailPendingUndoActions - 1);
+                             if (window._emailPendingUndoActions === 0 && window._emailBeforeUnloadHandler) window.removeEventListener('beforeunload', window._emailBeforeUnloadHandler);
+                         };
+
                          let timeLeft = 5;
                          const toast = document.createElement('div');
                          toast.className = 'ce-email-undo-toast';
@@ -704,6 +715,7 @@ window.myCloudShowEmailComposer = function(prefill = null) {
                                  if (!isUndone) {
                                      toast.style.opacity = '0'; 
                                      setTimeout(() => toast.remove(), 300);
+									 clearUndoBlock();
                                      fetch('', { method: 'POST', body: new URLSearchParams({ myCloud_action: 'email_process_outbox', myCloud_key: myCloudState.key, myCloud_token: window.myCloudCsrfToken }) });
                                  }
                              }
@@ -714,6 +726,7 @@ window.myCloudShowEmailComposer = function(prefill = null) {
                              clearInterval(deleteInterval);
                              toast.style.opacity = '0'; 
                              setTimeout(() => toast.remove(), 300);
+							 clearUndoBlock();
                              
                              // Notify server to abort the job
                              fetch('', { method: 'POST', body: new URLSearchParams({ myCloud_action: 'email_undo_send', myCloud_key: myCloudState.key, myCloud_token: window.myCloudCsrfToken, task_id: res.task_id }) });

@@ -35,8 +35,18 @@ class MyCloudEmailImageProxy {
                 $mimeMap = ['jpg' => 'image/jpeg', 'png' => 'image/png', 'gif' => 'image/gif', 'webp' => 'image/webp'];
                 $mime = $mimeMap[$ext] ?? 'image/jpeg';
                 
-                header('Cache-Control: private, max-age=604800');
+                $mtime = filemtime($cacheFile);
+                $gmdate_mod = gmdate('D, d M Y H:i:s', $mtime) . ' GMT';
+                
+                if (isset($_SERVER['HTTP_IF_MODIFIED_SINCE']) && strtotime($_SERVER['HTTP_IF_MODIFIED_SINCE']) >= $mtime) {
+                    header('HTTP/1.1 304 Not Modified');
+                    exit;
+                }
+                
+                header('Last-Modified: ' . $gmdate_mod);
+                header('Cache-Control: private, max-age=604800, immutable');
                 header('Content-Type: ' . $mime);
+				header('Content-Length: ' . filesize($cacheFile));
                 readfile($cacheFile);
                 exit;
             }
@@ -104,9 +114,13 @@ class MyCloudEmailImageProxy {
 
         // 2. FETCH IMAGE SECURELY
         $ch = curl_init($url);
+
+        // Prevent DNS Rebinding SSRF by resolving to the validated IP
+        $port = parse_url($url, PHP_URL_PORT) ?: (strtolower(parse_url($url, PHP_URL_SCHEME)) === 'https' ? 443 : 80);
+        curl_setopt($ch, CURLOPT_RESOLVE, ["{$host}:{$port}:{$ip}"]);
+
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_MAXREDIRS, 3);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, false); // Disable redirects to prevent routing to private IPs
         curl_setopt($ch, CURLOPT_TIMEOUT, 10);
         curl_setopt($ch, CURLOPT_USERAGENT, $ua);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
