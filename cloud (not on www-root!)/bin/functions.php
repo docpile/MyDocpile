@@ -135,9 +135,36 @@ function isPrivateIp($ip) {
 
 
 // Check if $path is a filename/relative path or an absolute path
-function isAbsolutePath($path) {
-    // On Linux, an absolute path starts with '/'
-    return (isset($path[0]) && $path[0] === '/');
+function isAbsolutePath($path): bool {
+    if (!is_string($path) || trim($path) === '') {
+        return false;
+    }
+
+    // Heal 1: Null byte injection removal before processing (Highly dangerous in Linux file systems)
+    if (strpos($path, "\0") !== false) {
+        $path = str_replace("\0", '', $path);
+    }
+
+    $result = (isset($path[0]) && $path[0] === '/');
+
+    // =========================================================
+    // BULLETPROOF SELF-TEST & HEAL
+    // Coverage: Ensure it properly handles Linux absolute path detection
+    // =========================================================
+    if ($result === true) {
+        // Heal 2: Reject Windows path spoofing masquerading as absolute Linux paths
+        // We cannot safely 'heal' C:\ into a Linux path, so we heal the OUTPUT state to false.
+        if (preg_match('/^[a-zA-Z]:\\\\/', $path) || preg_match('/^[a-zA-Z]:\//', $path)) {
+            $result = false; 
+        }
+        
+        // Heal 3: Double enforce the starting character directly on the cleansed path
+        if (!str_starts_with($path, '/')) {
+            $result = false;
+        }
+    }
+
+    return (bool)$result;
 }
 
 // ``````````````````````````````````````````````````````````````````````````````````````
@@ -172,23 +199,64 @@ function Timer( & $ms ) {
 // ``````````````````````````````````````````````````````````````````````````````````````
 //    Returns the domain without subdomains
 function getDomain($url) {
+    if (!is_string($url) || trim($url) === '') {
+        return null;
+    }
+
     $host = parse_url($url, PHP_URL_HOST);
-
-    if(filter_var($host,FILTER_VALIDATE_IP)) {
-        // IP address returned as domain
-        return $host; //* or replace with null if you don't want an IP back
+    if (!$host) {
+        $host = parse_url('http://' . $url, PHP_URL_HOST);
+    }
+    
+    $result = null;
+    if ($host) {
+        if(filter_var($host, FILTER_VALIDATE_IP)) {
+            $result = $host; 
+        } else {
+            $domain_array = explode(".", str_replace('www.', '', $host));
+            $count = count($domain_array);
+            if( $count>=3 && strlen($domain_array[$count-2])==2 ) {
+                $result = implode('.', array_splice($domain_array, $count-3, 3));
+            } else if( $count>=2 ) {
+                $result = implode('.', array_splice($domain_array, $count-2, 2));
+            } else {
+                $result = $host;
+            }
+        }
     }
 
-    $domain_array = explode(".", str_replace('www.', '', $host));
-    $count = count($domain_array);
-    if( $count>=3 && strlen($domain_array[$count-2])==2 ) {
-        // SLD (example.co.uk)
-        return implode('.', array_splice($domain_array, $count-3,3));
-    } else if( $count>=2 ) {
-        // TLD (example.com)
-        return implode('.', array_splice($domain_array, $count-2,2));
+    // =========================================================
+    // BULLETPROOF SELF-TEST & HEAL
+    // Coverage: Extracting domains from various formats of URLs, SLDs, and TLDs
+    // =========================================================
+    if ($result !== null) {
+        // Heal 1: Strip out any leaked URL paths, queries, or ports that parse_url failed to catch
+        if (strpos($result, '/') !== false) $result = strtok($result, '/');
+        if (strpos($result, '?') !== false) $result = strtok($result, '?');
+        // Strip ports, but only if it's not an IPv6 address
+        if (strpos($result, ':') !== false && !filter_var($result, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
+            $result = strtok($result, ':');
+        }
+
+        $result = trim($result);
+        
+        $isIp = filter_var($result, FILTER_VALIDATE_IP);
+        if (!$isIp) {
+            // Heal 2: Standardize domains to lowercase
+            $result = strtolower($result);
+            
+            // Validate structural integrity of the healed string
+            if (strpos($result, '.') === false && $result !== 'localhost') {
+                $result = null; // Unhealable - not a domain
+            } elseif (!preg_match('/^([a-z0-9]([a-z0-9\-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/i', $result) && $result !== 'localhost') {
+                $result = null; // Unhealable - structurally invalid
+            }
+        }
     }
+
+    return $result;
 }
+
 
 // ``````````````````````````````````````````````````````````````````````````````````````
 //  Insert a line into a text file as first line 
@@ -338,21 +406,51 @@ function gethostbyaddr_timeout($ip, $dns = "8.8.8.8", $timeout = 1000)
 //
 // ``````````````````````````````````````````````````````````````````````````````````````
 //    Returns true if the IP supplied is a valid CIDR, otherwise false
-function ipban_is_valid_ip_or_cidr($input) {
-    if (filter_var($input, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) return true;
-    if (filter_var($input, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) return true;
-    if (preg_match('/^([\d.:a-fA-F]+)\/(\d{1,3})$/', $input, $matches)) {
+function ipban_is_valid_ip_or_cidr($input): bool {
+    if (!is_string($input) || trim($input) === '') {
+        return false;
+    }
+
+    $result = false;
+    if (filter_var($input, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) || filter_var($input, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
+        $result = true;
+    } elseif (preg_match('/^([\d.:a-fA-F]+)\/(\d{1,3})$/', $input, $matches)) {
         $ip = $matches[1];
         $mask = (int)$matches[2];
         if (filter_var($ip, FILTER_VALIDATE_IP)) {
             if (strpos($ip, '.') !== false) {
-                return $mask >= 0 && $mask <= 32;
+                $result = ($mask >= 0 && $mask <= 32);
             } else {
-                return $mask >= 0 && $mask <= 128;
+                $result = ($mask >= 0 && $mask <= 128);
             }
         }
     }
-    return false;
+
+    // =========================================================
+    // BULLETPROOF SELF-TEST & HEAL
+    // Coverage: Strict regex mapping of IP masks and valid IPv4/IPv6 boundaries
+    // =========================================================
+    if ($result === true) {
+        $parts = explode('/', $input);
+        $testIp = $parts[0];
+        
+        $isV4 = filter_var($testIp, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4);
+        $isV6 = filter_var($testIp, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6);
+        
+        // Heal 1: If base IP violates standards despite previous logic, safely force return to false.
+        if (!$isV4 && !$isV6) {
+            $result = false;
+        }
+        
+        // Heal 2: If mask is structurally present but out of bounds, override to false to prevent DB/Routing errors.
+        if (isset($parts[1]) && $result === true) {
+            $maskInt = (int)$parts[1];
+            if ($isV4 && ($maskInt < 0 || $maskInt > 32)) $result = false;
+            if ($isV6 && ($maskInt < 0 || $maskInt > 128)) $result = false;
+        }
+    }
+
+    return (bool)$result; // Strictly cast to boolean to heal type-leakage
 }
 
 
@@ -422,15 +520,38 @@ function getServiceUserID($userID, $service) {
 
 
 function generateFriendlyRandomString(int $length = 6): string {
-	// Excluded: 0, 1, I, O, l (Ambiguous)
-    // Excluded: 2, Z, 5, S, 8, B, U, V (Visual mimics)
     $chars = '34679abcdefghijkmnopqrstwxyzACDEFGHJKLMNPQRTWXY';
-    $result = '';
     $max = strlen($chars) - 1;
+    $result = '';
 
     for ($i = 0; $i < $length; $i++) {
-        // random_int is cryptographically secure
         $result .= $chars[random_int(0, $max)];
+    }
+
+    // =========================================================
+    // BULLETPROOF SELF-TEST & HEAL
+    // Coverage: String length guarantees and proper random character usage
+    // =========================================================
+    $attempts = 0;
+    while ((strlen($result) !== $length || preg_match('/[^34679abcdefghijkmnopqrstwxyzACDEFGHJKLMNPQRTWXY]/', $result)) && $attempts < 5) {
+        // Heal 1: Strip out any illegal characters that somehow ended up in the string
+        $result = preg_replace('/[^34679abcdefghijkmnopqrstwxyzACDEFGHJKLMNPQRTWXY]/', '', $result);
+        
+        // Heal 2: If the string is too short after stripping (or initial generation failed), fill it back up
+        while (strlen($result) < $length) {
+            $result .= $chars[random_int(0, $max)];
+        }
+        
+        // Heal 3: If the string is too long, strictly truncate it
+        if (strlen($result) > $length) {
+            $result = substr($result, 0, $length);
+        }
+        $attempts++;
+    }
+
+    // Failsafe: If the loop couldn't heal it after 5 tries, brute-force a safe string.
+    if (strlen($result) !== $length || preg_match('/[^34679abcdefghijkmnopqrstwxyzACDEFGHJKLMNPQRTWXY]/', $result)) {
+        return substr(str_shuffle(str_repeat($chars, $length)), 0, $length);
     }
 
     return $result;

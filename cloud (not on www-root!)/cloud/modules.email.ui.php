@@ -4811,7 +4811,7 @@ window.myCloudEmailAction = function(action, msgId, metaObjStr) {
                 document.body.appendChild(tc);
             }
             
-            let timeLeft = 3;
+            let timeLeft = 4;
             const toast = document.createElement('div');
             toast.className = 'ce-email-undo-toast';
             

@@ -1135,10 +1135,31 @@ window.myCloudShowEmailComposer = function(prefill = null) {
         const SIG_START = '\u200B\u200C\u200D';
         const SIG_END = '\u200D\u200C\u200B';
         
+        const isReplyOrForward = prefill && !isDraft && !isResend && (prefill.prefaceText || prefill.body);
+        const willAddSignature = !isDraft && !isResend && initialSig;
+        const topSpacing = (isReplyOrForward && !willAddSignature) ? '<p><br></p><p><br></p>' : '';
+
         const sigHtml = (isDraft || isResend || !initialSig) ? '' : '<p style="margin-bottom: 12pt;"><br></p>' + SIG_START + initialSig + SIG_END;
-        const finalBody = prefaceVal + sigHtml + (bodyVal ? bodyVal : '');
+        const finalBody = topSpacing + prefaceVal + sigHtml + (bodyVal ? bodyVal : '');
 
         myCloudEmailEditorInstance.setContents(finalBody);
+
+        if (isReplyOrForward) {
+            setTimeout(() => {
+                if (myCloudEmailEditorInstance && myCloudEmailEditorInstance.core) {
+                    const wysiwyg = myCloudEmailEditorInstance.core.context.element.wysiwyg;
+                    wysiwyg.focus();
+                    if (wysiwyg.firstChild) {
+                        const range = document.createRange();
+                        const sel = window.getSelection();
+                        range.setStart(wysiwyg.firstChild, 0);
+                        range.collapse(true);
+                        sel.removeAllRanges();
+                        sel.addRange(range);
+                    }
+                }
+            }, 150);
+        }
        
         window._emlUpdateSignature = function(fromVal) {
             if (!myCloudEmailEditorInstance) return;

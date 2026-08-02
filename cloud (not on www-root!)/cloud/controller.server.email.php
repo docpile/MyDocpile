@@ -45,6 +45,8 @@ class MyCloudEmailServer {
     private $config_file;
     private $contacts_file;
 	private $auto_contacts_file;
+    private $cache_file_cache = [];
+    private $body_cache_file_cache = [];
 
     public function __construct($key, $username) {
         $this->key = $key;
@@ -912,8 +914,21 @@ class MyCloudEmailServer {
     }
 
     private function loadCacheData($filename) {
-        if (!file_exists($filename)) return [];
-        $raw = file_get_contents($filename);
+        if (array_key_exists($filename, $this->cache_file_cache)) {
+            return $this->cache_file_cache[$filename];
+        }
+
+        if (!file_exists($filename)) {
+            $this->cache_file_cache[$filename] = [];
+            return [];
+        }
+
+        $raw = @file_get_contents($filename);
+        if ($raw === false) {
+            $this->cache_file_cache[$filename] = [];
+            return [];
+        }
+
         $parts = explode(':', $raw);
         // ZERO TRUST / PERFORMANCE FIX: Use Fast Cache (FC) mechanism.
         if (count($parts) === 5 && $parts[0] === 'FC') {
@@ -929,6 +944,7 @@ class MyCloudEmailServer {
                         if (isset($msg['id'])) $data[$msg['id']] = $msg;
                         elseif (isset($msg['__FOLDER_STATE__'])) $data['__FOLDER_STATE__'] = $msg['__FOLDER_STATE__'];
                     }
+                    $this->cache_file_cache[$filename] = $data;
                     return $data;
                 }
             }
@@ -936,10 +952,15 @@ class MyCloudEmailServer {
             // Automatically purge legacy slow-hashed cache files so they rebuild instantly
             @unlink($filename);
         }
+        $this->cache_file_cache[$filename] = [];
         return [];
     }
 
     private function saveCacheData($filename, $data) {
+        if (array_key_exists($filename, $this->cache_file_cache) && $this->cache_file_cache[$filename] === $data && file_exists($filename)) {
+            return;
+        }
+
         $lines = [];
         foreach ($data as $k => $v) {
             $encoded = json_encode($k === '__FOLDER_STATE__' ? ['__FOLDER_STATE__' => $v] : $v, JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
@@ -960,6 +981,7 @@ class MyCloudEmailServer {
         $tmpFile = $filename . '.' . bin2hex(random_bytes(16)) . '.tmp';
         file_put_contents($tmpFile, $payload);
         rename($tmpFile, $filename); // REFINEMENT 1: Atomic File Swapping
+        $this->cache_file_cache[$filename] = $data;
     }
 
      private function getBodyCachePath($accId, $folder, $msgId) {
@@ -967,22 +989,44 @@ class MyCloudEmailServer {
      }
 
      private function loadBodyCacheData($filename) {
-         if (!file_exists($filename)) return null;
-         $raw = file_get_contents($filename);
+         if (array_key_exists($filename, $this->body_cache_file_cache)) {
+             return $this->body_cache_file_cache[$filename];
+         }
+
+         if (!file_exists($filename)) {
+             $this->body_cache_file_cache[$filename] = null;
+             return null;
+         }
+
+         $raw = @file_get_contents($filename);
+         if ($raw === false) {
+             $this->body_cache_file_cache[$filename] = null;
+             return null;
+         }
+
          $parts = explode(':', $raw);
          if (count($parts) === 5 && $parts[0] === 'FCB') {
              $key = hash_hmac('sha256', base64_decode($parts[1]), $this->key, true);
              $decrypted = openssl_decrypt(base64_decode($parts[4]), 'AES-256-GCM', $key, OPENSSL_RAW_DATA, base64_decode($parts[2]), base64_decode($parts[3]));
              if ($decrypted !== false) {
                  $inflated = @gzinflate($decrypted);
-                 if ($inflated !== false) return json_decode($inflated, true);
+                 if ($inflated !== false) {
+                     $data = json_decode($inflated, true);
+                     $this->body_cache_file_cache[$filename] = $data;
+                     return $data;
+                 }
              }
          }
          @unlink($filename);
+         $this->body_cache_file_cache[$filename] = null;
          return null;
      }
 
      private function saveBodyCacheData($filename, $data) {
+         if (array_key_exists($filename, $this->body_cache_file_cache) && $this->body_cache_file_cache[$filename] === $data && file_exists($filename)) {
+             return;
+         }
+
          $encoded = json_encode($data, JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
          if ($encoded === false) return;
          $deflated = gzdeflate($encoded, 6);
@@ -995,6 +1039,7 @@ class MyCloudEmailServer {
          $tmpFile = $filename . '.' . bin2hex(random_bytes(16)) . '.tmp';
          file_put_contents($tmpFile, $payload);
          rename($tmpFile, $filename);
+         $this->body_cache_file_cache[$filename] = $data;
      }
 
     // --- CENTRALIZED HELPER: BACKGROUND UI RELEASE & SYNC ---

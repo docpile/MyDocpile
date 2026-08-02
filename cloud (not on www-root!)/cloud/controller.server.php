@@ -2446,13 +2446,18 @@ class MyCloudServer {
 
         // 1. Strict Validation of the Temporary File
         $tempDir = $GLOBALS['temp_dir'] ?? sys_get_temp_dir();
-        
+        $realTempDir = realpath($tempDir);
+        $realTmpPath = realpath($tmpPath);
+
         // Ensure the path is strictly inside the system temp directory and prefixed correctly
-        if (strpos($tmpPath, $tempDir) !== 0 || strpos(basename($tmpPath), 'myCloud_eml_att_') !== 0) {
+        if (!$realTmpPath || !$realTempDir || strpos($realTmpPath, $realTempDir) !== 0) {
             $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Invalid temporary file source.']);
         }
+        if (strpos(basename($realTmpPath), 'myCloud_eml_att_') !== 0) {
+            $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Invalid temporary file source prefix.']);
+        }
         
-        if (!file_exists($tmpPath)) {
+        if (!file_exists($realTmpPath)) {
             $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Temporary file expired or not found.']);
         }
 
@@ -2467,17 +2472,11 @@ class MyCloudServer {
         $finalName = $safeName;
         $finalDest = rtrim($destDirAbs, '/\\') . DIRECTORY_SEPARATOR . $finalName;
         
-        // Note: The file remains unencrypted at rest here because this backend endpoint
-        // executes server-side. E2E requires the client to encrypt it before upload.
-        // However, for the "Smart Cloud Attachments" feature, these are publicly shared links,
-        // which inherently cannot be E2E encrypted (otherwise the recipient couldn't read them).
-        // Therefore, we enforce that they are saved unencrypted.
-        
         if (file_exists($finalDest)) {
             $finalDest = $this->getUniqueName($finalDest);
         }
 
-        if (copy($tmpPath, $finalDest)) {
+        if (copy($realTmpPath, $finalDest)) {
             $this->log('EMAIL_INGEST', basename($finalDest), $destDirRel);
             $this->sendJsonAndExit(['status' => 'OK']);
         } else {
@@ -2691,6 +2690,18 @@ class MyCloudServer {
         exit;
     }
     
+
+    /**
+     * Helper: Secure Shell Argument Wrapper
+     * Validates and scrubs binary bypasses before wrapping in quotes.
+     */
+    private function safeShellArg($arg) {
+        if (strpos($arg, "\0") !== false) {
+            $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Command execution blocked: Null byte detected.']);
+        }
+        return escapeshellarg($arg);
+    }
+    
     /**
      * Helper: Silent structural repair.
      * Rebuilds the XREF table and stream lengths without changing content.
@@ -2700,7 +2711,7 @@ class MyCloudServer {
 
         // Primary: qpdf --linearize (rebuilds xref, linearizes, very good at fixing broken structure)
         $cmd = sprintf('qpdf --linearize --object-streams=preserve %s %s 2>&1',
-            escapeshellarg($src), escapeshellarg($tmp));
+            $this->safeShellArg($src), $this->safeShellArg($tmp));
         $output = shell_exec($cmd);
 
         if (file_exists($tmp) && filesize($tmp) > 1024) {   // minimal plausible size
@@ -2708,13 +2719,18 @@ class MyCloudServer {
         }
         @unlink($tmp);
 
-        // Fallback: ghostscript visual repair (loses some metadata / forms but usually saves content)
+        // Check for forms to respect the PDF/A exclusion rule in the fallback
+        $chkOut = shell_exec(sprintf('pdftk %s dump_data_fields 2>&1', $this->safeShellArg($src)));
+        $hasForms = (strpos($chkOut, 'FieldName:') !== false);
+
+        // Fallback: ghostscript visual repair ONLY as a last resort
         $tmp_gs = tempnam(sys_get_temp_dir(), 'pdf_gs_');
-        $cmd_gs = sprintf(
-            'gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -dPDFSETTINGS=/prepress -sOutputFile=%s %s 2>&1',
-            escapeshellarg($tmp_gs), escapeshellarg($src)
-        );
-        $shell_exec($cmd_gs);
+        
+        $cmd_gs = $hasForms
+            ? sprintf('gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -dPrinted=false -dPDFSETTINGS=/prepress -sOutputFile=%s %s 2>&1', $this->safeShellArg($tmp_gs), $this->safeShellArg($src))
+            : sprintf('gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -dPDFA=1 -dPDFACompatibilityPolicy=1 -dNoOutputFonts -dPrinted=false -dPDFSETTINGS=/prepress -sOutputFile=%s %s 2>&1', $this->safeShellArg($tmp_gs), $this->safeShellArg($src));
+            
+        shell_exec($cmd_gs);
 
         if (file_exists($tmp_gs) && filesize($tmp_gs) > 1024) {
             return $tmp_gs;
@@ -2731,9 +2747,22 @@ class MyCloudServer {
         $dir = dirname($src);
         $filename = pathinfo($src, PATHINFO_FILENAME);
         
+        // Check for forms to respect the PDF/A exclusion rule in the fallback
+        $chkOut = shell_exec(sprintf('pdftk %s dump_data_fields 2>&1', $this->safeShellArg($src)));
+        $hasForms = (strpos($chkOut, 'FieldName:') !== false);
+
         $outputPattern = $dir . DIRECTORY_SEPARATOR . $filename . ' (%d).pdf';
-        $cmd = sprintf('qpdf --split-pages %s %s 2>&1', escapeshellarg($src), escapeshellarg($outputPattern));
-        shell_exec($cmd);
+        
+        // Try qpdf first (lossless, preserves hyperlinks and functionality)
+        exec(sprintf('qpdf --split-pages %s %s 2>&1', $this->safeShellArg($src), $this->safeShellArg($outputPattern)), $out, $ret);
+        
+        // Last resort fallback: enforce PDF/A and vector curves if no forms are present
+        if ($ret !== 0) {
+            $gsCmd = $hasForms
+                ? sprintf('gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -dPrinted=false -sOutputFile=%s %s 2>&1', $this->safeShellArg($outputPattern), $this->safeShellArg($src))
+                : sprintf('gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -dPDFA=1 -dPDFACompatibilityPolicy=1 -dNoOutputFonts -dPrinted=false -sOutputFile=%s %s 2>&1', $this->safeShellArg($outputPattern), $this->safeShellArg($src));
+            shell_exec($gsCmd);
+        }
         
         $this->log('PDF_UNSTACK', $_POST['src']);
         $this->sendJsonAndExit(['status'=>'OK']);
@@ -2763,22 +2792,30 @@ class MyCloudServer {
             if (!$abs || !is_file($abs)) {
                 $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Missing source file: ' . basename($f)]);
             }
-            $gsArgs[] = escapeshellarg($abs);
+            $gsArgs[] = $this->safeShellArg($abs);
         }
 
         // 2. Create a temporary output file for Ghostscript 
-        // (GS cannot read and write to the exact same file simultaneously)
         $tempDir = $GLOBALS['temp_dir'] ?? sys_get_temp_dir();
         $gsTempOut = rtrim($tempDir, '/\\') . '/myCloud_stack_' . bin2hex(random_bytes(8)) . '.pdf';
 
-        // 3. Execute qpdf (Fast, but strictly enforces PDF structure. Exit code 3 = warnings, which is fine.)
-        $cmd = "qpdf --empty --pages " . implode(' ', $gsArgs) . " -- " . escapeshellarg($gsTempOut) . " 2>&1";
+        // Scan for interactive forms to decide fallback behavior
+        $hasForms = false;
+        foreach ($filesRel as $f) {
+            $absChk = $this->resolve($f);
+            $chkOut = shell_exec(sprintf('pdftk %s dump_data_fields 2>&1', $this->safeShellArg($absChk)));
+            if (strpos($chkOut, 'FieldName:') !== false) { $hasForms = true; break; }
+        }
+
+        // 3. Execute qpdf first (Fast, preserves hyperlinks, form fields, and view states. Code 3 = warnings)
+        $cmd = "qpdf --empty --pages " . implode(' ', $gsArgs) . " -- " . $this->safeShellArg($gsTempOut) . " 2>&1";
         exec($cmd, $output, $returnVar);
 
-        // If qpdf fails (code != 0 and != 3), or outputs an empty file, fallback to Ghostscript
+        // Fallback to Ghostscript ONLY as a last resort, preserving the PDF/A and vector curve preference
         if (($returnVar !== 0 && $returnVar !== 3) || !is_file($gsTempOut) || filesize($gsTempOut) === 0) {
-            
-            $gsCmd = "gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -dAutoRotatePages=/None -sOutputFile=" . escapeshellarg($gsTempOut) . " " . implode(' ', $gsArgs) . " 2>&1";
+            $gsCmd = $hasForms
+                ? "gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -dPrinted=false -dAutoRotatePages=/None -sOutputFile=" . $this->safeShellArg($gsTempOut) . " " . implode(' ', $gsArgs) . " 2>&1"
+                : "gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -dPDFA=1 -dPDFACompatibilityPolicy=1 -dNoOutputFonts -dPrinted=false -dAutoRotatePages=/None -sOutputFile=" . $this->safeShellArg($gsTempOut) . " " . implode(' ', $gsArgs) . " 2>&1";
             exec($gsCmd, $gsOutput, $gsReturnVar);
             
             if ($gsReturnVar !== 0 || !is_file($gsTempOut) || filesize($gsTempOut) === 0) {
@@ -2835,7 +2872,14 @@ class MyCloudServer {
         if (!$src || !is_file($src)) $this->sendJsonAndExit(['status'=>'ERR','msg'=>'Invalid file']);
         $dest = dirname($src) . DIRECTORY_SEPARATOR . pathinfo($src, PATHINFO_FILENAME) . ' (Compressed).pdf';
         $dest = $this->getUniqueName($dest);
-        $cmd = sprintf('gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dPDFSETTINGS=/screen -dNOPAUSE -dQUIET -dBATCH -sOutputFile=%s %s 2>&1', escapeshellarg($dest), escapeshellarg($src));
+
+        $chkOut = shell_exec(sprintf('pdftk %s dump_data_fields 2>&1', $this->safeShellArg($src)));
+        $hasForms = (strpos($chkOut, 'FieldName:') !== false);
+
+        // Compression requires stream rewriting, so gs is used here, but with -dPrinted=false to attempt link preservation
+        $cmd = $hasForms
+            ? sprintf('gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dPDFSETTINGS=/screen -dPrinted=false -dNOPAUSE -dQUIET -dBATCH -sOutputFile=%s %s 2>&1', $this->safeShellArg($dest), $this->safeShellArg($src))
+            : sprintf('gs -sDEVICE=pdfwrite -dPDFA=1 -dPDFACompatibilityPolicy=1 -dCompatibilityLevel=1.4 -dPDFSETTINGS=/screen -dNoOutputFonts -dPrinted=false -dNOPAUSE -dQUIET -dBATCH -sOutputFile=%s %s 2>&1', $this->safeShellArg($dest), $this->safeShellArg($src));
         shell_exec($cmd);
         if (file_exists($dest)) $this->sendJsonAndExit(['status'=>'OK']);
         $this->sendJsonAndExit(['status'=>'ERR','msg'=>'Compression failed. Ghostscript (gs) is required.']);
@@ -2848,15 +2892,21 @@ class MyCloudServer {
         $dest = dirname($src) . DIRECTORY_SEPARATOR . pathinfo($src, PATHINFO_FILENAME) . ' (Extracted).pdf';
         $dest = $this->getUniqueName($dest);
         
-        // Try qpdf first (preserves links)
-        $cmd = sprintf('qpdf --empty --pages %s %s -- %s 2>&1', escapeshellarg($src), escapeshellarg($pages), escapeshellarg($dest));
-        shell_exec($cmd);
+        $chkOut = shell_exec(sprintf('pdftk %s dump_data_fields 2>&1', $this->safeShellArg($src)));
+        $hasForms = (strpos($chkOut, 'FieldName:') !== false);
 
-        // Fallback to Ghostscript
-        if (!file_exists($dest)) {
-            $cmd2 = sprintf('gs -sDEVICE=pdfwrite -dNOPAUSE -dBATCH -sPageList=%s -sOutputFile=%s %s 2>&1', escapeshellarg($pages), escapeshellarg($dest), escapeshellarg($src));
+        // Try qpdf first (preserves links, forms, and open views)
+        $cmd = sprintf('qpdf --empty --pages %s %s -- %s 2>&1', $this->safeShellArg($src), $this->safeShellArg($pages), $this->safeShellArg($dest));
+        shell_exec($cmd);
+        
+        // Fallback to Ghostscript ONLY as a last resort
+        if (!file_exists($dest) || filesize($dest) === 0) {
+            $cmd2 = $hasForms 
+                ? sprintf('gs -sDEVICE=pdfwrite -dPrinted=false -dNOPAUSE -dBATCH -sPageList=%s -sOutputFile=%s %s 2>&1', $this->safeShellArg($pages), $this->safeShellArg($dest), $this->safeShellArg($src))
+                : sprintf('gs -sDEVICE=pdfwrite -dPDFA=1 -dPDFACompatibilityPolicy=1 -dNoOutputFonts -dPrinted=false -dNOPAUSE -dBATCH -sPageList=%s -sOutputFile=%s %s 2>&1', $this->safeShellArg($pages), $this->safeShellArg($dest), $this->safeShellArg($src));
             shell_exec($cmd2);
         }
+        
         if (file_exists($dest)) $this->sendJsonAndExit(['status'=>'OK']);
         $this->sendJsonAndExit(['status'=>'ERR','msg'=>'Extraction failed. qpdf or gs is required.']);
     }
@@ -2873,14 +2923,22 @@ class MyCloudServer {
         $dest = dirname($src) . DIRECTORY_SEPARATOR . pathinfo($src, PATHINFO_FILENAME) . ' (Rotated).pdf';
         $dest = $this->getUniqueName($dest);
 
-        $cmd = sprintf('qpdf --rotate=%s %s %s 2>&1', escapeshellarg($angle), escapeshellarg($src), escapeshellarg($dest));
+        $chkOut = shell_exec(sprintf('pdftk %s dump_data_fields 2>&1', $this->safeShellArg($src)));
+        $hasForms = (strpos($chkOut, 'FieldName:') !== false);
+
+        // Try qpdf first (lossless)
+        $cmd = sprintf('qpdf --rotate=%s %s %s 2>&1', $this->safeShellArg($angle), $this->safeShellArg($src), $this->safeShellArg($dest));
         shell_exec($cmd);
-        
-        if (!file_exists($dest)) {
+
+        // Fallback to Ghostscript ONLY as a last resort
+        if (!file_exists($dest) || filesize($dest) === 0) {
             $ori = $angle == '+90' ? 3 : ($angle == '+180' ? 2 : 1);
-            $cmd2 = sprintf('gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -dAutoRotatePages=/None -c "<</Orientation %d>> setpagedevice" -f %s -sOutputFile=%s 2>&1', $ori, escapeshellarg($src), escapeshellarg($dest));
+            $cmd2 = $hasForms
+                ? sprintf('gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -dPrinted=false -dAutoRotatePages=/None -c "<</Orientation %d>> setpagedevice" -f %s -sOutputFile=%s 2>&1', $ori, $this->safeShellArg($src), $this->safeShellArg($dest))
+                : sprintf('gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -dPDFA=1 -dPDFACompatibilityPolicy=1 -dNoOutputFonts -dPrinted=false -dAutoRotatePages=/None -c "<</Orientation %d>> setpagedevice" -f %s -sOutputFile=%s 2>&1', $ori, $this->safeShellArg($src), $this->safeShellArg($dest));
             shell_exec($cmd2);
         }
+
         if (file_exists($dest)) $this->sendJsonAndExit(['status'=>'OK']);
         $this->sendJsonAndExit(['status'=>'ERR','msg'=>'Rotation failed. qpdf or gs is required.']);
     }
@@ -2892,11 +2950,16 @@ class MyCloudServer {
         $dest = dirname($src) . DIRECTORY_SEPARATOR . pathinfo($src, PATHINFO_FILENAME) . ' (Unlocked).pdf';
         $dest = $this->getUniqueName($dest);
 
-        $cmd = sprintf('qpdf --password=%s --decrypt %s %s 2>&1', escapeshellarg($pw), escapeshellarg($src), escapeshellarg($dest));
+        $chkOut = shell_exec(sprintf('pdftk %s dump_data_fields 2>&1', $this->safeShellArg($src)));
+        $hasForms = (strpos($chkOut, 'FieldName:') !== false);
+
+        $cmd = sprintf('qpdf --password=%s --decrypt %s %s 2>&1', $this->safeShellArg($pw), $this->safeShellArg($src), $this->safeShellArg($dest));
         shell_exec($cmd);
 
         if (!file_exists($dest)) {
-            $cmd2 = sprintf('gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -sPDFPassword=%s -sOutputFile=%s %s 2>&1', escapeshellarg($pw), escapeshellarg($dest), escapeshellarg($src));
+            $cmd2 = $hasForms
+                ? sprintf('gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -dPrinted=false -sPDFPassword=%s -sOutputFile=%s %s 2>&1', $this->safeShellArg($pw), $this->safeShellArg($dest), $this->safeShellArg($src))
+                : sprintf('gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -dPDFA=1 -dPDFACompatibilityPolicy=1 -dNoOutputFonts -dPrinted=false -sPDFPassword=%s -sOutputFile=%s %s 2>&1', $this->safeShellArg($pw), $this->safeShellArg($dest), $this->safeShellArg($src));
             shell_exec($cmd2);
         }
         if (file_exists($dest)) $this->sendJsonAndExit(['status'=>'OK']);
@@ -2909,7 +2972,7 @@ class MyCloudServer {
         $dest = dirname($src) . DIRECTORY_SEPARATOR . pathinfo($src, PATHINFO_FILENAME) . '.txt';
         $dest = $this->getUniqueName($dest);
 
-        $cmd = sprintf('pdftotext %s %s 2>&1', escapeshellarg($src), escapeshellarg($dest));
+        $cmd = sprintf('pdftotext %s %s 2>&1', $this->safeShellArg($src), $this->safeShellArg($dest));
         shell_exec($cmd);
 
         if (file_exists($dest)) $this->sendJsonAndExit(['status'=>'OK']);
@@ -2929,7 +2992,7 @@ class MyCloudServer {
         @mkdir($tempDir, 0755, true);
 
         // 1. Render PDF to images (150 DPI is a good balance of speed vs accuracy)
-        $cmd1 = sprintf('pdftoppm -r 150 -png %s %s/page 2>&1', escapeshellarg($src), escapeshellarg($tempDir));
+        $cmd1 = sprintf('pdftoppm -r 150 -png %s %s/page 2>&1', $this->safeShellArg($src), $this->safeShellArg($tempDir));
         shell_exec($cmd1);
 
         $files = glob($tempDir . '/page-*.png');
@@ -2943,7 +3006,7 @@ class MyCloudServer {
         $out = fopen($dest, 'w');
         foreach ($files as $f) {
             // 2. OCR each image. Tries eng+deu first, falls back to default if language packs are missing
-            $text = shell_exec(sprintf('tesseract %s stdout -l eng+deu 2>/dev/null || tesseract %s stdout 2>/dev/null', escapeshellarg($f), escapeshellarg($f)));
+            $text = shell_exec(sprintf('tesseract %s stdout -l eng+deu 2>/dev/null || tesseract %s stdout 2>/dev/null', $this->safeShellArg($f), $this->safeShellArg($f)));
             if (trim($text)) fwrite($out, trim($text) . "\n\n--- Page Break ---\n\n");
             @unlink($f);
         }
@@ -2964,14 +3027,14 @@ class MyCloudServer {
         @mkdir($destDir, 0755, true);
 
         $destPrefix = $destDir . DIRECTORY_SEPARATOR . 'img';
-        $cmd = sprintf('pdfimages -all %s %s 2>&1', escapeshellarg($src), escapeshellarg($destPrefix));
+        $cmd = sprintf('pdfimages -all %s %s 2>&1', $this->safeShellArg($src), $this->safeShellArg($destPrefix));
         shell_exec($cmd);
 
         $files = array_diff(scandir($destDir), array('.', '..'));
         if (count($files) > 0) $this->sendJsonAndExit(['status'=>'OK']);
         @rmdir($destDir);
         $this->sendJsonAndExit(['status'=>'ERR','msg'=>'Image extraction failed. Poppler-utils (pdfimages) required.']);
-    }   
+    }
     
     private function actionPdfFlatten() {
         $src = $this->resolve($_POST['src'] ?? '');
@@ -2979,29 +3042,34 @@ class MyCloudServer {
         $dest = dirname($src) . DIRECTORY_SEPARATOR . pathinfo($src, PATHINFO_FILENAME) . ' (Flattened).pdf';
         $dest = $this->getUniqueName($dest);
         
-        // pdftk flattens forms and annotations natively while preserving vector text and exact file quality.
-        // ImageMagick rasterization is completely avoided.
-        $cmd = sprintf('pdftk %s output %s flatten 2>&1', escapeshellarg($src), escapeshellarg($dest));
+        $chkOut = shell_exec(sprintf('pdftk %s dump_data_fields 2>&1', $this->safeShellArg($src)));
+        $hasForms = (strpos($chkOut, 'FieldName:') !== false);
+
+        // pdftk flattens forms natively while preserving links and exact file quality.
+        $cmd = sprintf('pdftk %s output %s flatten 2>&1', $this->safeShellArg($src), $this->safeShellArg($dest));
         shell_exec($cmd);
         
-        // Fallback to Ghostscript vector preservation if pdftk is missing
+        // Fallback to Ghostscript ONLY as a last resort if pdftk fails
         if (!file_exists($dest) || filesize($dest) === 0) {
-            $cmd2 = sprintf('gs -sDEVICE=pdfwrite -dNoOutputFonts -dPrinted=false -dNOPAUSE -dBATCH -sOutputFile=%s %s 2>&1', escapeshellarg($dest), escapeshellarg($src));
+            $cmd2 = $hasForms
+                ? sprintf('gs -sDEVICE=pdfwrite -dPrinted=false -dNOPAUSE -dBATCH -sOutputFile=%s %s 2>&1', $this->safeShellArg($dest), $this->safeShellArg($src))
+                : sprintf('gs -sDEVICE=pdfwrite -dPDFA=1 -dPDFACompatibilityPolicy=1 -dNoOutputFonts -dPrinted=false -dNOPAUSE -dBATCH -sOutputFile=%s %s 2>&1', $this->safeShellArg($dest), $this->safeShellArg($src));
             shell_exec($cmd2);
         }
-
+        
         if (file_exists($dest) && filesize($dest) > 0) $this->sendJsonAndExit(['status'=>'OK']);
         $this->sendJsonAndExit(['status'=>'ERR','msg'=>'Flattening failed. pdftk or gs is required.']);
     }
 
-   private function actionPdfEncrypt() {
+    private function actionPdfEncrypt() {
         $src = $this->resolve($_POST['src'] ?? '');
         $pw = $_POST['password'] ?? '';
         if (!$src || !is_file($src) || empty($pw)) $this->sendJsonAndExit(['status'=>'ERR','msg'=>'Invalid file or password']);
         $dest = dirname($src) . DIRECTORY_SEPARATOR . pathinfo($src, PATHINFO_FILENAME) . ' (Protected).pdf';
         $dest = $this->getUniqueName($dest);
         
-        $cmd = sprintf('qpdf --encrypt %s %s 256 -- %s %s 2>&1', escapeshellarg($pw), escapeshellarg($pw), escapeshellarg($src), escapeshellarg($dest));
+        // Retain qpdf for robust cryptographic wrapping while preserving PDF/A specifications
+        $cmd = sprintf('qpdf --encrypt %s %s 256 --allow-accessibility=y -- %s %s 2>&1', $this->safeShellArg($pw), $this->safeShellArg($pw), $this->safeShellArg($src), $this->safeShellArg($dest));
         shell_exec($cmd);
         
         if (file_exists($dest)) $this->sendJsonAndExit(['status'=>'OK']);
@@ -3018,7 +3086,7 @@ class MyCloudServer {
         $dest = $this->getUniqueName($dest);
 
         // 1. Primary Repair: Use pdftk. It rebuilds XREF tables and preserves AcroForm fields perfectly.
-        $cmd = sprintf('qpdf --linearize %s %s 2>&1', escapeshellarg($src), escapeshellarg($dest));
+        $cmd = sprintf('qpdf --linearize %s %s 2>&1', $this->safeShellArg($src), $this->safeShellArg($dest));
         $output = shell_exec($cmd);
 
         if (file_exists($dest) && filesize($dest) > 0) {
@@ -3027,7 +3095,7 @@ class MyCloudServer {
         }
         
         // 2. Secondary Repair: Try pdftk
-        $tkCmd = sprintf('pdftk %s output %s 2>&1', escapeshellarg($src), escapeshellarg($dest));
+        $tkCmd = sprintf('pdftk %s output %s 2>&1', $this->safeShellArg($src), $this->safeShellArg($dest));
         $tkOutput = shell_exec($tkCmd);
 
         if (file_exists($dest) && filesize($dest) > 0) {
@@ -3037,7 +3105,7 @@ class MyCloudServer {
 
         // 3. Fallback Repair: If pdftk fails, the PDF is severely mangled. 
         // We fall back to Ghostscript as a last resort (WARNING: This WILL strip forms, but saves the visual data).
-        $gsCmd = sprintf('gs -o %s -sDEVICE=pdfwrite -dPDFSETTINGS=/prepress %s 2>&1', escapeshellarg($dest), escapeshellarg($src));
+        $gsCmd = sprintf('gs -o %s -sDEVICE=pdfwrite -dPDFSETTINGS=/prepress %s 2>&1', $this->safeShellArg($dest), $this->safeShellArg($src));
         $gsOutput = shell_exec($gsCmd);
 
         if (file_exists($dest) && filesize($dest) > 0) {
@@ -3059,7 +3127,7 @@ class MyCloudServer {
                  // Fortification: Prevent ImageMagick delegate RCE (e.g., MVG disguised as JPG)
                  $mime = finfo_file($finfo, $p);
                  if (strpos($mime, 'image/') === 0) {
-                     $validFiles[] = escapeshellarg($p);
+                     $validFiles[] = $this->safeShellArg($p);
                  }
              }
         }
@@ -3070,7 +3138,8 @@ class MyCloudServer {
         $dest = dirname($this->resolve($files[0])) . DIRECTORY_SEPARATOR . 'Combined_Images.pdf';
         $dest = $this->getUniqueName($dest);
         
-        $cmd = sprintf('convert %s %s 2>&1', implode(' ', $validFiles), escapeshellarg($dest));
+        // Enforce PDF/A and vector-safe conversion rules via ImageMagick
+        $cmd = sprintf('convert %s -define pdf:compliance=PDF/A-1b %s 2>&1', implode(' ', $validFiles), $this->safeShellArg($dest));
         shell_exec($cmd);
         
         if (file_exists($dest)) $this->sendJsonAndExit(['status'=>'OK']);
@@ -3082,7 +3151,7 @@ class MyCloudServer {
         if (!$src || !is_file($src)) $this->sendJsonAndExit(['status'=>'ERR','msg'=>'Invalid file']);
 
         // Extract field data using pdftk
-        $cmd = sprintf('pdftk %s dump_data_fields 2>&1', escapeshellarg($src));
+        $cmd = sprintf('pdftk %s dump_data_fields 2>&1', $this->safeShellArg($src));
         $output = shell_exec($cmd);
 
         if (strpos($output, 'Error') !== false || empty(trim($output))) {
@@ -3143,7 +3212,7 @@ class MyCloudServer {
         $xfdf->asXML($tmpXfdf);
 
         // Inject data. Use 'flatten' to lock it, or remove 'flatten' to keep it editable. We will leave it editable by default.
-        $cmd = sprintf('pdftk %s fill_form %s output %s 2>&1', escapeshellarg($src), escapeshellarg($tmpXfdf), escapeshellarg($dest));
+        $cmd = sprintf('pdftk %s fill_form %s output %s 2>&1', $this->safeShellArg($src), $this->safeShellArg($tmpXfdf), $this->safeShellArg($dest));
         shell_exec($cmd);
         
         @unlink($tmpXfdf);
@@ -4176,11 +4245,17 @@ class MyCloudServer {
 
         $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
 
+        // Fulfill PDF/A preference for new creations except for interactive forms
+        $outputType = 'pdfa';
+        if (in_array($ext, ['docxf', 'oform'])) {
+            $outputType = 'pdf';
+        }
+
         $payload = [
             "async" => false,
             "filetype" => $ext,
             "key" => $docKey,
-            "outputtype" => "pdf",
+            "outputtype" => $outputType,
             "title" => basename($path),
             "url" => $fileUrl
         ];
@@ -4245,12 +4320,18 @@ class MyCloudServer {
 
         $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
 
+        // Fulfill PDF/A preference for new creations except for interactive forms
+        $outputType = 'pdfa';
+        if (in_array($ext, ['docxf', 'oform'])) {
+            $outputType = 'pdf';
+        }
+
         // 3. Build payload for ONLYOFFICE Conversion API
         $payload = [
             "async" => false,
             "filetype" => $ext,
             "key" => $docKey,
-            "outputtype" => "pdf",
+            "outputtype" => $outputType,
             "title" => basename($path),
             "url" => $fileUrl
         ];
@@ -4292,7 +4373,7 @@ class MyCloudServer {
                     'preview' => true,
                     'expires' => time() + 300, 
                     'is_temp' => true,
-					'is_pdf_print' => true
+                    'is_pdf_print' => true
                 ];
                 $this->sendJsonAndExit(['status' => 'OK', 'token' => $token]);
             }
@@ -4300,7 +4381,7 @@ class MyCloudServer {
         
         $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Print rendering failed (Code: ' . ($resData['error'] ?? 'Unknown') . ')']);
     }
-
+	
     private function handleOfficeFetch() {
         session_write_close();
         $parts = explode('/myCloudOfficeFetch/', $_SERVER['REQUEST_URI']);
@@ -4320,7 +4401,7 @@ class MyCloudServer {
         http_response_code(404); exit;
     }
 
-    private function handleOfficeCallback($data) {
+private function handleOfficeCallback($data) {
         // Enforce JWT validation to prevent unauthenticated arbitrary file overwrites and SSRF
         $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
         $token = preg_match('/Bearer\s+(.*)/i', $authHeader, $matches) ? $matches[1] : ($data['token'] ?? '');
@@ -4379,9 +4460,19 @@ class MyCloudServer {
                     $state = @json_decode(file_get_contents($stateFile), true);
                     if ($state && isset($state['path'])) {
                         
-                         // Fortification: Prevent SSRF by enforcing strict HTTP/HTTPS schemes
-                         if (!preg_match('/^https?:\/\//i', $data['url'])) {
+                         // Fortification: Prevent SSRF by enforcing strict HTTP/HTTPS schemes and whitelisting the Document Server host
+                         $callbackUrlObj = parse_url($data['url']);
+                         if (!$callbackUrlObj || !isset($callbackUrlObj['scheme']) || !preg_match('/^https?$/i', $callbackUrlObj['scheme'])) {
                              echo json_encode(["error" => 1, "message" => "Invalid callback URL scheme"]);
+                             exit;
+                         }
+                         
+                         $urlHost = strtolower($callbackUrlObj['host'] ?? '');
+                         $allowedInternal = strtolower(parse_url($this->officeInternalBase, PHP_URL_HOST) ?? '');
+                         $allowedExternal = strtolower(parse_url($this->officeExternalUrl, PHP_URL_HOST) ?? '');
+                         
+                         if ($urlHost !== $allowedInternal && $urlHost !== $allowedExternal) {
+                             echo json_encode(["error" => 1, "message" => "SSRF Prevention: Unrecognized Document Server host"]);
                              exit;
                          }
 

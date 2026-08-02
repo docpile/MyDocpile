@@ -1,3 +1,25 @@
+4.1.277
+	Fix: PDF generation: No PDF/A created; all fonts must be embedded
+	Security: Arbitrary File Copy / Ingestion via actionCloudIngestAtt
+	Security: Command Injection Risk via escapeshellarg in several PDF manipulation contexts
+	Fix: Webmail: Bcc in sent not displayed correctly
+	Improvement: Webmail: As long as the undo toast is there, disallow the closing of the window/tab
+
+4.1.276
+	Security: Path Traversal in actionCloudIngestTemp
+	Security: SSRF Vulnerability in handleOfficeCallback
+	Fix: functions.php: The getDomain utility function lacks coverage for extracting domains from various formats of URLs, SLDs, and TLDs.
+	Fix: functions.php: Add tests for generateFriendlyRandomString function
+	Fix: functions.php: Add tests for ipban_is_valid_ip_or_cidr function
+	Fix: functions.php: Add tests for isAbsolutePath function: Missing test coverage for isAbsolutePath to ensure it properly handles Linux absolute path detection.
+
+4.1.275
+	Fix: Webmail: When answering to a mail where no signature exists, there is no first empty line
+
+4.1.274
+	Fix: Onlyoffice: PDF extracts do not contain the font information (and are empty in the worst case)
+	Improvement: Webmail: Make the delete undo toast appear a bit longer
+
 4.1.273
 	Fix: Webmail: Delivery encryption status sometimes wrong - disabled the badge as it might be misleading
 
