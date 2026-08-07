@@ -490,6 +490,7 @@ window.myCloudShowEmailComposer = function(prefill = null) {
             }
 
             // --- AUTO-ENCRYPT CHECK ON SEND ---
+            // --- AUTO-ENCRYPT CHECK ON SEND ---
             if (phpAction === 'email_send') {
                 const uniqueEmails = [...new Set([to, cc, bcc].join(',').split(',').map(e => e.replace(/.*<([^>]+)>.*/, '$1').trim().toLowerCase()).filter(Boolean))];
                 
@@ -575,15 +576,58 @@ window.myCloudShowEmailComposer = function(prefill = null) {
                             if (btnEl) { btnEl.disabled = false; btnEl.textContent = L.send || 'Send'; }
                             return;
                         }
+                        
                         if (wantsEncrypt) {
                             if (btnEl) btnEl.textContent = L.pgp_encrypting || 'Encrypting...';
                             else if (typeof myCloudShowLoading === 'function') myCloudShowLoading();
                             if (!window.openpgp) await new Promise((res, rej) => { const s = document.createElement('script'); s.src = '/script/openpgp/openpgp.min.js'; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
+                            
                             try {
                                 const parsedKeys = await Promise.all(pubKeys.map(k => window.openpgp.readKey({ armoredKey: k })));
-                                const message = await window.openpgp.createMessage({ text: finalBodyHtml });
+                                
+                                // --- E2EE ATTACHMENT INJECTION ---
+                                let mimePayload = "";
+                                if (finalAttachments.length > 0) {
+                                    const innerBoundary = "----=_Inner_PGP_" + Math.random().toString(36).substring(2, 15);
+                                    mimePayload += `Content-Type: multipart/mixed; boundary="${innerBoundary}"\r\n\r\n`;
+                                    mimePayload += `--${innerBoundary}\r\n`;
+                                    mimePayload += `Content-Type: text/html; charset=utf-8\r\n`;
+                                    mimePayload += `Content-Transfer-Encoding: 8bit\r\n\r\n`;
+                                    mimePayload += finalBodyHtml + `\r\n\r\n`;
+
+                                    for (const att of finalAttachments) {
+                                        const blob = await fetch(att.localUrl || att.tmp_path).then(r => r.blob());
+                                        const b64 = await new Promise((res) => {
+                                            const reader = new FileReader();
+                                            reader.onloadend = () => res(reader.result.split(',')[1]);
+                                            reader.readAsDataURL(blob);
+                                        });
+                                        const chunked = b64.match(/.{1,76}/g).join('\r\n');
+                                        
+                                        const safeName = att.name.replace(/"/g, '');
+                                        const isInline = att.cid ? true : false;
+                                        const disp = isInline ? 'inline' : 'attachment';
+                                        const cidHdr = isInline ? `Content-ID: <${att.cid}>\r\n` : '';
+
+                                        mimePayload += `--${innerBoundary}\r\n`;
+                                        mimePayload += `Content-Type: ${blob.type || 'application/octet-stream'}; name="${safeName}"\r\n`;
+                                        mimePayload += `Content-Transfer-Encoding: base64\r\n`;
+                                        mimePayload += `Content-Disposition: ${disp}; filename="${safeName}"\r\n`;
+                                        mimePayload += cidHdr + `\r\n`;
+                                        mimePayload += chunked + `\r\n\r\n`;
+                                    }
+                                    mimePayload += `--${innerBoundary}--\r\n`;
+                                    
+                                    // CRITICAL: Purge the attachments so the backend does not append them in clear text
+                                    finalAttachments = []; 
+                                } else {
+                                    mimePayload = "Content-Type: text/html; charset=utf-8\r\nContent-Transfer-Encoding: 8bit\r\n\r\n" + finalBodyHtml;
+                                }
+
+                                const message = await window.openpgp.createMessage({ text: mimePayload });
                                 const encrypted = await window.openpgp.encrypt({ message: message, encryptionKeys: parsedKeys });
                                 finalBodyHtml = encrypted;
+
                             } catch (e) {
                                 if (typeof myCloudHideLoading === 'function') myCloudHideLoading();
                                 myCloudShowAlert(L.pgp_encrypt_err || 'Encryption Error', e.message);
@@ -746,6 +790,15 @@ window.myCloudShowEmailComposer = function(prefill = null) {
                                 if (pollRes.status === 'success') {
                                     if (typeof cxToast === 'function') cxToast(L.email_sent_success || "Email sent successfully!", true);
                                     else if (typeof myCloudShowAlert === 'function') myCloudShowAlert(L.success || "Success", L.email_sent_success || "Email sent successfully!");
+
+                                    // Refresh the mail list silently 5 seconds after a successful send
+                                    // This ensures the new item appears in the Smartbox or Sent folder automatically
+                                    setTimeout(() => {
+                                        if (typeof window.myCloudEmailFetchMessages === 'function' && window.myCloudEmailState) {
+                                            window.myCloudEmailFetchMessages(window.myCloudEmailState.activeFolder, true);
+                                        }
+                                    }, 5000);
+
                                 } else if (pollRes.status === 'error') {
                                     myCloudShowAlert('Error', pollRes.msg || "Send failed");
                                 } else {
@@ -1567,7 +1620,7 @@ window.myCloudShowEmailComposer = function(prefill = null) {
 //        if (e.target.id === 'myCloudModalOverlay') cleanupAutoSave();
 //    });
 
-    // Feature #4: PGP Encryption Logic (Professional Contact-Bound)
+// Feature #4: PGP Encryption Logic (Professional Contact-Bound)
     window._emlTriggerPgpEncrypt = async function() {
         if (!myCloudEmailEditorInstance) return;
 
@@ -1588,7 +1641,6 @@ window.myCloudShowEmailComposer = function(prefill = null) {
         
         myCloudCreateProgressUI(L.pgp_encrypting || 'Encrypting Message...');
 
-        // On-demand load OpenPGP
         if (!window.openpgp) {
             await new Promise((res, rej) => { 
                 const s = document.createElement('script'); 
@@ -1598,7 +1650,7 @@ window.myCloudShowEmailComposer = function(prefill = null) {
             });
         }
 
-        // Include the Sender's own key
+        // IMPORTANT: Inject Sender's Own Key (allows user to read their sent emails later)
         const fromEl = document.getElementById('emlFrom');
         const activeAccId = fromEl ? fromEl.value.split('|')[0] : myCloudEmailState.activeAccount;
         const ownPubKey = myCloudEmailState.accounts[activeAccId]?.pgp_public_key;
@@ -1628,9 +1680,7 @@ window.myCloudShowEmailComposer = function(prefill = null) {
                     if (sRes.is_binary) {
                         const binaryString = atob(sRes.pubkey);
                         const bytes = new Uint8Array(binaryString.length);
-                        for (let j = 0; j < binaryString.length; j++) {
-                            bytes[j] = binaryString.charCodeAt(j);
-                        }
+                        for (let j = 0; j < binaryString.length; j++) bytes[j] = binaryString.charCodeAt(j);
                         const parsedKey = await window.openpgp.readKey({ binaryKey: bytes });
                         foundExternalKey = parsedKey.armor(); 
                     } else {
@@ -1644,7 +1694,7 @@ window.myCloudShowEmailComposer = function(prefill = null) {
 
             if (foundExternalKey) {
                 try {
-                    // Failsafe: Dry-run the key to ensure it isn't corrupt garbage that will crash the composer
+                    // Failsafe dry-run to ensure corrupt keys do not crash composer
                     await window.openpgp.readKey({ armoredKey: foundExternalKey });
                     pubKeys.push(foundExternalKey);
                     
@@ -1675,11 +1725,15 @@ window.myCloudShowEmailComposer = function(prefill = null) {
         }
 
         try {
-            // Read all keys
             const parsedKeys = await Promise.all(pubKeys.map(k => window.openpgp.readKey({ armoredKey: k })));
-            // FIX: Use getContents() instead of getText() to preserve all HTML, styling, and line breaks
+            
+            // Wrap in MIME for full PGP/MIME (RFC 3156) compliant rendering in external clients (e.g. ProtonMail)
             const htmlPayload = myCloudEmailEditorInstance.getContents(); 
-            const message = await window.openpgp.createMessage({ text: htmlPayload });
+            const mimePayload = "Content-Type: text/html; charset=utf-8\r\n" +
+                                "Content-Transfer-Encoding: 8bit\r\n\r\n" + 
+                                htmlPayload;
+
+            const message = await window.openpgp.createMessage({ text: mimePayload });
             
             const encrypted = await window.openpgp.encrypt({
                 message: message,
@@ -1695,7 +1749,6 @@ window.myCloudShowEmailComposer = function(prefill = null) {
             if (typeof myCloudShowAlert === 'function') myCloudShowAlert(L.pgp_encrypt_err || 'Encryption Error', e.message);
         }
     };
-
 
 };
 

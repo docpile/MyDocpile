@@ -62,29 +62,58 @@ class MyCloudEmailServer {
             if (!is_dir($profileDir)) @mkdir($profileDir, 0770, true);
             $this->config_file = $profileDir . '/' . $this->username . '_email.json';
             $this->contacts_file = $profileDir . '/' . $this->username . '_contacts.json';
-			$this->auto_contacts_file = $profileDir . '/' . $this->username . '_auto_contacts.json';
-			$this->cache_dir = $profileDir . '/' . $this->username . '_mailcache';
+            $this->auto_contacts_file = $profileDir . '/' . $this->username . '_auto_contacts.json';
+            $this->cache_dir = $profileDir . '/' . $this->username . '_mailcache';
         } else {
             $temp = $this->user_temp_dir;
             $this->config_file = $temp . '/' . $this->username . '_email.json';
             $this->contacts_file = $temp . '/' . $this->username . '_contacts.json';
             $this->auto_contacts_file = $temp . '/' . $this->username . '_auto_contacts.json';
-			$this->cache_dir = $temp . '/' . $this->username . '_mailcache';
+            $this->cache_dir = $temp . '/' . $this->username . '_mailcache';
         }
         
         if (!is_dir($this->cache_dir)) @mkdir($this->cache_dir, 0770, true);
         $this->body_cache_dir = $this->cache_dir . '/bodies';
         if (!is_dir($this->body_cache_dir)) @mkdir($this->body_cache_dir, 0770, true);
-		
+        
         // Create a user-isolated temp directory for file uploads
         $baseTemp = $GLOBALS['temp_dir'] ?? sys_get_temp_dir();
         $this->user_temp_dir = $baseTemp . '/' . $this->username . '_tmp';
         if (!is_dir($this->user_temp_dir)) @mkdir($this->user_temp_dir, 0700, true);
 
-		$baseDir = isset($profileDir) ? $profileDir : $temp;
+        $baseDir = isset($profileDir) ? $profileDir : $temp;
         $this->tree_favs_file = $baseDir . '/' . $this->username . '_email_tree_favs.json';
+
+        // Automatically trigger background migration for legacy ciphers
+        $this->migrateLegacyEncryption();
     }
 
+    private function migrateLegacyEncryption() {
+        if (!file_exists($this->config_file)) return;
+        
+        $configs = $this->loadConfigs(true);
+        if (empty($configs)) return;
+        
+        $changed = false;
+        foreach ($configs as &$acc) {
+            $keysToMigrate = ['password', 'oauth_token', 'oauth_refresh_token'];
+            foreach ($keysToMigrate as $k) {
+                if (!empty($acc[$k]) && strpos($acc[$k], 'v3:') !== 0 && $acc[$k] !== '********') {
+                    $plain = $this->decryptPassword($acc[$k]);
+                    if (!empty($plain)) {
+                        $acc[$k] = $this->encryptPassword($plain);
+                        $changed = true;
+                    }
+                }
+            }
+        }
+        unset($acc);
+
+        if ($changed) {
+            $this->saveConfigs($configs);
+        }
+    }
+	
     private function sendJsonAndExit($data) {
         global $cloud_beta, $eas_debug_log;
         if (!empty($cloud_beta) && !empty($eas_debug_log)) {
@@ -540,6 +569,7 @@ class MyCloudEmailServer {
     }
 
     // --- NATIVE SMTP SOCKET CLIENT ---
+    // --- NATIVE SMTP SOCKET CLIENT ---
     private function sendSmtpMail($acc, $to, $subject, $body, $fromAlias = null, $cc = '', $bcc = '', $attachments = [], $dryRunMimeOnly = false, $requestReceipt = false) {
         // Strict Anti-CRLF Helper
         $stripCRLF = function($str) {
@@ -586,7 +616,7 @@ class MyCloudEmailServer {
                 if ($isLocalhost) {
                     $auth_user = $fromAlias;
                 }
-           }
+            }
         }
         $auth_type = $acc['auth_type'] ?? 'basic';
         $oauth_token = $this->decryptPassword($acc['oauth_token'] ?? '');
@@ -621,7 +651,7 @@ class MyCloudEmailServer {
                 ]
             ]);
             
-            $transport = ($enc === 'ssl') ? "ssl://$host" : "tcp://$host";
+            $transport = ($enc === 'ssl') ? "ssl://$ip" : "tcp://$ip";
             $socket = @stream_socket_client("$transport:$port", $errno, $errstr, 15, STREAM_CLIENT_CONNECT, $context);
             stream_set_timeout($socket, 30);
 
@@ -651,7 +681,7 @@ class MyCloudEmailServer {
                 }
             }
             $ehloHost = preg_replace('/[^a-zA-Z0-9.-]/', '', $ehloHost);
-			$writeRes($socket, "EHLO $ehloHost");
+            $writeRes($socket, "EHLO $ehloHost");
 
             $ehloResponse = $readRes($socket);
 
@@ -691,38 +721,38 @@ class MyCloudEmailServer {
 
             $writeRes($socket, "MAIL FROM: <$sender_email>"); $readRes($socket);
             
-        $all_rcpts = $to . ',' . $cc . ',' . $bcc;
-        preg_match_all('/(?:<([^>]+)>|([^\s,<>"\'|]+@[^\s,<>"\'|]+))/', $all_rcpts, $matches);
-        $recipients = [];
-        foreach ($matches[0] as $i => $fullMatch) {
-            $clean_email = !empty($matches[1][$i]) ? $matches[1][$i] : $matches[2][$i];
-            $clean_email = trim($clean_email);
-            if (strpos($clean_email, '@') !== false) {
-                list($local, $domain) = explode('@', $clean_email, 2);
-                if (preg_match('/[^\x20-\x7E]/', $domain) && function_exists('idn_to_ascii')) {
-                    $domain = idn_to_ascii($domain, 0, INTL_IDNA_VARIANT_UTS46) ?: $domain;
-                    $clean_email = $local . '@' . $domain;
+            $all_rcpts = $to . ',' . $cc . ',' . $bcc;
+            preg_match_all('/(?:<([^>]+)>|([^\s,<>"\'|]+@[^\s,<>"\'|]+))/', $all_rcpts, $matches);
+            $recipients = [];
+            foreach ($matches[0] as $i => $fullMatch) {
+                $clean_email = !empty($matches[1][$i]) ? $matches[1][$i] : $matches[2][$i];
+                $clean_email = trim($clean_email);
+                if (strpos($clean_email, '@') !== false) {
+                    list($local, $domain) = explode('@', $clean_email, 2);
+                    if (preg_match('/[^\x20-\x7E]/', $domain) && function_exists('idn_to_ascii')) {
+                        $domain = idn_to_ascii($domain, 0, INTL_IDNA_VARIANT_UTS46) ?: $domain;
+                        $clean_email = $local . '@' . $domain;
+                    }
+                }
+                $clean_email = preg_replace('/[^\p{L}\p{N}!#$%&\'*+\-\/=?^_`{|}~.@]/u', '', $clean_email);
+                if (filter_var($clean_email, FILTER_VALIDATE_EMAIL, defined('FILTER_FLAG_EMAIL_UNICODE') ? FILTER_FLAG_EMAIL_UNICODE : 0)) {
+                    $recipients[] = $clean_email;
                 }
             }
-            $clean_email = preg_replace('/[^\p{L}\p{N}!#$%&\'*+\-\/=?^_`{|}~.@]/u', '', $clean_email);
-            if (filter_var($clean_email, FILTER_VALIDATE_EMAIL, defined('FILTER_FLAG_EMAIL_UNICODE') ? FILTER_FLAG_EMAIL_UNICODE : 0)) {
-            	$recipients[] = $clean_email;
-            }
-        }
-        $recipients = array_unique($recipients);
+            $recipients = array_unique($recipients);
 
-        $accepted_rcpts = 0;
-        $last_rcpt_err = '';
-        foreach($recipients as $clean_email) {
-            $writeRes($socket, "RCPT TO: <" . $clean_email . ">");
-            $rcptRes = $readRes($socket);
-            if (substr($rcptRes, 0, 3) !== '250' && substr($rcptRes, 0, 3) !== '251') {
-                $last_rcpt_err = "Recipient rejected ($clean_email): $rcptRes";
-            } else {
-                $accepted_rcpts++;
+            $accepted_rcpts = 0;
+            $last_rcpt_err = '';
+            foreach($recipients as $clean_email) {
+                $writeRes($socket, "RCPT TO: <" . $clean_email . ">");
+                $rcptRes = $readRes($socket);
+                if (substr($rcptRes, 0, 3) !== '250' && substr($rcptRes, 0, 3) !== '251') {
+                    $last_rcpt_err = "Recipient rejected ($clean_email): $rcptRes";
+                } else {
+                    $accepted_rcpts++;
+                }
             }
-        }
-        if ($accepted_rcpts === 0) return $last_rcpt_err ?: "No valid recipients provided.";
+            if ($accepted_rcpts === 0) return $last_rcpt_err ?: "No valid recipients provided.";
 
             $writeRes($socket, "DATA"); $readRes($socket);
         }
@@ -748,7 +778,7 @@ class MyCloudEmailServer {
         // Generate RFC Compliant Headers & Originating IP
         $client_ip = $_SERVER['HTTP_CLIENT_IP'] ?? $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
         // Strip all non-IP characters to prevent CRLF Header Injection via spoofed proxy headers
-		$client_ip = preg_replace('/[^a-zA-Z0-9.:]/', '', explode(',', $client_ip)[0]); 
+        $client_ip = preg_replace('/[^a-zA-Z0-9.:]/', '', explode(',', $client_ip)[0]); 
         $domain = substr(strrchr($sender_email, "@"), 1);
         if (empty($domain)) $domain = 'localhost';
         
@@ -761,7 +791,6 @@ class MyCloudEmailServer {
         $headers .= "To: $to\r\n"; // Addresses themselves must not be encoded
         if (!empty($cc)) $headers .= "Cc: $cc\r\n";
         $headers .= "Subject: " . (preg_match('/[^\x20-\x7E]/', $subject) ? '=?UTF-8?B?' . base64_encode($subject) . '?=' : $subject) . "\r\n";
-        //$headers .= "List-Unsubscribe: <mailto:unsubscribe@$domain>\r\n";
         $headers .= "MIME-Version: 1.0\r\n";
         $headers .= "Auto-Submitted: no\r\n"; // Explicitly state this is human-generated
 
@@ -786,7 +815,10 @@ class MyCloudEmailServer {
 
         // 1. Strip residual HTML (like <p>) if the editor wrapped the PGP block
         $cleanBody = trim(strip_tags($body));
-        $isPGP = (strpos($cleanBody, '-----BEGIN PGP MESSAGE-----') === 0 || strpos($cleanBody, '-----BEGIN PGP PUBLIC KEY BLOCK-----') === 0);
+        $isPGPMessage = (strpos($cleanBody, '-----BEGIN PGP MESSAGE-----') === 0);
+        $isPGPPubKey = (strpos($cleanBody, '-----BEGIN PGP PUBLIC KEY BLOCK-----') === 0);
+        $isPGP = $isPGPMessage || $isPGPPubKey;
+        
         if ($isPGP) {
             $body = $cleanBody;
         }
@@ -795,20 +827,33 @@ class MyCloudEmailServer {
         // Bare \n causes strict SMTP servers to silently drop the email!
         $body = str_replace(["\r\n", "\r", "\n"], ["\n", "\n", "\r\n"], $body);
 
-        $cType = $isPGP ? 'text/plain' : 'text/html';
+        $cType = $isPGPPubKey ? 'text/plain' : 'text/html';
         $tEnc = $isPGP ? '7bit' : 'quoted-printable';
         $encBody = $isPGP ? $body : quoted_printable_encode($body);
 
+        // --- PGP/MIME WRAPPER (RFC 3156 Compliant) ---
         if (!empty($attachments)) {
             $boundary = "----=_Part_"  . bin2hex(random_bytes(16));
             $headers .= "Content-Type: multipart/mixed; boundary=\"$boundary\"\r\n";
             $payload = "--$boundary\r\n";
-            $payload .= "Content-Type: $cType; charset=UTF-8\r\n";
             
-            // Fallback to base64 ONLY for attachments to prevent encoding corruption, 
-            // but use quoted-printable for standard mail bodies if possible.
-            $payload .= "Content-Transfer-Encoding: $tEnc\r\n\r\n";
-            $payload .= $encBody . "\r\n";
+            if ($isPGPMessage) {
+                $innerBoundary = "----=_PGP_Part_" . bin2hex(random_bytes(16));
+                $payload .= "Content-Type: multipart/encrypted; protocol=\"application/pgp-encrypted\"; boundary=\"$innerBoundary\"\r\n\r\n";
+                $payload .= "--$innerBoundary\r\n";
+                $payload .= "Content-Type: application/pgp-encrypted\r\n\r\n";
+                $payload .= "Version: 1\r\n\r\n";
+                $payload .= "--$innerBoundary\r\n";
+                $payload .= "Content-Type: application/octet-stream; name=\"encrypted.asc\"\r\n";
+                $payload .= "Content-Description: OpenPGP encrypted message\r\n";
+                $payload .= "Content-Disposition: inline; filename=\"encrypted.asc\"\r\n\r\n";
+                $payload .= $body . "\r\n";
+                $payload .= "--$innerBoundary--\r\n";
+            } else {
+                $payload .= "Content-Type: $cType; charset=UTF-8\r\n";
+                $payload .= "Content-Transfer-Encoding: $tEnc\r\n\r\n";
+                $payload .= $encBody . "\r\n";
+            }
 
             foreach ($attachments as $att) {
                 if (file_exists($att['tmp_name'])) {
@@ -836,10 +881,24 @@ class MyCloudEmailServer {
             }
             $payload .= "--$boundary--\r\n";
         } else {
-            $headers .= "Content-Type: $cType; charset=UTF-8\r\n";
-            $headers .= "Content-Transfer-Encoding: $tEnc\r\n";
-            $payload = $encBody;
-       }
+            if ($isPGPMessage) {
+                $boundary = "----=_PGP_Part_" . bin2hex(random_bytes(16));
+                $headers .= "Content-Type: multipart/encrypted; protocol=\"application/pgp-encrypted\"; boundary=\"$boundary\"\r\n";
+                $payload = "--$boundary\r\n";
+                $payload .= "Content-Type: application/pgp-encrypted\r\n\r\n";
+                $payload .= "Version: 1\r\n\r\n";
+                $payload .= "--$boundary\r\n";
+                $payload .= "Content-Type: application/octet-stream; name=\"encrypted.asc\"\r\n";
+                $payload .= "Content-Description: OpenPGP encrypted message\r\n";
+                $payload .= "Content-Disposition: inline; filename=\"encrypted.asc\"\r\n\r\n";
+                $payload .= $body . "\r\n";
+                $payload .= "--$boundary--\r\n";
+            } else {
+                $headers .= "Content-Type: $cType; charset=UTF-8\r\n";
+                $headers .= "Content-Transfer-Encoding: $tEnc\r\n";
+                $payload = $encBody;
+            }
+        }
 
         $rawMail = $headers . "\r\n" . $payload;
 
@@ -864,7 +923,8 @@ class MyCloudEmailServer {
         if (substr($dataRes, 0, 3) !== '250') return "SMTP Send failed: $dataRes";
         
         return ['status' => 'OK', 'raw' => $rawMail];
-    }	
+    }
+
 	
     // --- IMAP FOLDER DISCOVERY ---
     private function getTrashFolder($client) {
@@ -936,7 +996,7 @@ class MyCloudEmailServer {
             $key = hash_hmac('sha256', base64_decode($parts[1]), $this->key, true);
             $decrypted = openssl_decrypt(base64_decode($parts[4]), 'AES-256-GCM', $key, OPENSSL_RAW_DATA, base64_decode($parts[2]), base64_decode($parts[3]));
             if ($decrypted !== false) {
-                $inflated = @gzinflate($decrypted);
+                $inflated = @gzinflate($decrypted, 52428800); // 50MB limit to prevent Zip Bomb
                 if ($inflated !== false) {
                     $data = [];
                     foreach (explode("\n", trim($inflated)) as $line) {
@@ -1019,7 +1079,7 @@ class MyCloudEmailServer {
              $key = hash_hmac('sha256', base64_decode($parts[1]), $this->key, true);
              $decrypted = openssl_decrypt(base64_decode($parts[4]), 'AES-256-GCM', $key, OPENSSL_RAW_DATA, base64_decode($parts[2]), base64_decode($parts[3]));
              if ($decrypted !== false) {
-                 $inflated = @gzinflate($decrypted);
+                 $inflated = @gzinflate($decrypted, 52428800); // 50MB limit to prevent Zip Bomb
                  if ($inflated !== false) {
                      $data = json_decode($inflated, true);
                      $this->body_cache_file_cache[$filename] = $data;
@@ -2055,7 +2115,7 @@ class MyCloudEmailServer {
                 $forceSync = !empty($_POST['force_sync']);
                 $isStreamingSearch = ($searchQuery !== '');
                 $clientStateHash = $_POST['folder_state_hash'] ?? '';
-				$rebuildCache = !empty($_POST['rebuild_cache']);
+                $rebuildCache = !empty($_POST['rebuild_cache']);
 
                 if ($rebuildCache) {
                     $forceSync = true;
@@ -2152,7 +2212,7 @@ class MyCloudEmailServer {
                 if ($accId === 'smartbox') {
                     foreach ($configs as $id => $acc) {
                         if (!empty($acc['is_inactive'])) continue;
-						if (($acc['server_type'] ?? 'imap') === 'eas') continue; // Prevent IMAP connections for EAS accounts
+                        if (($acc['server_type'] ?? 'imap') === 'eas') continue; // Prevent IMAP connections for EAS accounts
                         $targetsByAccount[$id] = ['INBOX', '__DISCOVER_SENT__'];
                     }
                 } else {
@@ -2393,6 +2453,59 @@ class MyCloudEmailServer {
                             }
                         }
 
+                        // --- BULLETPROOF MESSAGE EXTRACTION ---
+                        $processMsg = function($msg) use (&$cache, &$pageMessages, &$cacheChanged, &$globalCacheChanged, $id, $acc, $fld, $unreadUids, $flaggedUids) {
+                            $addrs = $this->extractMessageAddresses($msg);
+                            $ts = $this->extractMessageTimestamp($msg);
+                            $dateStr = (date('Y-m-d', $ts) === date('Y-m-d')) ? date('H:i', $ts) : date('d M Y H:i', $ts);
+
+                            $subject = '(No Subject)';
+                            try { 
+                                $s = (string)$msg->getSubject();
+                                if ($s !== '') $subject = strip_tags($s);
+                            } catch (\Throwable $e) {}
+
+                            $msgIdHdr = '';
+                            try { $msgIdHdr = htmlspecialchars((string)$msg->getMessageId() ?: '', ENT_QUOTES, 'UTF-8'); } catch (\Throwable $e) {}
+
+                            $inReplyTo = '';
+                            try { $inReplyTo = htmlspecialchars((string)$msg->getInReplyTo() ?: '', ENT_QUOTES, 'UTF-8'); } catch (\Throwable $e) {}
+
+                            $hasAttachments = false;
+                            try { 
+                                $hasAttachments = $msg->hasAttachments(); 
+                            } catch (\Throwable $e) {
+                                try {
+                                    $rawHeader = (string)$msg->getHeader()->raw;
+                                    $hasAttachments = (stripos($rawHeader, 'multipart/mixed') !== false || stripos($rawHeader, 'multipart/encrypted') !== false);
+                                } catch (\Throwable $e2) {}
+                            }
+
+                            $parsedMsg = [
+                                'id' => $msg->getUid(),
+                                'account_id' => $id,
+                                'account_name' => $acc['name'] ?: $acc['email'],
+                                'folder' => $fld,
+                                'ts' => $ts,
+                                'subject' => $subject,
+                                'message_id_hdr' => $msgIdHdr,
+                                'in_reply_to' => $inReplyTo,
+                                'fromName' => $addrs['from_name'],
+                                'fromEmail' => $addrs['from_email'],
+                                'to' => $addrs['to'],
+                                'cc' => $addrs['cc'],
+                                'bcc' => $addrs['bcc'],
+                                'date' => $dateStr,
+                                'is_read' => !in_array($msg->getUid(), $unreadUids),
+                                'is_flagged' => in_array($msg->getUid(), $flaggedUids),
+                                'has_attachments' => $hasAttachments
+                            ];
+                            $cache[$msg->getUid()] = $parsedMsg;
+                            $pageMessages[$msg->getUid()] = $parsedMsg;
+                            $cacheChanged = true;
+                            $globalCacheChanged = true;
+                        };
+
                         foreach ($allBlockIds as $blockId) {
                             $cacheFile = $this->cache_dir . "/{$id}_{$safeFld}_{$blockId}.json.enc";
                             $cache = $this->loadCacheData($cacheFile);
@@ -2429,7 +2542,7 @@ class MyCloudEmailServer {
                             }
 
                             $missingUids = [];
-							$missingAttCheckUids = [];
+                            $missingAttCheckUids = [];
                             foreach ($blockUids as $uid) {
                                 if (!isset($cache[$uid])) {
                                     $missingUids[] = $uid;
@@ -2440,7 +2553,7 @@ class MyCloudEmailServer {
                                     $pageMessages[$uid] = $cache[$uid];
                                 }
                             }
-							
+                            
                             if (!empty($missingAttCheckUids)) {
                                 $chunks = array_chunk($missingAttCheckUids, 50);
                                 foreach ($chunks as $chunk) {
@@ -2450,8 +2563,17 @@ class MyCloudEmailServer {
                                         foreach ($attMsgs as $msg) {
                                             $mUid = $msg->getUid();
                                             if (isset($cache[$mUid])) {
-                                                $cache[$mUid]['has_attachments'] = $msg->hasAttachments();
-                                                $pageMessages[$mUid]['has_attachments'] = $cache[$mUid]['has_attachments'];
+                                                $hasAttachments = false;
+                                                try { 
+                                                    $hasAttachments = $msg->hasAttachments(); 
+                                                } catch (\Throwable $e) {
+                                                    try {
+                                                        $rawHeader = (string)$msg->getHeader()->raw;
+                                                        $hasAttachments = (stripos($rawHeader, 'multipart/mixed') !== false || stripos($rawHeader, 'multipart/encrypted') !== false);
+                                                    } catch (\Throwable $e2) {}
+                                                }
+                                                $cache[$mUid]['has_attachments'] = $hasAttachments;
+                                                $pageMessages[$mUid]['has_attachments'] = $hasAttachments;
                                                 $cacheChanged = true;
                                                 $globalCacheChanged = true;
                                             }
@@ -2468,47 +2590,18 @@ class MyCloudEmailServer {
                                     }
                                 }
                             }
-							
+                            
 
                             if (!empty($missingUids)) {
                                 $chunks = array_chunk($missingUids, 50);
                                 foreach ($chunks as $chunk) {
-                                    $processMsg = function($msg) use (&$cache, &$pageMessages, &$cacheChanged, &$globalCacheChanged, $id, $acc, $fld, $unreadUids, $flaggedUids) {
-                                        $addrs = $this->extractMessageAddresses($msg);
-                                        $ts = $this->extractMessageTimestamp($msg);
-                                        $dateStr = (date('Y-m-d', $ts) === date('Y-m-d')) ? date('H:i', $ts) : date('d M Y H:i', $ts);
-
-                                        $parsedMsg = [
-                                            'id' => $msg->getUid(),
-                                            'account_id' => $id,
-                                            'account_name' => $acc['name'] ?: $acc['email'],
-                                            'folder' => $fld,
-                                            'ts' => $ts,
-                                            'subject' => strip_tags((string)$msg->getSubject() ?: '(No Subject)'),
-                                            'message_id_hdr' => htmlspecialchars((string)$msg->getMessageId() ?: '', ENT_QUOTES, 'UTF-8'),
-                                            'in_reply_to' => htmlspecialchars((string)$msg->getInReplyTo() ?: '', ENT_QUOTES, 'UTF-8'),
-                                            'fromName' => $addrs['from_name'],
-                                            'fromEmail' => $addrs['from_email'],
-                                            'to' => $addrs['to'],
-                                            'cc' => $addrs['cc'],
-                                            'bcc' => $addrs['bcc'],
-                                            'date' => $dateStr,
-                                            'is_read' => !in_array($msg->getUid(), $unreadUids),
-                                            'is_flagged' => in_array($msg->getUid(), $flaggedUids),
-                                            'has_attachments' => $msg->hasAttachments()
-                                        ];
-                                        $cache[$msg->getUid()] = $parsedMsg;
-                                        $pageMessages[$msg->getUid()] = $parsedMsg;
-                                        $cacheChanged = true;
-                                        $globalCacheChanged = true;
-                                    };
-
                                     try {
                                         $range = implode(',', $chunk);
                                         $overviewMsgs = $folderObj->query()->whereUid($range)->leaveUnread()->get();
                                         if ($overviewMsgs->count() === 0 && count($chunk) > 0) throw new \Exception("Fallback");
                                         foreach ($overviewMsgs as $msg) $processMsg($msg);
                                     } catch (\Throwable $e) {
+                                        // Ultimate Safe Fallback Iterator
                                         foreach ($chunk as $uid) {
                                             try {
                                                 $msg = $folderObj->query()->getMessageByUid($uid);
@@ -2551,6 +2644,226 @@ class MyCloudEmailServer {
                 }
                 
                 $this->sendJsonAndExit(['status' => 'OK', 'messages' => $messages, 'has_more' => $has_more, 'page' => $page, 'offline_mode' => $isOffline, 'folder_state_hash' => $currentStateHash]);
+                break;
+
+
+            case 'email_get_body':
+                $configs = $this->loadConfigs();
+                $accId = $_POST['account_id'] ?? '';
+                $folder = $_POST['folder'] ?? 'INBOX';
+                $msgId = preg_replace('/[^0-9,]/', '', $_POST['message_id'] ?? '');
+                
+                if (!isset($configs[$accId])) $this->sendJsonAndExit(['status'=>'ERR','msg'=>'Account not found.']);
+                
+                $bodyPath = $this->getBodyCachePath($accId, $folder, $msgId);
+                $cachedBody = $this->loadBodyCacheData($bodyPath);
+
+                // ==========================================
+                // SQUARE ONE CACHE FIX: Delete corrupted empty cache
+                // ==========================================
+                if ($cachedBody !== null && trim($cachedBody['body'] ?? '') === '') {
+                    $cachedBody = null;
+                    @unlink($bodyPath);
+                }
+
+                if (($configs[$accId]['server_type'] ?? 'imap') === 'eas') {
+                    try {
+                         if ($cachedBody !== null) {
+                             $this->sendJsonAndExit(array_merge(['status' => 'OK', 'raw_message' => ''], $cachedBody));
+                         }
+                        $this->refreshOauthTokenIfNeeded($configs[$accId], $accId);
+                        $eas = new MyCloudEASClient($configs[$accId], $this->decryptPassword($configs[$accId]['password'] ?? ''), $this->decryptPassword($configs[$accId]['oauth_token'] ?? ''));
+                        $bodyData = $eas->getMessageBody($folder, $msgId);
+                        $this->saveBodyCacheData($bodyPath, $bodyData);
+                        $this->sendJsonAndExit(array_merge(['status' => 'OK', 'raw_message' => ''], $bodyData));
+                    } catch (Throwable $e) { $this->sendJsonAndExit(['status'=>'ERR', 'msg'=>$e->getMessage()]); }
+                }
+
+                if ($cachedBody !== null) {
+                    $this->sendJsonAndExit(array_merge(['status' => 'OK'], $cachedBody));
+                }
+
+                list($client, $folderObj, $err) = $this->connectImap($configs[$accId], $folder, true);
+                if (!$client || !$folderObj) {
+                    $this->sendJsonAndExit(['status'=>'ERR', 'msg'=>$err ?: 'Failed to open folder.']);
+                }
+                
+                try {
+                    $msg = $folderObj->query()->getMessageByUid($msgId);
+                    if (!$msg) {
+                        $client->disconnect();
+                        $this->purgeLocalCacheUids($accId, $folder, [$msgId]);
+                        $this->sendJsonAndExit(['status'=>'ERR', 'code'=>'MSG_NOT_FOUND', 'msg'=>"Message UID [$msgId] not found. It may have been moved or deleted externally."]);
+                    }
+                    
+                    $rawHeader = $msg->getHeader()->raw;
+                    $rawBody = $msg->getRawBody();
+                    $rawMsg = $rawHeader . "\r\n" . $rawBody;
+                    
+                    $htmlContent = $msg->hasHTMLBody() ? $msg->getHTMLBody() : nl2br(htmlspecialchars((string)$msg->getTextBody() ?: '', ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+                    
+                    // --- FALLBACK PGP/MIME DETECTION ---
+                    if (stripos($rawHeader, 'multipart/encrypted') !== false || stripos($msg->getContentType() ?? '', 'multipart/encrypted') !== false) {
+                        if (strpos($htmlContent, '-----BEGIN PGP MESSAGE-----') === false && preg_match('/-----BEGIN PGP MESSAGE-----.*?-----END PGP MESSAGE-----/s', $rawBody, $m)) {
+                            $htmlContent = "<pre>\n" . trim($m[0]) . "\n</pre>";
+	                    }
+                    }
+
+                    $trustScore = 'unknown';
+                    if (preg_match('/Authentication-Results:.*?bimi=pass/si', $rawHeader)) {
+                        $trustScore = 'bimi';
+                    } elseif (preg_match('/Authentication-Results:.*?dmarc=pass/si', $rawHeader) && preg_match('/Authentication-Results:.*?spf=pass/si', $rawHeader)) {
+                        $trustScore = 'perfect';
+                    } elseif (preg_match('/Authentication-Results:.*?(dmarc=pass|spf=pass|dkim=pass)/si', $rawHeader)) {
+                        $trustScore = 'good';
+                    } elseif (preg_match('/Authentication-Results:.*?(dmarc=fail|spf=fail|dkim=fail)/si', $rawHeader)) {
+                        $trustScore = 'fail';
+                    }
+
+                     $spamScore = null;
+                     $isPhishing = false;
+                     
+                     if (preg_match('/X-Spam-Score:\s*([-0-9.]+)/i', $rawHeader, $m)) $spamScore = (float)$m[1];
+                     elseif (preg_match('/X-Rspamd-Score:\s*([-0-9.]+)/i', $rawHeader, $m)) $spamScore = (float)$m[1];
+                     
+                     if (preg_match('/X-Spam-Report:.*?(PHISH|FRAUD|SPOOF|DECEPTIVE)/si', $rawHeader)) $isPhishing = true;
+                     elseif (preg_match('/X-Rspamd-Report:.*?(PHISH|FRAUD|SPOOF|DECEPTIVE)/si', $rawHeader)) $isPhishing = true;
+
+                     $rawHeaderClean = str_replace(["\r\n", "\r"], "\n", $rawHeader);
+                     $transportSec = 'internal';
+                     $isDane = false;
+                     $hasUnencryptedHop = false;
+                     $hasExternalEncryptedHop = false;
+
+                     // Verify the entire chain by evaluating every Received header independently
+                     if (preg_match_all('/^Received:\s*(.*?)(?=\n[A-Z0-9a-z\-]+:|\n\n|$)/ms', $rawHeaderClean, $receivedMatches)) {
+                         foreach ($receivedMatches[0] as $recvHeader) {
+                             if (preg_match('/Received:\s*from\s+(localhost|\[?127\.0\.0\.1\]?|\[?::1\]?)\b/i', $recvHeader)) continue;
+                             $isEncryptedHop = preg_match('/with\s+(ESMTPS|ESMTPSA|SMTPS|SMTPSA|ESMTPS-TLS)\b/i', $recvHeader) || preg_match('/\(.*?TLS.*?\)/i', $recvHeader);
+
+                             if ($isEncryptedHop) {
+                                 $hasExternalEncryptedHop = true;
+                                 if (preg_match('/verified DANE/i', $recvHeader)) $isDane = true;
+                             } elseif (preg_match('/with\s+(SMTP|Microsoft SMTP)\b/i', $recvHeader)) {
+                                 $hasUnencryptedHop = true;
+                             }
+                         }
+                     }
+
+                     if ($hasUnencryptedHop) {
+                         $transportSec = 'none';
+                     } elseif ($hasExternalEncryptedHop) {
+                         $transportSec = $isDane ? 'dane' : 'tls';
+                     }
+
+                    $addrs = $this->extractMessageAddresses($msg);
+                    
+                    $attachmentsData = [];
+                    $temp = $this->user_temp_dir;
+                    $extractDraftAtts = (!empty($_POST['extract_draft_attachments']) && $_POST['extract_draft_attachments'] === '1');
+                    
+                    $msgAttachments = [];
+                    try {
+                        $msgAttachments = $msg->getAttachments();
+                    } catch (\Throwable $e) {}
+
+                    foreach ($msgAttachments as $att) {
+                        try {
+                            $attContent = $att->getContent() ?? '';
+                            
+                            // --- AGGRESSIVE PGP/MIME ATTACHMENT EXTRACTION ---
+                            if (strpos($attContent, '-----BEGIN PGP MESSAGE-----') !== false) {
+                                // Elevate the payload back into the body so the frontend decrypter sees it
+                                $htmlContent = "<pre>\n" . htmlspecialchars(trim($attContent), ENT_QUOTES | ENT_HTML5, 'UTF-8') . "\n</pre>";
+                                continue; // Hide from downloadable attachments
+                            }
+                            if (trim($attContent) === 'Version: 1' || stripos($att->content_type ?? '', 'application/pgp-encrypted') !== false) {
+                                continue; // Hide the protocol metadata attachment
+                            }
+
+                            $attId = $att->id ?? $att->part_number ?? uniqid();
+                            $safeName = preg_replace('/[^a-zA-Z0-9.\-_ ]/', '_', $att->name ?? '');
+                            if (empty($safeName)) $safeName = 'attachment_' . uniqid();
+
+                            $attItem = [
+                                'part' => $attId,
+                                'filename' => $safeName,
+                                'size' => $att->size ?? 0,
+                                'cid' => str_replace(['<', '>'], '', $att->content_id ?? '')
+                            ];
+                            
+                            if ($extractDraftAtts) {
+                                $dest = $temp . '/myCloud_eml_att_' . bin2hex(random_bytes(8)) . '_' . $safeName;
+                                if ($attContent !== null) {
+                                    file_put_contents($dest, $attContent);
+                                    $attItem['tmp_name'] = $dest;
+                                    $attItem['is_inline'] = !empty($attItem['cid']);
+                                }
+                            }
+                            $attachmentsData[] = $attItem;
+                        } catch (\Throwable $e) { continue; }
+                    }
+
+                    $client->disconnect();
+
+                    // ==========================================
+                    // SQUARE ONE EXTRACTION
+                    // ==========================================
+                    if (class_exists('HTMLPurifier')) {
+                        $config = \HTMLPurifier_Config::createDefault();
+                        $config->set('HTML.TargetBlank', true);
+                        $config->set('URI.DisableExternalResources', false); 
+                        $config->set('CSS.AllowTricky', true);
+
+                        $purifierCache = $this->cache_dir . '/htmlpurifier';
+                        if (!is_dir($purifierCache)) @mkdir($purifierCache, 0770, true);
+                        $config->set('Cache.SerializerPath', $purifierCache);
+
+                        $config->set('HTML.TidyLevel', 'none');
+                        $config->set('Core.EscapeInvalidTags', false);
+
+                        $purifier = new \HTMLPurifier($config);
+                        $cleanHtml = $purifier->purify($htmlContent);
+                        
+                        if (trim($cleanHtml) === '' && trim((string)$htmlContent) !== '') {
+                            $cleanHtml = '<pre style="white-space:pre-wrap; font-family:inherit;">' . htmlspecialchars((string)$htmlContent, ENT_QUOTES | ENT_HTML5, 'UTF-8') . '</pre>';
+                        }
+                    } else {
+                        $cleanHtml = '<pre style="white-space:pre-wrap; font-family:inherit;">' . htmlspecialchars((string)$htmlContent, ENT_QUOTES | ENT_HTML5, 'UTF-8') . '</pre>';
+                    }
+
+                    $listUnsubscribe = '';
+                    if (preg_match('/(?:^|[\r\n])List-Unsubscribe:\s*(.*?)(?=[\r\n][A-Za-z0-9\-]+:|$)/is', $rawHeader, $m)) {
+                        $flat = preg_replace('/[\r\n\t]+/', ' ', $m[1]);
+                        $flat = preg_replace('/\?=\s+=\?/', '?==?', $flat);
+                        $listUnsubscribe = preg_replace('/[\x00-\x1F\x7F]/', '', trim($this->decodeImapHeader($flat)));
+                        if (strpos($listUnsubscribe, '=?') !== false && function_exists('mb_decode_mimeheader')) {
+                            $listUnsubscribe = mb_decode_mimeheader($listUnsubscribe);
+                        }
+                    }
+                    
+                    $bodyData = [
+                        'body' => $cleanHtml, 
+                        'attachments' => $attachmentsData, 
+                        'raw_message' => $rawMsg,
+                        'unsubscribe' => $listUnsubscribe,
+                        'to' => $addrs['to'],
+                        'cc' => $addrs['cc'],
+                        'bcc' => $addrs['bcc'],
+                        'reply_to' => $addrs['reply_to'],
+                        'trust_score' => $trustScore,
+                        'transport_sec' => $transportSec,
+                        'spam_score' => $spamScore,
+                        'is_phishing' => $isPhishing
+                    ];
+
+                    $this->saveBodyCacheData($bodyPath, $bodyData);
+                    $this->sendJsonAndExit(array_merge(['status' => 'OK'], $bodyData));
+
+                } catch (\Throwable $e) {
+                    if ($client) $client->disconnect();
+                    $this->sendJsonAndExit(['status'=>'ERR', 'msg'=>'Failed to fetch body: ' . $e->getMessage()]);
+                }
                 break;
 				
             case 'email_mark_read':
@@ -3177,9 +3490,15 @@ class MyCloudEmailServer {
                                 $attachFiles[] = $tmpPath;
                                 continue;
                             }
+
+                            // Force ImageMagick to treat the file exactly as the verified MIME type
+                            // Prevents ImageTragick style delegates bypass via polyglot files
+                            $imFormatMap = ['image/jpeg' => 'jpeg', 'image/png' => 'png', 'image/gif' => 'gif', 'image/webp' => 'webp', 'image/bmp' => 'bmp'];
+                            $imFormat = $imFormatMap[$realMime] ?? 'jpeg';
+
                             $imgPdf = $tmpPath . '.pdf';
-                            @exec("magick convert " . escapeshellarg($tmpPath) . " " . escapeshellarg($imgPdf) . " 2>&1", $mOut, $mRet);
-                            if ($mRet !== 0) @exec("convert " . escapeshellarg($tmpPath) . " " . escapeshellarg($imgPdf) . " 2>&1");
+                            @exec("magick convert " . escapeshellarg($imFormat . ':' . $tmpPath) . " " . escapeshellarg($imgPdf) . " 2>&1", $mOut, $mRet);
+                            if ($mRet !== 0) @exec("convert " . escapeshellarg($imFormat . ':' . $tmpPath) . " " . escapeshellarg($imgPdf) . " 2>&1");
                             
                             if (file_exists($imgPdf)) $mergePdfs[] = $imgPdf; 
                             else $attachFiles[] = $tmpPath;                    
@@ -3520,219 +3839,6 @@ class MyCloudEmailServer {
                  $this->sendJsonAndExit(['status' => 'pending']);
                  break;
  
-            case 'email_get_body':
-                $configs = $this->loadConfigs();
-                $accId = $_POST['account_id'] ?? '';
-                $folder = $_POST['folder'] ?? 'INBOX';
-                $msgId = preg_replace('/[^0-9,]/', '', $_POST['message_id'] ?? '');
-                
-                if (!isset($configs[$accId])) $this->sendJsonAndExit(['status'=>'ERR','msg'=>'Account not found.']);
-                
-                $bodyPath = $this->getBodyCachePath($accId, $folder, $msgId);
-                $cachedBody = $this->loadBodyCacheData($bodyPath);
-
-                // ==========================================
-                // SQUARE ONE CACHE FIX: Delete corrupted empty cache
-                // ==========================================
-                if ($cachedBody !== null && trim($cachedBody['body'] ?? '') === '') {
-                    $cachedBody = null;
-                    @unlink($bodyPath);
-                }
-
-                if (($configs[$accId]['server_type'] ?? 'imap') === 'eas') {
-                    try {
-                         if ($cachedBody !== null) {
-                             $this->sendJsonAndExit(array_merge(['status' => 'OK', 'raw_message' => ''], $cachedBody));
-                         }
-                        $this->refreshOauthTokenIfNeeded($configs[$accId], $accId);
-                        $eas = new MyCloudEASClient($configs[$accId], $this->decryptPassword($configs[$accId]['password'] ?? ''), $this->decryptPassword($configs[$accId]['oauth_token'] ?? ''));
-                        $bodyData = $eas->getMessageBody($folder, $msgId);
-                        $this->saveBodyCacheData($bodyPath, $bodyData);
-                        $this->sendJsonAndExit(array_merge(['status' => 'OK', 'raw_message' => ''], $bodyData));
-                    } catch (Throwable $e) { $this->sendJsonAndExit(['status'=>'ERR', 'msg'=>$e->getMessage()]); }
-                }
-
-                if ($cachedBody !== null) {
-                    $this->sendJsonAndExit(array_merge(['status' => 'OK'], $cachedBody));
-                }
-
-                list($client, $folderObj, $err) = $this->connectImap($configs[$accId], $folder, true);
-                if (!$client || !$folderObj) {
-                    $this->sendJsonAndExit(['status'=>'ERR', 'msg'=>$err ?: 'Failed to open folder.']);
-                }
-                
-                try {
-                    $msg = $folderObj->query()->getMessageByUid($msgId);
-                    if (!$msg) {
-                        $client->disconnect();
-
-                        $this->purgeLocalCacheUids($accId, $folder, [$msgId]);
-
-                        $this->sendJsonAndExit(['status'=>'ERR', 'code'=>'MSG_NOT_FOUND', 'msg'=>"Message UID [$msgId] not found. It may have been moved or deleted externally."]);
-                    }
-                    
-                    $rawHeader = $msg->getHeader()->raw;
-                    $rawBody = $msg->getRawBody();
-                    $rawMsg = $rawHeader . "\r\n" . $rawBody;
-                    $trustScore = 'unknown';
-                    if (preg_match('/Authentication-Results:.*?bimi=pass/si', $rawHeader)) {
-                        $trustScore = 'bimi';
-                    } elseif (preg_match('/Authentication-Results:.*?dmarc=pass/si', $rawHeader) && preg_match('/Authentication-Results:.*?spf=pass/si', $rawHeader)) {
-                        $trustScore = 'perfect';
-                    } elseif (preg_match('/Authentication-Results:.*?(dmarc=pass|spf=pass|dkim=pass)/si', $rawHeader)) {
-                        $trustScore = 'good';
-                    } elseif (preg_match('/Authentication-Results:.*?(dmarc=fail|spf=fail|dkim=fail)/si', $rawHeader)) {
-                        $trustScore = 'fail';
-                    }
-
-                     $spamScore = null;
-                     $isPhishing = false;
-                     
-                     if (preg_match('/X-Spam-Score:\s*([-0-9.]+)/i', $rawHeader, $m)) $spamScore = (float)$m[1];
-                     elseif (preg_match('/X-Rspamd-Score:\s*([-0-9.]+)/i', $rawHeader, $m)) $spamScore = (float)$m[1];
-                     
-                     if (preg_match('/X-Spam-Report:.*?(PHISH|FRAUD|SPOOF|DECEPTIVE)/si', $rawHeader)) $isPhishing = true;
-                     elseif (preg_match('/X-Rspamd-Report:.*?(PHISH|FRAUD|SPOOF|DECEPTIVE)/si', $rawHeader)) $isPhishing = true;
-
-                     $rawHeaderClean = str_replace(["\r\n", "\r"], "\n", $rawHeader);
-                     $transportSec = 'internal';
-                     $isDane = false;
-                     $hasUnencryptedHop = false;
-                     $hasExternalEncryptedHop = false;
-
-                     // Verify the entire chain by evaluating every Received header independently
-                     if (preg_match_all('/^Received:\s*(.*?)(?=\n[A-Z0-9a-z\-]+:|\n\n|$)/ms', $rawHeaderClean, $receivedMatches)) {
-                         foreach ($receivedMatches[0] as $recvHeader) {
-                             // Skip purely internal localhost/loopback handoffs
-                             if (preg_match('/Received:\s*from\s+(localhost|\[?127\.0\.0\.1\]?|\[?::1\]?)\b/i', $recvHeader)) {
-                                 continue;
-                             }
-
-                            $isEncryptedHop = preg_match('/with\s+(ESMTPS|ESMTPSA|SMTPS|SMTPSA|ESMTPS-TLS)\b/i', $recvHeader) || preg_match('/\(.*?TLS.*?\)/i', $recvHeader);
-
-                             if ($isEncryptedHop) {
-                                 $hasExternalEncryptedHop = true;
-                                 if (preg_match('/verified DANE/i', $recvHeader)) $isDane = true;
-                             } elseif (preg_match('/with\s+(SMTP|Microsoft SMTP)\b/i', $recvHeader)) {
-                                 // If even ONE external hop is unencrypted, the chain is broken
-                                 $hasUnencryptedHop = true;
-                             }
-                         }
-                     }
-
-                     if ($hasUnencryptedHop) {
-                         $transportSec = 'none';
-                     } elseif ($hasExternalEncryptedHop) {
-                         $transportSec = $isDane ? 'dane' : 'tls';
-                     }
-
-                    $addrs = $this->extractMessageAddresses($msg);
-                    
-                    $attachmentsData = [];
-                    $temp = $this->user_temp_dir;
-                    $extractDraftAtts = (!empty($_POST['extract_draft_attachments']) && $_POST['extract_draft_attachments'] === '1');
-                    
-                    foreach ($msg->getAttachments() as $att) {
-                        try {
-                            $attId = $att->id ?? $att->part_number ?? uniqid();
-                            $safeName = preg_replace('/[^a-zA-Z0-9.\-_ ]/', '_', $att->name ?? '');
-                            if (empty($safeName)) $safeName = 'attachment_' . uniqid();
-                            
-                            $attItem = [
-                                'part' => $attId,
-                                'filename' => $safeName,
-                                'size' => $att->size ?? 0,
-                                'cid' => str_replace(['<', '>'], '', $att->content_id ?? '')
-                            ];
-                            
-                            if ($extractDraftAtts) {
-                                $dest = $temp . '/myCloud_eml_att_' . bin2hex(random_bytes(8)) . '_' . $safeName;
-                                $content = $att->getContent();
-                                if ($content !== null) {
-                                    file_put_contents($dest, $content);
-                                    $attItem['tmp_name'] = $dest;
-                                    $attItem['is_inline'] = !empty($attItem['cid']);
-                                }
-                            }
-                            $attachmentsData[] = $attItem;
-                        } catch (\Throwable $e) { continue; }
-                    }
-
-                    $client->disconnect();
-
-                    // ==========================================
-                    // SQUARE ONE EXTRACTION: Exactly as your original code
-                    // ==========================================
-                    $htmlContent = $msg->hasHTMLBody() ? $msg->getHTMLBody() : nl2br(htmlspecialchars((string)$msg->getTextBody() ?: '', ENT_QUOTES | ENT_HTML5, 'UTF-8'));
-                    
-                    // Failsafe: Webklex string casting if it returned an array for some reason
-                    if (is_array($htmlContent)) {
-                        $htmlContent = implode('<br>', $htmlContent);
-                    }
-
-                    if (class_exists('HTMLPurifier')) {
-                        $config = \HTMLPurifier_Config::createDefault();
-                        $config->set('HTML.TargetBlank', true);
-                        $config->set('URI.DisableExternalResources', false); 
-                        $config->set('CSS.AllowTricky', true);
-
-                        // PERFORMANCE 1: Enable strict Definition Caching. 
-                        $purifierCache = $this->cache_dir . '/htmlpurifier';
-                        if (!is_dir($purifierCache)) @mkdir($purifierCache, 0770, true);
-                        $config->set('Cache.SerializerPath', $purifierCache);
-
-                        // PERFORMANCE 2: Disable the heavy DOM formatter. 
-                        $config->set('HTML.TidyLevel', 'none');
-                        $config->set('Core.EscapeInvalidTags', false);
-
-                        $purifier = new \HTMLPurifier($config);
-                        $cleanHtml = $purifier->purify($htmlContent);
-                        
-                        // ==========================================
-                        // SQUARE ONE FAILSAFE: If Purifier strips valid HTML
-                        // ==========================================
-                        if (trim($cleanHtml) === '' && trim((string)$htmlContent) !== '') {
-                            $cleanHtml = '<pre style="white-space:pre-wrap; font-family:inherit;">' . htmlspecialchars((string)$htmlContent, ENT_QUOTES | ENT_HTML5, 'UTF-8') . '</pre>';
-                        }
-                    } else {
-                        // Original code stripped tags here, but we will preserve it cleanly
-                        $cleanHtml = '<pre style="white-space:pre-wrap; font-family:inherit;">' . htmlspecialchars((string)$htmlContent, ENT_QUOTES | ENT_HTML5, 'UTF-8') . '</pre>';
-                    }
-
-                    $listUnsubscribe = '';
-                    if (preg_match('/(?:^|[\r\n])List-Unsubscribe:\s*(.*?)(?=[\r\n][A-Za-z0-9\-]+:|$)/is', $rawHeader, $m)) {
-                        $flat = preg_replace('/[\r\n\t]+/', ' ', $m[1]);
-                        $flat = preg_replace('/\?=\s+=\?/', '?==?', $flat);
-                        $listUnsubscribe = preg_replace('/[\x00-\x1F\x7F]/', '', trim($this->decodeImapHeader($flat)));
-                        if (strpos($listUnsubscribe, '=?') !== false && function_exists('mb_decode_mimeheader')) {
-                            $listUnsubscribe = mb_decode_mimeheader($listUnsubscribe);
-                        }
-                    }
-                    
-                    $bodyData = [
-                        'body' => $cleanHtml, 
-                        'attachments' => $attachmentsData, 
-                        'raw_message' => $rawMsg,
-                        'unsubscribe' => $listUnsubscribe,
-                        'to' => $addrs['to'],
-                        'cc' => $addrs['cc'],
-                        'bcc' => $addrs['bcc'],
-                        'reply_to' => $addrs['reply_to'],
-                        'trust_score' => $trustScore,
-                        'transport_sec' => $transportSec,
-                        'spam_score' => $spamScore,
-                        'is_phishing' => $isPhishing
-                    ];
-
-                    $this->saveBodyCacheData($bodyPath, $bodyData);
-                    $this->sendJsonAndExit(array_merge(['status' => 'OK'], $bodyData));
-
-                } catch (\Throwable $e) {
-                    if ($client) $client->disconnect();
-                    $this->sendJsonAndExit(['status'=>'ERR', 'msg'=>'Failed to fetch body: ' . $e->getMessage()]);
-                }
-                break;
-				
             case 'email_send':
                 if (!$this->actionAllowed('email_send')) $this->sendJsonAndExit(['status'=>'ERR', 'msg'=>'Action denied: Sending emails is disabled on this account.']);
                 $configs = $this->loadConfigs();

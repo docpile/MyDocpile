@@ -1,3 +1,14 @@
+4.1.281
+	Security: Webmail: DNS Rebinding (TOCTOU SSRF) in IMAP/SMTP Connections
+	Security: Webmail: Remote Code Execution via ImageMagick/Ghostscript
+	Security: Webmail: Catastrophic Backtracking (ReDoS) in PGP Extraction
+	Security: Webmail: Memory Exhaustion (Zip Bomb) in Cache Inflation
+	Security: Webmail: Semantic Security Break (Static IV in AES-CBC) in legacy fallback routine
+
+4.1.280
+	Improvement: Webmail: Skeleton display when starting app so that the user does not erroneously think his mailbox is empty
+	Improvement: Webmail: Full OpenPGP Message Format (RFC 4880 / RFC 9580) compliance and E2EE (with the encrypted PK still stored on the server as is)
+
 4.1.279
 	Improvement: Webmail: Concurrent mailbox refresh on different servers and on localhost (not for several mailboxes on the same server except for localhost)
 

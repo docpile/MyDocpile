@@ -861,7 +861,7 @@ window.myCloudRenderEmailApp = function(container) {
     container.style.flexDirection = 'column';
     container.style.height = '100%';
     container.style.overflow = 'hidden';
-	container.classList.add('ce-email-app-root');
+    container.classList.add('ce-email-app-root');
 
     container.innerHTML = '';
     const mainToolbar = document.getElementById('myCloudToolbar');
@@ -905,11 +905,11 @@ window.myCloudRenderEmailApp = function(container) {
          '</button>' +
          '<button class="owa-btn" onclick="myCloudEmailFetchMessages(myCloudEmailState.activeFolder, false, false, true);" title="' + (L.rebuild_cache || 'Completely Rebuild Cache') + '">' +
              '<span style="color: var(--danger, #e81123);" class="owa-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
-					'<path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.92-10.27l5.43 5.43"/>' +
-					'<line x1="12" y1="6" x2="12" y2="12" stroke="#600000" stroke-width="3"/>' +
-					'<circle  cx="12" cy="17" r="1.2"  fill="#a00000" stroke="#600000" stroke-width="0"/>' +
-					'</svg> '  + '</span>' +
-					'<span class="owa-label ce-main-tier-2 hide-mobile">' + (L.rebuild_cache || 'Completely Rebuild Cache') + '</span>' +
+                    '<path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.92-10.27l5.43 5.43"/>' +
+                    '<line x1="12" y1="6" x2="12" y2="12" stroke="#600000" stroke-width="3"/>' +
+                    '<circle  cx="12" cy="17" r="1.2"  fill="#a00000" stroke="#600000" stroke-width="0"/>' +
+                    '</svg> '  + '</span>' +
+                    '<span class="owa-label ce-main-tier-2 hide-mobile">' + (L.rebuild_cache || 'Completely Rebuild Cache') + '</span>' +
          '</button>' +
         '<div style="flex:1; min-width:10px; cursor:default; background:transparent;"></div>' + 
         '<div style="display:flex; flex-wrap:nowrap; flex-shrink:0; gap:4px; margin-inline-start:auto;">' +
@@ -929,7 +929,7 @@ window.myCloudRenderEmailApp = function(container) {
             '<span class="owa-label ce-main-tier-1 hide-mobile">' + (L.options || 'Options') + '</span>' +
          '</button>' : '') +
          (window.myCloudActionAllowed('help') ? 
-		 '<button class="owa-btn" onclick="if(typeof myCloudOpenHelp === \'function\') myCloudOpenHelp();">' +
+         '<button class="owa-btn" onclick="if(typeof myCloudOpenHelp === \'function\') myCloudOpenHelp();">' +
              '<span class="owa-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg></span>' +
             '<span class="owa-label ce-main-tier-4 hide-mobile">' + (L.help_btn || 'Help') + '</span>' +
         '</button>' : '') +
@@ -995,6 +995,31 @@ window.myCloudRenderEmailApp = function(container) {
     paneList.style.display = 'flex'; 
     paneList.style.flexDirection = 'column';
     paneList.style.width = listWidth + 'px';
+
+    // --- INITIAL LOAD SKELETON (Prevents the UI from looking completely empty on boot) ---
+    paneList.innerHTML = 
+        '<div style="padding: 8px 10px; border-bottom: 1px solid var(--border-default); background: var(--gray-05); display: flex; gap: 8px; flex-direction: column; flex-shrink:0;">' +
+            '<div style="display:flex; gap:6px;">' +
+                '<div class="ce-skeleton" style="flex:1; height:30px; border-radius:4px;"></div>' +
+                '<div class="ce-skeleton" style="width:30px; height:30px; border-radius:4px;"></div>' +
+            '</div>' +
+            '<div style="display:flex; gap:10px; align-items:center;">' +
+                '<div class="ce-skeleton" style="flex:1; height:30px; border-radius:4px;"></div>' +
+                '<div class="ce-skeleton" style="flex:1.5; height:30px; border-radius:4px;"></div>' +
+            '</div>' +
+        '</div>' +
+        '<div style="flex:1; overflow-y:auto; padding-block-end: 20px;">' +
+            Array(10).fill(
+                '<div class="ce-email-list-item" style="pointer-events:none; border-block-end:1px solid var(--border-subtle);">' +
+                    '<div style="display:flex; justify-content:space-between; margin-block-end:6px;">' +
+                        '<div class="ce-skeleton" style="width:40%; height:12px;"></div>' +
+                        '<div class="ce-skeleton" style="width:15%; height:10px;"></div>' +
+                    '</div>' +
+                    '<div class="ce-skeleton" style="width:80%; height:14px; margin-block-end:6px;"></div>' +
+                    '<div class="ce-skeleton" style="width:60%; height:12px;"></div>' +
+                '</div>'
+            ).join('') +
+        '</div>';
 
     const resizerList = document.createElement('div');
     resizerList.className = 'ce-email-resizer';
@@ -1073,14 +1098,14 @@ window.myCloudRenderEmailApp = function(container) {
     if (window._emailPollerInterval) {
         clearInterval(window._emailPollerInterval);
     }
-	if (window._emailPollerTimer) clearTimeout(window._emailPollerTimer);
+    if (window._emailPollerTimer) clearTimeout(window._emailPollerTimer);
 
     if (!window.myCloudEmailState.lastPolledHashes) {
         window.myCloudEmailState.lastPolledHashes = {};
     }
 
     const pollMailbox = async () => {
-		if (myCloudState.interface !== 'email' || !myCloudEmailState.activeAccount) return;
+        if (myCloudState.interface !== 'email' || !myCloudEmailState.activeAccount) return;
         
         let accountsToPoll = [];
         if (myCloudEmailState.activeAccount === 'smartbox') {
@@ -1200,6 +1225,13 @@ window.myCloudEmailLoadAccounts = function() {
             } else {
                 const L = typeof myCloud_LANG !== 'undefined' ? myCloud_LANG : {};
                 document.getElementById('emailPaneTree').innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-secondary);">' + (L.no_accounts_setup || 'No accounts.') + '<br><br><button onclick="myCloudShowEmailSettings()" style="padding:6px 16px; margin-top:10px; cursor:pointer; background:var(--accent-primary); color:#fff; border:none; border-radius:4px;">' + (L.setup_account_btn || 'Setup Account') + '</button></div>';
+                
+                // Overwrite the skeleton with an empty state if no accounts exist
+                const listPane = document.getElementById('emailPaneList');
+                if (listPane) {
+                    listPane.innerHTML = '<div class="ce-email-empty" style="text-align:center; padding-top:40px;">' + (L.no_accounts_setup || 'No accounts.') + '</div>';
+                }
+
                 // Trigger First Run Assistant whenever empty state is hit
                 const tryTriggerFRA = (attempts) => {
                     if (typeof window.myCloudEmailFirstRunAssistant === 'function') {
@@ -2431,7 +2463,12 @@ window._emailRenderMessageList = function(isAppendOnly = false) {
                 normSubj = normSubj.replace(/^(re|fwd|aw|fw|wg|antwort|sv|tr)\s*\[?\d*\]?:\s*/i, '').trim();
             } while (normSubj !== prev);
             
-            const threadKey = normSubj || String(m.id);
+            // ANTI-COLLAPSE FIX: Prevent generic PGP protected headers from merging all received emails into a single missing thread
+            if (normSubj === 'encrypted message' || normSubj === 'verschlüsselte nachricht' || normSubj === 'message chiffré' || normSubj === 'mensaje cifrado' || normSubj === '(no subject)' || normSubj === '') {
+                normSubj = String(m.account_id || 'acc') + '_' + String(m.folder || 'fld') + '_' + String(m.id) + '_' + String(m.ts);
+            }
+
+            const threadKey = normSubj || (String(m.account_id || 'acc') + '_' + String(m.folder || 'fld') + '_' + String(m.id));
 
             if (!threads[threadKey]) threads[threadKey] = [];
             threads[threadKey].push(m);
@@ -2475,9 +2512,9 @@ window._emailRenderMessageList = function(isAppendOnly = false) {
         renderMsgs = msgs;
     }
 
-		window.myCloudEmailState.renderedMessages = renderMsgs;
-		
-		
+        window.myCloudEmailState.renderedMessages = renderMsgs;
+        
+        
         if (renderMsgs.length === 0) {
             const listPane = document.getElementById('emailPaneList');
             if (listPane && listPane.classList.contains('ce-pane-loading')) {
@@ -2493,7 +2530,7 @@ window._emailRenderMessageList = function(isAppendOnly = false) {
                 `).join('');
                 return;
             }
-		    const L = typeof myCloud_LANG !== 'undefined' ? myCloud_LANG : {};
+            const L = typeof myCloud_LANG !== 'undefined' ? myCloud_LANG : {};
             listContent.innerHTML = '<div class="ce-email-empty">' + (L.empty || 'Empty') + '</div>';
             return; 
         }
@@ -2511,7 +2548,7 @@ window._emailRenderMessageList = function(isAppendOnly = false) {
     });
 
     let currentDomNode = listContent.firstElementChild;
-	// --- ITEM INJECTION ENGINE ---
+    // --- ITEM INJECTION ENGINE ---
     window._emailToggleThread = function(threadId) {
         if (!myCloudEmailState.expandedThreads) myCloudEmailState.expandedThreads = new Set();
         if (myCloudEmailState.expandedThreads.has(threadId)) {
@@ -2681,14 +2718,14 @@ window._emailRenderMessageList = function(isAppendOnly = false) {
                 if (myCloudEmailState.selectedMessages && myCloudEmailState.selectedMessages.includes(msgKey)) {
                     targetKeys = [...myCloudEmailState.selectedMessages];
                 }
-				e.dataTransfer.setData('text/plain', JSON.stringify({ 
+                e.dataTransfer.setData('text/plain', JSON.stringify({ 
                      type: 'email_msg', 
                      account_id: m.account_id || myCloudEmailState.activeAccount, 
                      folder: m.folder || myCloudEmailState.activeFolder, 
                     message_id: m.id,
                     targetKeys: targetKeys
                  }));
-				 if (typeof window.myCloudGetDragImage === 'function') e.dataTransfer.setDragImage(window.myCloudGetDragImage(targetKeys.length), 20, 20);
+                 if (typeof window.myCloudGetDragImage === 'function') e.dataTransfer.setDragImage(window.myCloudGetDragImage(targetKeys.length), 20, 20);
                 e.dataTransfer.effectAllowed = 'copyMove';
             });
 
@@ -2786,7 +2823,7 @@ window._emailRenderMessageList = function(isAppendOnly = false) {
                             }
                         } else {
                             delete myCloudEmailState.bodyCache[mKey];
-							throw new Error('Failed to load body');
+                            throw new Error('Failed to load body');
                         }
                     }).catch((e) => { 
                         delete myCloudEmailState.bodyCache[mKey]; 
@@ -3640,7 +3677,6 @@ window.myCloudEmailReadMessage = function(msgId, meta) {
     const nextBtn = '<button class="owa-btn ce-email-mobile-only" ' + (nextKey ? 'onclick="var el=document.querySelector(\'.ce-email-list-item[data-msg-key=&quot;' + nextKey + '&quot;]\'); if(el) el.click();"' : 'disabled style="opacity:0.5"') + ' title="Next"><span class="owa-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg></span></button>';
     const mobileDivider = '<div class="owa-divider ce-email-mobile-only"></div>';
 
-    // FIX: Delay injecting the skeleton to completely eliminate UI flickering on cached messages
     const skeletonHtml = 
         '<div class="myCloudToolbar-wrapper" style="flex-shrink:0;">' +
             '<div class="owa-toolbar">' +
@@ -3744,9 +3780,7 @@ window.myCloudEmailReadMessage = function(msgId, meta) {
         let transportBadge = '';
         let trustBadge = '';
         
-        // Inbound headers (Authentication & Transport) are generally irrelevant/missing for outbound folders
         if (!isSent && !isDrafts) {
-            
             const tScore = res.trust_score || 'unknown';
             const tSec = res.transport_sec || 'none';
             
@@ -3759,16 +3793,6 @@ window.myCloudEmailReadMessage = function(msgId, meta) {
             else if (tScore === 'perfect') trustBadge = '<span title="' + (L.trust_perfect || 'Passed DMARC & SPF') + '" style="background:' + (isSuspect ? 'var(--gray-50)' : '#107c10') + '; color:#fff; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:bold; margin-inline-start:8px; cursor: pointer;">✓' + '</span>';
             else if (tScore === 'good') trustBadge = '<span title="' + (L.trust_good || 'Passed Partial Authentication') + '" style="background:' + (isSuspect ? 'var(--gray-50)' : '#fbc02d') + '; color:' + (isSuspect ? '#fff' : '#000') + '; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:bold; margin-inline-start:8px; cursor: pointer;">' + (isSuspect ? (L.auth_sender || 'Authenticated') : ' ❓❓ ') + '</span>';
             else if (tScore === 'fail' && showFailBadge) trustBadge = '<span title="' + (L.trust_fail || 'Authentication Failed') + '" style="background:#e81123; color:#fff; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:bold; margin-inline-start:8px; cursor: pointer;">  ' + (L.trust_untrusted || 'Untrusted') + '</span>';
-
-//            if (tSec === 'dane') {
-//                 transportBadge = '<span title="' + (L.sec_dane || 'Transport secured and verified via DNSSEC (DANE)') + '" style="background:' + (isSuspect ? 'var(--gray-50)' : '#c0d8c0') + '; color:#000; padding:2px 6px; border-radius:4px; font-size:15px; font-weight:bold; margin-inline-start:8px; cursor: pointer;">📤-🔒->📥<span style="font-size:9px; vertical-align:super;">DANE</span></span>';
-//            } else if (tSec === 'tls') {
-//                transportBadge = '<span title="' + (L.sec_tls || 'Transport secured via Standard TLS') + '" style="background:' + (isSuspect ? 'var(--gray-50)' : '#c0d8c0') + '; color:#000; padding:2px 6px; border-radius:4px; font-size:15px; font-weight:bold; margin-inline-start:8px; cursor: pointer;">📤-🔒->📥</span>';
-//            } else if (tSec === 'internal') {
-//                transportBadge = '<span title="' + (L.sec_internal || 'Message routed internally within the server') + '" style="background:#c0d8c0; color:var(--text-primary); padding:2px 6px; border-radius:4px; font-size:14px; font-weight:bold; margin-inline-start:8px; border:1px solid var(--border-medium); cursor: pointer;">✔️ ' + (L.internal || 'Internal') + '</span>';
-//            } else {
-//                transportBadge = '<span title="' + (L.sec_none || 'Message transported unencrypted over the internet') + '" style="background:#e81123; color:#fff; padding:2px 6px; border-radius:4px; font-size:14px; font-weight:bold; margin-inline-start:8px; cursor: pointer;">📤-🔓->📥 ' + (L.unencrypted || 'Unencrypted') + '</span>';
-//            }
         }
 
         const renderAddressPill = (rawAddr, isFromBec = false, becMsg = '') => {
@@ -3873,7 +3897,6 @@ window.myCloudEmailReadMessage = function(msgId, meta) {
             });
         }
 
-        // Make sure of Indirect Prompt Injection (IDPI) protection by stripping invisible elements
         window.DOMPurify.addHook('uponSanitizeAttribute', function (node, data) {
             if (data.attrName === 'style') {
                 let style = data.attrValue.toLowerCase().replace(/\s+/g, '');
@@ -3882,10 +3905,10 @@ window.myCloudEmailReadMessage = function(msgId, meta) {
                     style.includes('opacity:0') || 
                     style.includes('font-size:0') || 
                     style.includes('color:transparent')) {
-						node.removeAttribute('style');
-						if (node.tagName && node.tagName.toLowerCase() === 'style') {
-							node.innerHTML = '';
-						}
+                        node.removeAttribute('style');
+                        if (node.tagName && node.tagName.toLowerCase() === 'style') {
+                            node.innerHTML = '';
+                        }
                 }
             }
         });
@@ -3894,8 +3917,8 @@ window.myCloudEmailReadMessage = function(msgId, meta) {
             ALLOW_DATA_ATTR: false,
             WHOLE_DOCUMENT: true
         });
-		
-		window.DOMPurify.removeHook('uponSanitizeAttribute');
+        
+        window.DOMPurify.removeHook('uponSanitizeAttribute');
 
         const parser = new DOMParser();
         const doc = parser.parseFromString(cleanHtml, 'text/html');
@@ -3907,7 +3930,6 @@ window.myCloudEmailReadMessage = function(msgId, meta) {
         if (myCloudState.settings && myCloudState.settings[devKey] && !myCloudState.settings[devKey].trustedEmailDomains) myCloudState.settings[devKey].trustedEmailDomains = [];
         const isTrusted = myCloudState.settings && myCloudState.settings[devKey] && myCloudState.settings[devKey].trustedEmailDomains.includes(senderDomain);
 
-        // Initialize proxy logic before DOM traversal
         const useProxy = (typeof window.myCloudEmailProxyEnabled !== 'undefined') ? window.myCloudEmailProxyEnabled : true;
         const proxyUrl = (url) => {
             if (!useProxy || !url.match(/^https?:\/\//i)) return url;
@@ -3969,8 +3991,6 @@ window.myCloudEmailReadMessage = function(msgId, meta) {
 
             if (el.tagName.toLowerCase() === 'img') {
                 const src = el.getAttribute('src');
-
-                // Anti-Tracking: Detect CSS-hidden and attribute-hidden micro-pixels
                 const styleClean = (el.getAttribute('style') || '').toLowerCase().replace(/\s+/g, '');
                 const wAttr = parseInt(el.getAttribute('width') || '999', 10);
                 const hAttr = parseInt(el.getAttribute('height') || '999', 10);
@@ -3988,7 +4008,6 @@ window.myCloudEmailReadMessage = function(msgId, meta) {
                 const isAttrHidden = wAttr <= 2 || hAttr <= 2;
 
                 if (isCssHidden || isAttrHidden) {
-                    // Permanently neutralize the tracker. Do not attach data-safe-src so it ignores the "Load Images" button.
                     el.setAttribute('src', 'data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACwAAAAAAQABAAACAkQBADs=');
                     el.setAttribute('data-tracker-blocked', 'true');
                 } else if (src && !src.startsWith('data:') && !src.startsWith('cid:')) {
@@ -4205,7 +4224,6 @@ window.myCloudEmailReadMessage = function(msgId, meta) {
                 const iframeDoc = iframeEl.contentDocument || iframeEl.contentWindow.document;
                 if (!iframeDoc) return;
 
-                // SECURE ZOOM: Attach listeners from the parent context, requiring no execution permissions inside the iframe payload.
                 let iframeScale = 1;
                 let iframeStartDist = 0;
                 
@@ -4273,11 +4291,9 @@ window.myCloudEmailReadMessage = function(msgId, meta) {
                              const rawDomain = rawHrefMatch ? decodeURIComponent(rawHrefMatch[1]) : linkDomain;
                              
                              if (linkDomain.includes('xn--')) {
-                                 // Flag if domain contains Cyrillic or Greek (Primary homograph vectors)
                                  if (/[\u0400-\u04FF\u0370-\u03FF]/.test(rawDomain)) {
                                      isHomograph = true;
                                  } else {
-                                     // Flag if mixing Basic Latin (English) with Foreign Scripts (ignoring allowed CJK/Arabic/Umlauts)
                                      const hasBasicLatin = /[a-zA-Z]/.test(rawDomain);
                                      const hasNonAllowed = /[^\x00-\x7F\u0080-\u024F\u0600-\u06FF\u0590-\u05FF\u4E00-\u9FFF\u3040-\u30FF\uAC00-\uD7AF\.]/.test(rawDomain);
                                      if (hasBasicLatin && hasNonAllowed) isHomograph = true;
@@ -4286,11 +4302,9 @@ window.myCloudEmailReadMessage = function(msgId, meta) {
                              
                              // B. Cross-Domain Mismatch Detection
                              if (senderDomain && linkDomain) {
-                                 // Lightweight Public Suffix logic to extract the Organizational Domain
                                  const getRootDomain = (d) => {
                                      const p = d.split('.');
                                      if (p.length <= 2) return d;
-                                     // Account for common ccTLDs (e.g., co.uk, com.au, org.nz)
                                      if (p[p.length - 2].length <= 3 && ['co','com','org','net','edu','gov','ac'].includes(p[p.length - 2])) {
                                          return p.slice(-3).join('.');
                                      }
@@ -4453,17 +4467,115 @@ window.myCloudEmailReadMessage = function(msgId, meta) {
                             const { data: decrypted } = await window.openpgp.decrypt({ message, decryptionKeys: privKeyObj });
                             
                             let finalContent = '';
-                            if (/<\/?[a-z][\s\S]*>/i.test(decrypted)) {
+                            let decStr = decrypted;
+                            let decryptedAttachments = [];
+
+                            // Fast-path MIME parser for RFC 3156 PGP/MIME compatibility AND E2EE Attachments
+                            if (/^Content-Type:/i.test(decStr.trim())) {
+                                const boundaryMatch = decStr.match(/boundary="?([^"\r\n]+)"?/i);
+                                if (boundaryMatch) {
+                                    const boundary = boundaryMatch[1];
+                                    const parts = decStr.split(new RegExp('--' + boundary + '(?:--)?'));
+                                    let htmlPart = null;
+                                    let textPart = null;
+
+                                    for (let p of parts) {
+                                        if (p.trim() === '') continue;
+                                        const splitIdx = p.indexOf('\r\n\r\n') !== -1 ? p.indexOf('\r\n\r\n') : p.indexOf('\n\n');
+                                        if (splitIdx !== -1) {
+                                            const head = p.substring(0, splitIdx);
+                                            let body = p.substring(splitIdx).trim();
+
+                                            if (head.match(/Content-Type:\s*text\/html/i)) {
+                                                if (head.match(/Content-Transfer-Encoding:\s*quoted-printable/i)) {
+                                                    try { 
+                                                        let qpDecoded = body.replace(/(?:\r\n|\n)?=\r?\n/g, '').replace(/=([a-fA-F0-9]{2})/g, function(m, g1) {
+                                                            return String.fromCharCode(parseInt(g1, 16));
+                                                        });
+                                                        let bytes = new Uint8Array(qpDecoded.length);
+                                                        for(let i=0; i<qpDecoded.length; i++) bytes[i] = qpDecoded.charCodeAt(i);
+                                                        body = new TextDecoder('utf-8').decode(bytes);
+                                                    } catch(e) {}
+                                                } else if (head.match(/Content-Transfer-Encoding:\s*base64/i)) {
+                                                    try { 
+                                                        let b64Decoded = atob(body.replace(/\s/g, ''));
+                                                        let bytes = new Uint8Array(b64Decoded.length);
+                                                        for(let i=0; i<b64Decoded.length; i++) bytes[i] = b64Decoded.charCodeAt(i);
+                                                        body = new TextDecoder('utf-8').decode(bytes);
+                                                    } catch(e) {}
+                                                }
+                                                htmlPart = body;
+                                            } else if (head.match(/Content-Type:\s*text\/plain/i)) {
+                                                textPart = body;
+                                            } else if (head.match(/Content-Disposition:\s*attachment/i) || head.match(/Content-Disposition:\s*inline/i)) {
+                                                // Secure E2EE Attachment Extraction
+                                                let filename = 'encrypted_attachment';
+                                                const nameMatch = head.match(/name="([^"]+)"/i) || head.match(/filename="([^"]+)"/i);
+                                                if (nameMatch) filename = nameMatch[1];
+                                                
+                                                let mimeType = 'application/octet-stream';
+                                                const mimeMatch = head.match(/Content-Type:\s*([^;]+)/i);
+                                                if (mimeMatch) mimeType = mimeMatch[1].trim();
+
+                                                if (head.match(/Content-Transfer-Encoding:\s*base64/i)) {
+                                                    try {
+                                                        const b64 = body.replace(/\s/g, '');
+                                                        const byteString = atob(b64);
+                                                        const ab = new ArrayBuffer(byteString.length);
+                                                        const ia = new Uint8Array(ab);
+                                                        for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+                                                        const blob = new Blob([ab], { type: mimeType });
+                                                        decryptedAttachments.push({ name: filename, size: blob.size, url: URL.createObjectURL(blob) });
+                                                    } catch(e) {}
+                                                }
+                                            }
+                                        }
+                                    }
+                                    decStr = htmlPart || textPart || decStr;
+                                } else {
+                                    // Single-part fallback
+                                    const splitIdx = decStr.indexOf('\r\n\r\n') !== -1 ? decStr.indexOf('\r\n\r\n') : decStr.indexOf('\n\n');
+                                    if (splitIdx !== -1) {
+                                        decStr = decStr.substring(splitIdx).trim();
+                                    }
+                                }
+                            }
+
+                            if (/<\/?[a-z][\s\S]*>/i.test(decStr)) {
                                 if (window.DOMPurify) {
-                                    finalContent = window.DOMPurify.sanitize(decrypted, {
+                                    finalContent = window.DOMPurify.sanitize(decStr, {
                                         FORBID_TAGS: ['script', 'link', 'iframe', 'object', 'embed', 'applet', 'meta', 'base', 'video', 'audio', 'source', 'track', 'picture', 'form', 'math', 'frameset', 'frame'],
                                         ALLOW_DATA_ATTR: false, WHOLE_DOCUMENT: true
                                     });
                                 } else {
-                                    finalContent = decrypted;
+                                    finalContent = decStr;
                                 }
                             } else {
-                                finalContent = '<pre style="white-space: pre-wrap; font-family: inherit; font-size: 14px; margin: 0;">' + myCloudEscapeHtml(decrypted) + '</pre>';
+                                finalContent = '<pre style="white-space: pre-wrap; font-family: inherit; font-size: 14px; margin: 0;">' + myCloudEscapeHtml(decStr) + '</pre>';
+                            }
+
+                            // Dynamically inject E2EE UI Attachments
+                            if (decryptedAttachments.length > 0) {
+                                let eAttHtml = '<div class="ce-email-attachments" style="margin-top:15px; padding-top:10px; border-top:1px dashed var(--border-subtle);">';
+                                eAttHtml += '<div style="font-size:11px; text-transform:uppercase; font-weight:bold; color:var(--success); margin-bottom:8px;">🔒 Secure Attachments</div>';
+                                decryptedAttachments.forEach(att => {
+                                    const sizeStr = typeof myCloudFormatBytes === 'function' ? myCloudFormatBytes(att.size) : Math.round(att.size/1024) + ' KB';
+                                    eAttHtml += 
+                                        `<div class="ce-attachment-pill-wrap" style="display:inline-flex; align-items:stretch; background-color: var(--gray-10); border: 1px solid var(--success); border-radius: 4px; overflow:hidden; max-width:100%; box-sizing:border-box; margin-bottom:4px; margin-right:4px;">
+                                            <div style="padding:4px 10px; display:inline-flex; align-items:center; gap:6px; font-size:13px; font-family:inherit; color:var(--text-primary); border-right:1px solid var(--border-default);">
+                                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; opacity:0.6;"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+                                                <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:200px; font-weight:500;">${myCloudEscapeHtml(att.name)}</span>
+                                                <span style="color:var(--text-secondary); font-size:11px; margin-left:4px; flex-shrink:0;">${sizeStr}</span>
+                                            </div>
+                                            <a href="${att.url}" download="${myCloudEscapeHtml(att.name)}" title="Download Securely" style="background:transparent; border:none; padding:4px 10px; cursor:pointer; color:var(--text-secondary); display:inline-flex; align-items:center; transition:background 0.15s; height:auto; text-decoration:none;" onmouseover="this.style.backgroundColor='var(--gray-20)'; this.style.color='var(--text-primary)'" onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--text-secondary)'">
+                                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                                            </a>
+                                        </div>`;
+                                });
+                                eAttHtml += '</div>';
+                                
+                                const metaContainer = document.getElementById('ceEmlMetaExtended');
+                                if (metaContainer) metaContainer.insertAdjacentHTML('afterend', eAttHtml);
                             }
 
                             const injectToIframe = () => {
@@ -4671,7 +4783,6 @@ window.myCloudEmailReadMessage = function(msgId, meta) {
 
     executeDirectFetch();
 };
-
 
 window._emailCreateContactFromEmail = function(name, email) {
     // Show the contacts modal first if it's not open
