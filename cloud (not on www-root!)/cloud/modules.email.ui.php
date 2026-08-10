@@ -2454,7 +2454,14 @@ window._emailRenderMessageList = function(isAppendOnly = false) {
     // --- THREAD GROUPING ENGINE (Feature #2) ---
     let renderMsgs = [];
     if (myCloudEmailState.threadView) {
-        const threads = {};
+        const threadList = [];
+        
+        const extractEmails = (str) => {
+            if (!str) return [];
+            const matches = str.toLowerCase().match(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/g);
+            return matches || [];
+        };
+
         msgs.forEach(m => {
             let normSubj = (m.subject || '').toLowerCase();
             let prev;
@@ -2468,31 +2475,75 @@ window._emailRenderMessageList = function(isAppendOnly = false) {
                 normSubj = String(m.account_id || 'acc') + '_' + String(m.folder || 'fld') + '_' + String(m.id) + '_' + String(m.ts);
             }
 
-            const threadKey = normSubj || (String(m.account_id || 'acc') + '_' + String(m.folder || 'fld') + '_' + String(m.id));
+            const msgEmails = extractEmails((m.fromEmail || '') + ',' + (m.to || '') + ',' + (m.cc || '') + ',' + (m.bcc || ''));
+            let targetThread = null;
 
-            if (!threads[threadKey]) threads[threadKey] = [];
-            threads[threadKey].push(m);
+            for (let i = 0; i < threadList.length; i++) {
+                let th = threadList[i];
+                let isMatch = false;
+
+                // 1. Strict RFC linkage (Message-ID / In-Reply-To)
+                if (m.message_id_hdr || m.in_reply_to) {
+                    for (let existingMsg of th.messages) {
+                        if (existingMsg.message_id_hdr && existingMsg.message_id_hdr !== '<>' && existingMsg.message_id_hdr !== '') {
+                            if (m.in_reply_to && m.in_reply_to.includes(existingMsg.message_id_hdr)) { isMatch = true; break; }
+                            if (m.message_id_hdr === existingMsg.message_id_hdr) { isMatch = true; break; } // Deduplication edge cases
+                        }
+                        if (existingMsg.in_reply_to && existingMsg.in_reply_to !== '<>' && existingMsg.in_reply_to !== '') {
+                            if (m.message_id_hdr && existingMsg.in_reply_to.includes(m.message_id_hdr)) { isMatch = true; break; }
+                        }
+                    }
+                }
+
+                // 2. Fallback: Subject matches AND participant intersects
+                if (!isMatch && th.normSubj === normSubj) {
+                    if (msgEmails.some(email => th.participants.has(email))) {
+                        isMatch = true;
+                    }
+                }
+
+                if (isMatch) {
+                    targetThread = th;
+                    break;
+                }
+            }
+
+            if (targetThread) {
+                targetThread.messages.push(m);
+                msgEmails.forEach(email => targetThread.participants.add(email));
+            } else {
+                threadList.push({
+                    normSubj: normSubj,
+                    participants: new Set(msgEmails),
+                    messages: [m]
+                });
+            }
         });
 
-        Object.keys(threads).forEach(tKey => {
-            const th = threads[tKey];
-            if (th.length === 1) {
-                renderMsgs.push(th[0]);
+        threadList.forEach(th => {
+            if (th.messages.length === 1) {
+                renderMsgs.push(th.messages[0]);
             } else {
-                th.sort((a, b) => b.ts - a.ts); // Newest top
+                th.messages.sort((a, b) => b.ts - a.ts); // Newest top
+                
+                // Generate a stable thread ID based on the oldest message's unique identifiers
+                const oldestMsg = th.messages[th.messages.length - 1];
+                let tKey = oldestMsg.message_id_hdr || (oldestMsg.id + '_' + th.normSubj);
                 let hash = 0;
                 for(let i = 0; i < tKey.length; i++) hash = ((hash << 5) - hash) + tKey.charCodeAt(i);
                 const stableId = 'th_' + (hash >>> 0).toString(16);
-                const parent = { ...th[0], is_thread_parent: true, thread_id_stable: stableId, thread_count: th.length, children: th.slice(1) };
+
+                const parent = { ...th.messages[0], is_thread_parent: true, thread_id_stable: stableId, thread_count: th.messages.length, children: th.messages.slice(1) };
 
                 // A thread is unread if ANY of its messages are unread (accounting for active message logic)
-                parent.is_read = th.every(m => {
+                parent.is_read = th.messages.every(m => {
                     const mKey = (m.account_id || myCloudEmailState.activeAccount) + '|' + (m.folder || myCloudEmailState.activeFolder) + '|' + m.id;
                     return (mKey === myCloudEmailState.activeMessageKey && typeof myCloudEmailState.activeMessageOriginalRead !== 'undefined') ? myCloudEmailState.activeMessageOriginalRead : m.is_read;
                 });
                 renderMsgs.push(parent);
             }
         });
+        
         // Maintain chosen sort order for threads
         renderMsgs.sort((a,b) => {
             if (myCloudEmailState.listSort === 'unread_desc') {
@@ -2885,6 +2936,20 @@ window._emailHighlightRawSource = function(raw) {
 };
 
 window._emailDownloadResource = async function(action, payload, fallbackFilename, loadingMsg) {
+    let fileHandle = null;
+    
+    // ZERO TRUST: Acquire File Picker handle IMMEDIATELY while the transient user activation (click gesture) is still valid.
+    // Awaiting the network fetch first causes the browser's security token to expire, throwing a NotAllowedError.
+    if (window.showSaveFilePicker) {
+        try {
+            fileHandle = await window.showSaveFilePicker({ suggestedName: fallbackFilename });
+        } catch(e) {
+            // User cancelled the prompt, gracefully abort
+            if (e.name === 'AbortError') return false; 
+            // Otherwise, let it fall through to the classic fallback download method
+        }
+    }
+
     // 1. Show appropriate loading UI
     if (typeof myCloudCreateProgressUI === 'function') myCloudCreateProgressUI(loadingMsg || 'Downloading...');
     else if (typeof myCloudShowLoading === 'function') myCloudShowLoading();
@@ -2922,20 +2987,14 @@ window._emailDownloadResource = async function(action, payload, fallbackFilename
         if (typeof myCloudCloseProgressUI === 'function') myCloudCloseProgressUI();
         else if (typeof myCloudHideLoading === 'function') myCloudHideLoading();
 
-        // 4. Professional Download: Use native Save File Picker if supported (Chrome/Edge/Opera)
-        if (window.showSaveFilePicker) {
-            try {
-                const handle = await window.showSaveFilePicker({ suggestedName: finalFilename });
-                const writable = await handle.createWritable();
-                await writable.write(blob);
-                await writable.close();
-                return true;
-            } catch(e) {
-                // User cancelled the prompt, gracefully abort
-                if (e.name !== 'AbortError') console.error(e);
-				throw e;
-            }
+        // 4. Professional Download: Write to the pre-acquired file handle
+        if (fileHandle) {
+            const writable = await fileHandle.createWritable();
+            await writable.write(blob);
+            await writable.close();
+            return true;
         }
+
         
         // 5. Fallback Download: Classic Object URL injection (Firefox/Safari/Mobile)
         const url = URL.createObjectURL(blob);
@@ -2958,22 +3017,43 @@ window._emailDownloadResource = async function(action, payload, fallbackFilename
 
 
 window._emailDownloadEml = function(accId, folder, msgId) {
+    let fallback = 'email_' + msgId + '.eml';
+    const msg = (window.myCloudEmailState.currentMessages || []).find(m => String(m.id) === String(msgId));
+    if (msg) {
+        const d = new Date(msg.ts * 1000);
+        const dStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') + ' ' + String(d.getHours()).padStart(2, '0') + '-' + String(d.getMinutes()).padStart(2, '0') + '-' + String(d.getSeconds()).padStart(2, '0');
+        
+        // ZERO TRUST: Sanitize the subject purely on the client side to prevent directory traversal or OS filename injection
+        const safeSubj = (msg.subject || 'Email').replace(/[\/\\:*?"<>|]/g, '_').trim() || 'Email';
+        fallback = dStr + ' ' + safeSubj + '.eml';
+    }
     return window._emailDownloadResource('email_dl_eml', {
         account_id: accId,
         folder: folder,
         message_id: msgId
-    }, 'email_' + msgId + '.eml', 'Preparing EML...');
+   }, fallback, 'Preparing EML...');
 };
 
 window._emailDownloadPdf = function(accId, folder, msgId) {
     let loadImg = '1';
     if (document.getElementById('ceLoadEmailImgBtn')) loadImg = '0';
+    let fallback = 'email_' + msgId + '.pdf';
+    const msg = (window.myCloudEmailState.currentMessages || []).find(m => String(m.id) === String(msgId));
+    if (msg) {
+        const d = new Date(msg.ts * 1000);
+        const dStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') + ' ' + String(d.getHours()).padStart(2, '0') + '-' + String(d.getMinutes()).padStart(2, '0') + '-' + String(d.getSeconds()).padStart(2, '0');
+        
+        // ZERO TRUST: Sanitize the subject purely on the client side to prevent directory traversal or OS filename injection
+        const safeSubj = (msg.subject || 'Email').replace(/[\/\\:*?"<>|]/g, '_').trim() || 'Email';
+        fallback = dStr + ' ' + safeSubj + '.pdf';
+    }
+
     return window._emailDownloadResource('email_dl_pdf', {
         account_id: accId,
         folder: folder,
         message_id: msgId,
         load_images: loadImg
-    }, 'email_' + msgId + '.pdf', 'Generating PDF...');
+    }, fallback, 'Generating PDF...');
 };
 
 window._emailDownloadAttachment = function(accId, folder, msgId, part, filename) {
@@ -3943,7 +4023,7 @@ window.myCloudEmailReadMessage = function(msgId, meta) {
                 style.setAttribute('data-safe-style', css);
                 if (useProxy) {
                     css = css.replace(/url\(['"]?(https?:\/\/[^)'"]+)['"]?\)/gi, (match, url) => {
-                        return 'url("' + proxyUrl(url) + '")';
+                        return 'url("' + proxyUrl(url) + '&proxy_token=' + window.myCloudCsrfToken + '")';
                     });
                 } else if (!isTrusted) {
                     css = css.replace(/url\(['"]?(?!data:|cid:)[^)'"]+['"]?\)/gi, 'url(data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACwAAAAAAQABAAACAkQBADs=)');

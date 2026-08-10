@@ -15,6 +15,12 @@ class MyCloudEmailImageProxy {
     
     public static function handleRequest() {
         if (empty($_GET['myCloud_email_proxy_img'])) return;
+        
+        // ZERO TRUST: Require session-bound CSRF token to prevent external open proxy abuse
+        session_start(['read_and_close' => true]);
+        if (empty($_GET['proxy_token']) || $_GET['proxy_token'] !== ($_SESSION['myCloud_csrf_token'] ?? '')) {
+            self::serveBlank();
+        }
 
         $urlBase64 = $_GET['myCloud_email_proxy_img'];
         $url = base64_decode($urlBase64);

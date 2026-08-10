@@ -8,6 +8,9 @@ window.myCloudShowEmailSettings = function() {
     const modal = document.getElementById('myCloudModal');
     if (typeof myCloudResetModal === 'function') myCloudResetModal();
 
+    if (modal) modal.removeAttribute('tabindex');
+    if (overlay) overlay.removeAttribute('tabindex');
+
     overlay.style.display = 'flex';
     modal.className = 'myCloudModal';
     modal.style.width = '500px';
@@ -18,8 +21,9 @@ window.myCloudShowEmailSettings = function() {
     const L = typeof myCloud_LANG !== 'undefined' ? myCloud_LANG : {};
 
     // Bulletproof HTML escaping function
+    // ZERO TRUST: Prevent breaking out of HTML attributes by escaping single quotes
     const esc = function(str) {
-        return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
     };
 
 
@@ -512,10 +516,26 @@ window.myCloudShowEmailSettings = function() {
                     sigEditorInstance = sunEditorGlobal.create('emlSigEditorArea', {
                         width: '100%', height: '100%', minHeight: '300px',
                         buttonList: [ ['undo', 'redo'], ['font', 'fontSize', 'formatBlock'], ['bold', 'underline', 'italic', 'strike', 'subscript', 'superscript'], ['fontColor', 'hiliteColor'], ['removeFormat'], ['outdent', 'indent'], ['align', 'horizontalRule', 'list', 'lineHeight'], ['link', 'image', 'table'] ],
-                        defaultStyle: 'font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #333333;'
-                    });
+						defaultStyle: 'font-family: Arial, Helvetica, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"; font-size: 14px; color: #333333;'
+		            });
                     sigEditorInstance.setContents(currentSig);
-                });
+                    // ZERO TRUST: Bypass SunEditor's destructive normalization of Windows OSK Emojis.
+                    if (sigEditorInstance.core && sigEditorInstance.core.context && sigEditorInstance.core.context.element && sigEditorInstance.core.context.element.wysiwyg) {
+                        const wysiwyg = sigEditorInstance.core.context.element.wysiwyg;
+                        
+                        const protectEmojiDrop = function(e) {
+                            if (e.data && /[\uD800-\uDBFF][\uDC00-\uDFFF]/.test(e.data)) {
+                                e.stopImmediatePropagation();
+                                if (sigEditorInstance.core) {
+                                    sigEditorInstance.core.history.push(false);
+                                }
+                            }
+                        };
+                        
+                        wysiwyg.addEventListener('input', protectEmojiDrop, { capture: true });
+                        wysiwyg.addEventListener('compositionend', protectEmojiDrop, { capture: true });
+                    }
+        });
             }
 
             document.getElementById('sigCloseXBtn').onclick = () => {

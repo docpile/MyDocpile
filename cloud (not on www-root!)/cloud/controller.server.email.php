@@ -573,7 +573,8 @@ class MyCloudEmailServer {
     private function sendSmtpMail($acc, $to, $subject, $body, $fromAlias = null, $cc = '', $bcc = '', $attachments = [], $dryRunMimeOnly = false, $requestReceipt = false) {
         // Strict Anti-CRLF Helper
         $stripCRLF = function($str) {
-            return trim(str_replace(["\r", "\n", "\0", "%0a", "%0d"], '', $str));
+            // ZERO TRUST: Vigorously strip ALL ASCII control characters to prevent header injection via double-encoding
+            return trim(preg_replace('/[\x00-\x1F\x7F]/', '', urldecode($str)));
         };
 
         // Sanitize all user-controlled inputs going into headers
@@ -827,9 +828,19 @@ class MyCloudEmailServer {
         // Bare \n causes strict SMTP servers to silently drop the email!
         $body = str_replace(["\r\n", "\r", "\n"], ["\n", "\n", "\r\n"], $body);
 
-        $cType = $isPGPPubKey ? 'text/plain' : 'text/html';
-        $tEnc = $isPGP ? '7bit' : 'quoted-printable';
-        $encBody = $isPGP ? $body : quoted_printable_encode($body);
+        $hasUnicode = preg_match('/[^\x00-\x7F]/', $body);
+		$cType = $isPGPPubKey ? 'text/plain' : 'text/html';
+        
+        if ($isPGP) {
+            $tEnc = '7bit';
+            $encBody = $body;
+        } else if ($hasUnicode) {
+            $tEnc = 'base64';
+            $encBody = trim(chunk_split(base64_encode($body)));
+        } else {
+            $tEnc = 'quoted-printable';
+            $encBody = quoted_printable_encode($body);
+        }
 
         // --- PGP/MIME WRAPPER (RFC 3156 Compliant) ---
         if (!empty($attachments)) {
@@ -1021,6 +1032,23 @@ class MyCloudEmailServer {
         foreach ($this->dirty_caches as $filename => $data) {
             $this->writeCacheToDisk($filename, $data);
         }
+        // Probabilistic Garbage Collection for orphaned body caches (runs ~2% of the time).
+        // Automatically expires body caches older than 30 days and prevents disk exhaustion from orphaned files.
+        if (rand(1, 100) <= 2) {
+            $this->runGarbageCollection();
+        }
+    }
+
+    private function runGarbageCollection() {
+        if (!is_dir($this->body_cache_dir)) return;
+        $files = glob($this->body_cache_dir . '/*.enc*');
+        $now = time();
+        $maxAge = 30 * 86400; // 30 days
+        foreach ($files as $file) {
+            if (is_file($file) && ($now - filemtime($file) > $maxAge)) {
+                @unlink($file);
+            }
+        }
     }
 
     private function saveCacheData($filename, $data) {
@@ -1054,9 +1082,12 @@ class MyCloudEmailServer {
         rename($tmpFile, $filename); // REFINEMENT 1: Atomic File Swapping
     }
 
-     private function getBodyCachePath($accId, $folder, $msgId) {
-         return $this->body_cache_dir . '/' . hash('sha256', $accId . "\0" . $folder . "\0" . $msgId) . '.enc';
-     }
+    private function getBodyCachePath($accId, $folder, $msgId) {
+        // Include Account ID and Folder in the filename so they can be securely globbed and wiped when a folder/account is deleted.
+        $safeAcc = preg_replace('/[^a-zA-Z0-9_-]/', '_', $accId);
+        $safeFld = preg_replace('/[^a-zA-Z0-9_-]/', '_', $folder);
+        return $this->body_cache_dir . '/' . $safeAcc . '_' . $safeFld . '_' . hash('sha256', $msgId) . '.enc';
+    }
 
      private function loadBodyCacheData($filename) {
          if (array_key_exists($filename, $this->body_cache_file_cache)) {
@@ -1570,7 +1601,10 @@ class MyCloudEmailServer {
             case 'email_oauth_init':
                 $redirectUri = $_POST['redirect_uri'] ?? '';
                 global $cloud_oauth_my_domain;
-                if (!empty($cloud_oauth_my_domain)) $redirectUri = $cloud_oauth_my_domain;
+                // ZERO TRUST: Never trust client-provided URIs for OAuth redirection
+                $redirectUri = !empty($cloud_oauth_my_domain) ? $cloud_oauth_my_domain : rtrim(((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? 'https' : 'http') . '://' . preg_replace('/[^a-zA-Z0-9.-]/', '', $_SERVER['SERVER_NAME'] ?? 'localhost') . parse_url($_SERVER['PHP_SELF'], PHP_URL_PATH), '/');
+                // NON ZERO TRUST:
+                // if (!empty($cloud_oauth_my_domain)) $redirectUri = $cloud_oauth_my_domain;
                 $accId = $_POST['account_id'] ?? '';
                 $stateObj = ['myCloud_action' => 'oauth_callback', 'acc_id' => $accId, 'key' => $this->key, 'uri' => $redirectUri];
                 $stateStr = base64_encode(json_encode($stateObj));
@@ -1752,6 +1786,16 @@ class MyCloudEmailServer {
                 if (isset($configs[$id])) { 
                     unset($configs[$id]); 
                     $this->saveConfigs($configs); 
+
+                    // Completely eradicate all physical caches linked to the deleted account
+                    $safeAcc = preg_replace('/[^a-zA-Z0-9_-]/', '_', $id);
+                    foreach (glob($this->cache_dir . "/{$safeAcc}_*") as $file) {
+                        @unlink($file);
+                    }
+                    foreach (glob($this->body_cache_dir . "/{$safeAcc}_*") as $file) {
+                        @unlink($file);
+                    }
+
                 }
                 $this->sendJsonAndExit(['status' => 'OK']);
                 break;
@@ -2308,6 +2352,12 @@ class MyCloudEmailServer {
                                     @unlink($file);
                                 }
                             }
+                            // Also purge the associated body caches to prevent orphaning during a rebuild
+                            foreach (glob($this->body_cache_dir . "/{$id}_{$safeFld}_*.enc*") as $file) {
+                                if (is_file($file)) {
+                                    @unlink($file);
+                                }
+                            }
                         }
                         try {
                             $folderObj = $client->getFolderByPath($fld);
@@ -2700,7 +2750,22 @@ class MyCloudEmailServer {
                     $rawBody = $msg->getRawBody();
                     $rawMsg = $rawHeader . "\r\n" . $rawBody;
                     
-                    $htmlContent = $msg->hasHTMLBody() ? $msg->getHTMLBody() : nl2br(htmlspecialchars((string)$msg->getTextBody() ?: '', ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+                    if ($msg->hasHTMLBody()) {
+                        $htmlContent = $msg->getHTMLBody();
+                    } else {
+                        $plainText = htmlspecialchars((string)$msg->getTextBody() ?: '', ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                        
+                        // Safely parse URLs and emails into clickable links for plain text emails.
+                        // Because this runs AFTER htmlspecialchars, it is immune to attribute breakout XSS.
+                        // The resulting HTML tags will natively pass through the frontend DOMPurify and inherit the exact same "ask before open" warning logic.
+                        $plainText = preg_replace_callback('/(https?:\/\/[^\s<]+[^\s<.,;:!?)\]\'"&])|([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i', function($m) {
+                            if (!empty($m[1])) return '<a href="' . $m[1] . '">' . $m[1] . '</a>';
+                            if (!empty($m[2])) return '<a href="mailto:' . $m[2] . '">' . $m[2] . '</a>';
+                            return $m[0];
+                        }, $plainText);
+                        
+                        $htmlContent = nl2br($plainText);
+                    }
                     
                     // --- FALLBACK PGP/MIME DETECTION ---
                     if (stripos($rawHeader, 'multipart/encrypted') !== false || stripos($msg->getContentType() ?? '', 'multipart/encrypted') !== false) {
@@ -2779,6 +2844,29 @@ class MyCloudEmailServer {
                             }
                             if (trim($attContent) === 'Version: 1' || stripos($att->content_type ?? '', 'application/pgp-encrypted') !== false) {
                                 continue; // Hide the protocol metadata attachment
+                            }
+
+                            // ZERO TRUST: Safely embed bounce reports and nested RFC822 messages directly into the body.
+                            // The library often assigns dummy names to missing filenames. We rely strictly on the validated MIME type.
+                            $mimeType = '';
+                            if (method_exists($att, 'getMimeType')) $mimeType = $att->getMimeType();
+                            if (empty($mimeType)) $mimeType = $att->content_type ?? $att->mime ?? '';
+                            $mimeType = strtolower(trim(explode(';', (string)$mimeType)[0]));
+
+                            if (strpos($mimeType, 'message/') === 0 || $mimeType === 'text/rfc822') {
+                                $originalName = $att->name ?? '';
+                                $dispName = empty($originalName) || $originalName === 'unknown' ? 'Attached Message / Delivery Report' : $originalName;
+                                $textContent = $attContent;
+                                if (stripos($textContent, 'Content-Transfer-Encoding: quoted-printable') !== false) {
+                                    $textContent = quoted_printable_decode($textContent);
+                                }
+                                
+                                $bounceText = htmlspecialchars(trim($textContent), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                                
+                                $htmlContent .= "<br><br><br><br><div class=\"ce-bounce-report\" dir=\"auto\" style=\"border: 1px solid var(--border-medium); border-radius: 6px; background: var(--gray-05); padding: 15px; margin-block-start: 50px; clear: both;\">";
+                                $htmlContent .= "<div style=\"font-weight: bold; font-family: sans-serif; font-size: 13px; color: var(--text-primary); margin-block-end: 10px; padding-block-end: 8px; border-block-end: 1px solid var(--border-default); display: flex; align-items: center; gap: 6px;\">📄 " . htmlspecialchars($dispName, ENT_QUOTES, 'UTF-8') . "</div>";
+                                $htmlContent .= "<pre style=\"white-space:pre-wrap; font-family:monospace; font-size:12px; color:var(--text-secondary); word-break: break-all; margin: 0;\">" . $bounceText . "</pre></div>";
+                                continue;
                             }
 
                             $attId = $att->id ?? $att->part_number ?? uniqid();
@@ -3071,6 +3159,9 @@ class MyCloudEmailServer {
                     foreach (glob($this->cache_dir . "/{$accId}_{$safeOld}_*.json.enc*") as $file) {
                         @rename($file, str_replace("_{$safeOld}_", "_{$safeNew}_", $file));
                     }
+                    foreach (glob($this->body_cache_dir . "/{$accId}_{$safeOld}_*.enc*") as $file) {
+                        @rename($file, str_replace("_{$safeOld}_", "_{$safeNew}_", $file));
+                    }
                     $this->sendJsonAndExit(['status' => 'OK']);
                 } catch (\Exception $e) {
                     $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Failed to rename folder: ' . $e->getMessage()]);
@@ -3094,6 +3185,9 @@ class MyCloudEmailServer {
                     // CACHE PURGE
                     $safeFld = preg_replace('/[^a-zA-Z0-9_-]/', '_', $folder);
                     foreach (glob($this->cache_dir . "/{$accId}_{$safeFld}_*.json.enc*") as $file) {
+                        @unlink($file);
+                    }
+                    foreach (glob($this->body_cache_dir . "/{$accId}_{$safeFld}_*.enc*") as $file) {
                         @unlink($file);
                     }
                     $this->sendJsonAndExit(['status' => 'OK']);
@@ -3140,6 +3234,8 @@ class MyCloudEmailServer {
                     if (!$targetAtt) { header('Content-Type: text/plain'); exit('Attachment not found'); }
 
                     $tmpFile = tempnam(sys_get_temp_dir(), 'mail_dl_');
+                    // ZERO TRUST: Guarantee cleanup even if the user aborts the download stream
+                    register_shutdown_function(function() use ($tmpFile) { @unlink($tmpFile); });
                     file_put_contents($tmpFile, $targetAtt->getContent());
                     $client->disconnect();
 
@@ -3150,7 +3246,6 @@ class MyCloudEmailServer {
                     header('Content-Disposition: attachment; filename="' . str_replace('"', '_', $safeFilenameASCII) . '"; filename*=UTF-8\'\'' . $encodedFilename);
                     
                     readfile($tmpFile);
-                    @unlink($tmpFile);
                     exit;
                 } catch (\Throwable $e) {
                     header('Content-Type: text/plain'); exit('Fetch failed: ' . $e->getMessage());
@@ -3216,7 +3311,50 @@ class MyCloudEmailServer {
                     $date = date('D, d M Y H:i:s', $ts);
                     $dateFormatted = date('Y-m-d H-i-s', $ts);
 
-                    $mailBody = $msg->hasHTMLBody() ? $msg->getHTMLBody() : nl2br(htmlspecialchars($msg->getTextBody() ?: ''));
+                    if ($msg->hasHTMLBody()) {
+                        $mailBody = $msg->getHTMLBody();
+                    } else {
+                        $plainText = htmlspecialchars((string)$msg->getTextBody() ?: '', ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                        
+                        // ZERO TRUST: Auto-linkify plain text before PDF generation so links remain clickable in the resulting PDF.
+                        $plainText = preg_replace_callback('/(https?:\/\/[^\s<]+[^\s<.,;:!?)\]\'"&])|([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i', function($m) {
+                            if (!empty($m[1])) return '<a href="' . $m[1] . '">' . $m[1] . '</a>';
+                            if (!empty($m[2])) return '<a href="mailto:' . $m[2] . '">' . $m[2] . '</a>';
+                            return $m[0];
+                        }, $plainText);
+                        
+                        $mailBody = nl2br($plainText);
+                    }
+
+                    // ZERO TRUST: Safely extract bounce reports before PDF assembly
+                    $bounceHtml = '';
+                    $filteredAttachments = [];
+                    $attachments = $msg->getAttachments();
+                    foreach ($attachments as $att) {
+                        $mimeType = '';
+                        if (method_exists($att, 'getMimeType')) $mimeType = $att->getMimeType();
+                        if (empty($mimeType)) $mimeType = $att->content_type ?? $att->mime ?? '';
+                        $mimeType = strtolower(trim(explode(';', (string)$mimeType)[0]));
+
+                        if (strpos($mimeType, 'message/') === 0 || $mimeType === 'text/rfc822') {
+                            $originalName = $att->name ?? '';
+                            $dispName = empty($originalName) || $originalName === 'unknown' ? 'Attached Message / Delivery Report' : $originalName;
+                            
+                            $textContent = $att->getContent() ?? '';
+                            if (stripos($textContent, 'Content-Transfer-Encoding: quoted-printable') !== false) {
+                                $textContent = quoted_printable_decode($textContent);
+                            }
+                            
+                            $bounceText = htmlspecialchars(trim($textContent), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                            
+                            $bounceHtml .= "<div style=\"border: 1px solid #ccc; background-color: #fcfcfc; padding: 15px; margin-top: 50px; clear: both; border-radius: 4px;\">";
+                            $bounceHtml .= "<div style=\"font-weight: bold; font-family: sans-serif; font-size: 13px; color: #333; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #ddd;\">&#128196; " . htmlspecialchars($dispName, ENT_QUOTES, 'UTF-8') . "</div>";
+                            $bounceHtml .= "<pre style=\"white-space:pre-wrap; font-family:monospace; font-size:12px; color:#555; word-break: break-all; margin: 0;\">" . $bounceText . "</pre></div>";
+                        } else {
+                            $filteredAttachments[] = $att;
+                        }
+                    }
+                    $mailBody .= $bounceHtml;
 
                     $rawHeader = (string)$msg->getHeader()->raw;
                     $reqReceipt = preg_match('/^Disposition-Notification-To:/mi', $rawHeader) || preg_match('/^Return-Receipt-To:/mi', $rawHeader);
@@ -3259,7 +3397,7 @@ class MyCloudEmailServer {
 
                     $dom = new DOMDocument();
                     libxml_use_internal_errors(true);
-                    $dom->loadHTML('<?xml encoding="UTF-8"><meta http-equiv="Content-Type" content="text/html; charset=utf-8">' . $mailBody, LIBXML_NOENT | LIBXML_NOXMLDECL | LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+                    $dom->loadHTML('<?xml encoding="UTF-8"><meta http-equiv="Content-Type" content="text/html; charset=utf-8">' . $mailBody, LIBXML_NONET | LIBXML_NOXMLDECL | LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
                     
                     $badTags = ['script', 'link', 'iframe', 'object', 'embed', 'applet', 'meta', 'base', 'video', 'audio', 'source', 'track', 'picture', 'form', 'math', 'frameset', 'frame'];
                     foreach ($badTags as $tag) {
@@ -3369,7 +3507,7 @@ class MyCloudEmailServer {
                     file_put_contents($mainHtml, $html);
 
                     $usedOnlyOffice = false;
-                    global $cloud_onlyoffice_URL, $cloud_onlyoffice_Secret;
+                    global $cloud_onlyoffice_URL, $cloud_onlyoffice_Secret, $cloud_system_url;
                     if (!empty($cloud_onlyoffice_URL) && !empty($cloud_onlyoffice_Secret)) {
                         $docKey = bin2hex(random_bytes(16));
                         $stateFile = $globalTemp . '/myCloud_office_' . $docKey . '.json';
@@ -3380,8 +3518,14 @@ class MyCloudEmailServer {
                                  || $_SERVER['SERVER_PORT'] == 443
                                  || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
                         $protocol = $isHttps ? "https://" : "http://";
-                        $safeHost = preg_replace('/[^a-zA-Z0-9.-]/', '', $_SERVER['SERVER_NAME']);
-                        $baseUrl = rtrim($protocol . $safeHost . parse_url($_SERVER['PHP_SELF'], PHP_URL_PATH), '/');
+                        
+                        // ZERO TRUST: Avoid Host header reflection to prevent SSRF callback hijacking
+                        if (!empty($cloud_system_url)) {
+                            $baseUrl = rtrim($cloud_system_url, '/');
+                        } else {
+                            $safeHost = preg_replace('/[^a-zA-Z0-9.-]/', '', $_SERVER['SERVER_NAME'] ?? 'localhost');
+                            $baseUrl = rtrim($protocol . $safeHost . parse_url($_SERVER['PHP_SELF'], PHP_URL_PATH), '/');
+                        }
                         
                         $payload = ["async" => false, "filetype" => "html", "key" => $docKey, "outputtype" => "pdf", "title" => "mail.html", "url" => $baseUrl . "/myCloudOfficeFetch/" . $docKey];
                         
@@ -3469,8 +3613,7 @@ class MyCloudEmailServer {
                     $mergePdfs = [$mainPdf];
                     $attachFiles = [];
 
-                    $attachments = $msg->getAttachments();
-                    foreach ($attachments as $att) {
+                    foreach ($filteredAttachments as $att) {
                         $attName = preg_replace('/[^a-zA-Z0-9.\-_ ]/', '_', $att->name);
                         if (empty($attName)) $attName = 'attachment_' . uniqid();
                         $attExt = strtolower(pathinfo($attName, PATHINFO_EXTENSION));
@@ -3557,7 +3700,6 @@ class MyCloudEmailServer {
                 } catch (\Throwable $e) {
                     header('Content-Type: text/plain'); exit('PDF Fetch failed: ' . $e->getMessage());
                 }
-
 
             case 'email_delete_msg':
                  if (!$this->actionAllowed('email_delete')) $this->sendJsonAndExit(['status'=>'ERR', 'msg'=>'Action denied.']);
@@ -3690,7 +3832,20 @@ class MyCloudEmailServer {
                     $cleanBody = trim(strip_tags($body));
                     $isPGP = (strpos($cleanBody, '-----BEGIN PGP MESSAGE-----') === 0 || strpos($cleanBody, '-----BEGIN PGP PUBLIC KEY BLOCK-----') === 0);
                     $cType = $isPGP ? 'text/plain' : 'text/html';
-                    $rawMail = "Date: " . date('r') . "\r\nFrom: <{$acc['email']}>\r\nTo: $to\r\nSubject: =?UTF-8?B?" . base64_encode($subject) . "?=\r\nMIME-Version: 1.0\r\nContent-Type: $cType; charset=UTF-8\r\n\r\n" . ($isPGP ? $cleanBody : $body);
+
+                    $hasUnicode = preg_match('/[^\x00-\x7F]/', $body);
+                    if ($isPGP) {
+                        $tEnc = '7bit';
+                        $encBody = $cleanBody;
+                    } else if ($hasUnicode) {
+                        $tEnc = 'base64';
+                        $encBody = trim(chunk_split(base64_encode($body)));
+                    } else {
+                        $tEnc = 'quoted-printable';
+                        $encBody = quoted_printable_encode($body);
+                    }
+
+                    $rawMail = "Date: " . date('r') . "\r\nFrom: <{$acc['email']}>\r\nTo: $to\r\nSubject: =?UTF-8?B?" . base64_encode($subject) . "?=\r\nMIME-Version: 1.0\r\nContent-Type: $cType; charset=UTF-8\r\nContent-Transfer-Encoding: $tEnc\r\n\r\n" . $encBody;
                 }
 
                 list($client, $folderObj, $err) = $this->connectImap($configs[$accId], '', false);
@@ -3994,7 +4149,8 @@ class MyCloudEmailServer {
                     $ext = $matches[1] === 'jpeg' ? 'jpg' : $matches[1];
                     $data = base64_decode($matches[2]);
                     $cid = md5(uniqid('', true)) . '@mycloud.local';
-                    $tmpFile = sys_get_temp_dir() . '/inline_' . md5(uniqid()) . '.' . $ext;
+                    // ZERO TRUST: Use cryptographically secure randomness for temp files
+                    $tmpFile = sys_get_temp_dir() . '/inline_' . bin2hex(random_bytes(16)) . '.' . $ext;
                     file_put_contents($tmpFile, $data);
                     $inlineAttachments[] = [
                         'name' => 'image_' . uniqid() . '.' . $ext,
@@ -4043,7 +4199,19 @@ class MyCloudEmailServer {
                         $bodyStr = str_replace(["\r\n", "\r", "\n"], ["\n", "\n", "\r\n"], $bodyStr);
                         $cType = $isPGP ? 'text/plain' : 'text/html';
                         
-                        $rawMail = "Date: " . gmdate('D, d M Y H:i:s O') . "\r\nFrom: <{$sender_email}>\r\nTo: " . ($_POST['to'] ?? '') . "\r\nSubject: =?UTF-8?B?" . base64_encode($_POST['subject'] ?? '') . "?=\r\nMIME-Version: 1.0\r\nContent-Type: $cType; charset=UTF-8\r\n\r\n" . $bodyStr;
+                        $hasUnicode = preg_match('/[^\x00-\x7F]/', $bodyStr);
+                        if ($isPGP) {
+                            $tEnc = '7bit';
+                            $encBody = $cleanBodyStr;
+                        } else if ($hasUnicode) {
+                            $tEnc = 'base64';
+                            $encBody = trim(chunk_split(base64_encode($bodyStr)));
+                        } else {
+                            $tEnc = 'quoted-printable';
+                            $encBody = quoted_printable_encode($bodyStr);
+                        }
+                        
+                        $rawMail = "Date: " . gmdate('D, d M Y H:i:s O') . "\r\nFrom: <{$sender_email}>\r\nTo: " . ($_POST['to'] ?? '') . "\r\nSubject: =?UTF-8?B?" . base64_encode($_POST['subject'] ?? '') . "?=\r\nMIME-Version: 1.0\r\nContent-Type: $cType; charset=UTF-8\r\nContent-Transfer-Encoding: $tEnc\r\n\r\n" . $encBody;
                         
                         // Dynamically route the IMAP upload based on the requested action
                         $isDraft = (isset($_POST['is_draft']) && $_POST['is_draft'] === 'true');

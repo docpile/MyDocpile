@@ -231,7 +231,6 @@ window._emlHandleFiles = async function(eventOrFiles) {
 
 
 // --- MAIN COMPOSER FUNCTION ---
-// --- MAIN COMPOSER FUNCTION ---
 window.myCloudShowEmailComposer = function(prefill = null) {
     const overlay = document.getElementById('myCloudModalOverlay');
     const modal = document.getElementById('myCloudModal');
@@ -1155,10 +1154,29 @@ window.myCloudShowEmailComposer = function(prefill = null) {
                 ['align', 'horizontalRule', 'list', 'lineHeight'],
                 ['table', 'link', 'image']
             ],
-            defaultStyle: 'font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #333333;'
+            defaultStyle: 'font-family: Arial, Helvetica, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"; font-size: 14px; color: #333333;'
+			
         });
 
         myCloudEmailEditorInstance.onChange = window.markDirty;
+
+        // Flawless Windows OSK Emoji & IME Integration.
+        // The WYSIWYG engine's internal HTML sanitizer aggressively deletes 4-byte surrogate pairs (Emojis) when inserted via direct OS events.
+        // We intercept the raw text injection, halt the buggy sanitizer, and natively write the characters directly to the DOM.
+        if (myCloudEmailEditorInstance.core && myCloudEmailEditorInstance.core.context && myCloudEmailEditorInstance.core.context.element && myCloudEmailEditorInstance.core.context.element.wysiwyg) {
+            const wysiwyg = myCloudEmailEditorInstance.core.context.element.wysiwyg;
+            const protectOSK = function(e) {
+                if (e.data && (!e.inputType || e.inputType === 'insertText' || e.inputType === 'insertReplacementText') && (/(?:[\uD800-\uDBFF][\uDC00-\uDFFF])/.test(e.data) || /[\u2600-\u27BF]/.test(e.data))) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    document.execCommand('insertText', false, e.data);
+                    if (myCloudEmailEditorInstance.core) myCloudEmailEditorInstance.core.history.push(false);
+                    if (typeof window.markDirty === 'function') window.markDirty();
+                }
+            };
+            wysiwyg.addEventListener('beforeinput', protectOSK, { capture: true });
+            wysiwyg.addEventListener('textInput', protectOSK, { capture: true });
+        }
 
         // Intercept drag and drop events inside the WYSIWYG editor
         if (myCloudEmailEditorInstance.core && myCloudEmailEditorInstance.core.context && myCloudEmailEditorInstance.core.context.element && myCloudEmailEditorInstance.core.context.element.wysiwyg) {

@@ -1,3 +1,15 @@
+4.1.282
+	Improvement: Webmail: More natural mail stacking in list view
+	Fix: Webmail: Cache garbage collector
+	Improvement: Webmail: Make URLs in text mails safe links
+	Improvement: Webmail: Handling of undelivered messages; show mail content when included as attachment
+	Security: Webmail: Reflected DOM XSS Escaping Hole in composer and settings dialogs
+	Security: Webmail: Missing Token in Subsequent JS Proxy Generator
+	Security: Webmail: Predictable Temporary Files (Inline Images)
+	Security: Webmail: SMTP Header Injection Resilience
+	Security: Webmail: SSRF via Unauthenticated Image Proxy
+	Security: Webmail: OAuth Redirect URI Hijacking (Account Takeover)
+
 4.1.281
 	Security: Webmail: DNS Rebinding (TOCTOU SSRF) in IMAP/SMTP Connections
 	Security: Webmail: Remote Code Execution via ImageMagick/Ghostscript
