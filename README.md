@@ -4,7 +4,7 @@
 
 Actually, I wanted to see how far one could come using AI to build a feature rich cloud software. The idea came up as I worked with AI to solve certain code problems in another software. This is how far I came after about 8 months of part time work.
 
-Nobody said the resulting code would be beautiful (in fact, in most places it's quite ugly)... But surprisingly, it works pretty well! It almost became an "Operating System in the browser"!
+Nobody said the resulting code would be beautiful (in fact, especially the early code is quite ugly)... But surprisingly, it works pretty well! It almost became an "Operating System in the browser"!
 
 Where security critical, I also intervened and even did some coding myself. The login handler here is just a simplified version of the one I use in reality (would be to complex in the dependencies and therefore in the setup to include all the stuff here). 
 
