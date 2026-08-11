@@ -14,7 +14,7 @@ The principal idea for this whole app was security:
  - Login safety (as much as possible without further external dependencies, see above)
  - A webmail reading pane that makes reading mails as secure as any technically possible: Image filter and proxy; all links get intercepted and checked when clicking; DMARC compliance display; and so on.
 
-There is no database needed to run this cloud. This makes it possible to run this on even the smallest devices.
+There is no database needed to run this cloud. This makes it possible to run ig even on the smallest devices.
 
 Of course, I'd be more than happy to receive some kind of a feedback - this product should become ever more stable, reliable and also secure over time. Also, feature requests are very welcome.
 
