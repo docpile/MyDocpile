@@ -2,7 +2,7 @@
 
 **Feature rich PHP cloud and webmail software created mainly using AI**
 
-Actually, I wanted to see how far one could come using AI to build a feature rich cloud software. The idea came up as I worked with AI to solve certain code problems. This is how far I came after about 6 months of part time work.
+Actually, I wanted to see how far one could come using AI to build a feature rich cloud software. The idea came up as I worked with AI to solve certain code problems in another software. This is how far I came after about 8 months of part time work.
 
 Nobody said the resulting code would be beautiful (in fact, in most places it's quite ugly)... But surprisingly, it works pretty well! It almost became an "Operating System in the browser"!
 
