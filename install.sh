@@ -757,9 +757,16 @@ client_max_body_size 100M;
         msg_success "Plesk OnlyOffice proxy configured."
 
     elif [ -d "/usr/local/ispconfig" ]; then
-        msg_warn "ISPConfig detected. Automatic subdomain creation via CLI is unsafe. Please manually create $oo_subdomain and add the Nginx proxy directives."
+        msg_warn "ISPConfig detected. Direct file manipulation for vhosts is overwritten by ISPConfig."
+        msg_info "Please log into your ISPConfig panel and create the subdomain/site: ${BOLD}$oo_subdomain${RESET}"
+        msg_info "Then navigate to ${BOLD}Sites -> $oo_subdomain -> Options -> Nginx Directives${RESET} and paste the following:"
+        echo ""
+        echo -e "${CYAN}# --- BEGIN NGINX DIRECTIVES FOR ISPCONFIG ---${RESET}"
+        echo "$proxy_conf"
+        echo -e "${CYAN}# --- END NGINX DIRECTIVES ---${RESET}"
+        echo ""
         echo "$proxy_conf" > "$CLOUD_DIR/ispconfig_oo_proxy_snippet.txt"
-        msg_info "Proxy snippet saved to $CLOUD_DIR/ispconfig_oo_proxy_snippet.txt"
+        msg_info "A copy of this snippet has also been saved to $CLOUD_DIR/ispconfig_oo_proxy_snippet.txt for later use."
 
     elif command -v nginx >/dev/null 2>&1; then
         msg_info "Standard Nginx detected."
