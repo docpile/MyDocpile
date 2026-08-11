@@ -234,7 +234,12 @@ The system expects several config.php variables to be defined. Most of them are 
 
 7. Follow the on-screen instructions. 
 8. Add the open_basedir as requested by the installation and restart PHP.
-9. Implement the changes as layed out in the respective .sample files here (e.g. to get webdav and/or OnlyOffice running). 
+9. Implement the changes as layed out in the respective .sample files here (e.g. to get webdav and/or OnlyOffice running).
+10. As regards OnlyOffice, you should consider adding the following security measures:
+    - --security-opt=no-new-privileges:true
+    - -e NODE_OPTIONS='--disable-proto=delete'
+    - Also enable JWT and give it a shared secret
+    - Update it frequently to get the newest security updates. You can e.g. do so without reinstalling when using Watchtower.
 
 That's it.
 
