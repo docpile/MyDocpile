@@ -32,7 +32,7 @@ if [ "$EUID" -ne 0 ]; then
     msg_info "Not running as root. Attempting to elevate privileges via sudo..."
     if command -v sudo >/dev/null 2>&1; then
         exec sudo bash "$0" "$@"
-		exit 0
+        exit 0
     else
         msg_error "sudo is not installed. Please run as root."
         exit 1
@@ -104,6 +104,12 @@ opt_mailparse="$opt_mailparse"
 PHP_BIN="$PHP_BIN"
 home_NAS_network="$home_NAS_network"
 home_NAS_autologin="$home_NAS_autologin"
+use_oo="$use_oo"
+install_local_oo="$install_local_oo"
+oo_subdomain="$oo_subdomain"
+oo_secret="$oo_secret"
+oo_url="$oo_url"
+setup_oo_proxy="$setup_oo_proxy"
 EOF
     msg_success "State saved to $STATE_FILE."
 }
@@ -304,13 +310,13 @@ function gather_configuration() {
     read www
     www=${www:-$DEFAULT_WWW}
 
- 	echo ""
+	echo ""
 	msg_ask_nl "For 2FA setup we need the email sender address." 
     msg_ask "Enter the email sender address [no_reply@$main_domain]: " 
     read email_sender
     email_sender=${email_sender:-no_reply@$main_domain}
 
- 	echo ""
+	echo ""
 	msg_ask_nl "Now some more general questions." 
     msg_ask "Should logins be IP-bound? (true/false) [true]: " 
     read ip_bound
@@ -336,19 +342,34 @@ function gather_configuration() {
     read preview_cache
     preview_cache=${preview_cache:-/home/mydocpile/preview_cache}
 
- 	echo ""
+	echo ""
     msg_ask_nl "Optional Components setup." 
     msg_ask "Enable ClamAV on the cloud? (y/N): "
     read clamav_enabled
     clamav_enabled=${clamav_enabled:-N}
 
-    msg_ask "Is OnlyOffice used and set up? (y/N): " 
+    msg_ask "Enable OnlyOffice integration? (y/N): " 
     read use_oo
     if [[ "$use_oo" =~ ^[Yy]$ ]]; then
-        msg_ask "OnlyOffice Shared JWT Secret: " 
-        read oo_secret
-        msg_ask "OnlyOffice URL (e.g., https://office.example.com/): " 
-        read oo_url
+        msg_ask "Install a LOCAL OnlyOffice instance via Docker now? (y/N): "
+        read install_local_oo
+        if [[ "$install_local_oo" =~ ^[Yy]$ ]]; then
+            msg_ask "Subdomain prefix for OnlyOffice proxy [ooffice]: "
+            read oo_prefix
+            oo_prefix=${oo_prefix:-ooffice}
+            oo_subdomain="${oo_prefix}.${main_domain}"
+            oo_url="https://${oo_subdomain}/"
+            # Generate a secure bash-friendly random string
+            oo_secret=$(tr -dc 'A-Za-z0-9!@#%^&*_+-' </dev/urandom | head -c 64)
+            msg_ask "Attempt automatic Nginx/Let's Encrypt proxy setup for $oo_subdomain? (Y/n): "
+            read setup_oo_proxy
+            setup_oo_proxy=${setup_oo_proxy:-Y}
+        else
+            msg_ask "OnlyOffice Shared JWT Secret: " 
+            read oo_secret
+            msg_ask "OnlyOffice URL (e.g., https://office.example.com/): " 
+            read oo_url
+        fi
     fi
 
     msg_ask "Office365 (Azure) Client ID (for webmail in outlook.com, leave blank to skip): " 
@@ -370,7 +391,7 @@ function gather_configuration() {
         fi
     fi
 
-    msg_ask "Install Mailparse PHP extension (performance enhancement for webmail? (Y/n): " 
+    msg_ask "Install Mailparse PHP extension (performance enhancement for webmail)? (Y/n): " 
     read opt_mailparse
     opt_mailparse=${opt_mailparse:-Y}
 	
@@ -553,6 +574,9 @@ function show_configuration_summary() {
     echo "  Preview Cache:     $preview_cache"
     echo "  ClamAV Enabled:    $clamav_enabled"
     echo "  Use OnlyOffice:    ${use_oo:-N}"
+    if [[ "$install_local_oo" =~ ^[Yy]$ ]]; then
+        echo "    -> Local Docker Install: Yes ($oo_subdomain)"
+    fi
     echo "  O365 Integration:  ${o365_client_id:-None}"
     echo "  Install Search:    $opt_cloud"
     if [[ "$opt_cloud" =~ ^[Yy]$ ]]; then
@@ -617,6 +641,146 @@ function install_system_packages() {
 
     if [ ${#failed[@]} -gt 0 ]; then
         msg_warn "Some packages failed to install: ${failed[*]}"
+    fi
+}
+
+function install_local_onlyoffice() {
+    if [[ ! "$install_local_oo" =~ ^[Yy]$ ]]; then return; fi
+    msg_info "Setting up local OnlyOffice Docker container..."
+    
+    if ! command -v docker >/dev/null 2>&1; then
+        msg_info "Docker not found. Installing Docker..."
+        curl -fsSL https://get.docker.com | execute_logged bash
+        systemctl enable --now docker
+    fi
+
+    local container_name="Onlyoffice"
+    local work_dir="$CLOUD_DIR/onlyoffice"
+    local log_dir="$work_dir/logs"
+    local data_dir="$work_dir/data"
+    local lib_dir="$work_dir/lib"
+    local db_dir="$work_dir/db"
+
+    mkdir -p "$log_dir" "$data_dir" "$lib_dir" "$db_dir"
+
+    if docker ps -a --format '{{.Names}}' | grep -Eq "^${container_name}\$"; then
+        msg_info "Removing existing container '$container_name'..."
+        execute_logged docker stop "$container_name"
+        execute_logged docker rm "$container_name"
+    fi
+
+    local dns_args="--dns 1.1.1.1 --dns 8.8.8.8"
+    
+    msg_info "Starting OnlyOffice container..."
+    if ! execute_logged docker run -d --name "$container_name" \
+        -p 127.0.0.1:8380:80 \
+        $dns_args \
+        --security-opt=no-new-privileges:true \
+        -e NODE_OPTIONS='--disable-proto=delete' \
+        -e JWT_ENABLED=true \
+        -e JWT_SECRET="$oo_secret" \
+        -v "$log_dir:/var/log/onlyoffice" \
+        -v "$data_dir:/var/www/onlyoffice/Data" \
+        -v "$lib_dir:/var/lib/onlyoffice" \
+        -v "$db_dir:/var/lib/postgresql" \
+        --restart always \
+        onlyoffice/documentserver:latest; then
+        
+        msg_error "Failed to start OnlyOffice container."
+    else
+        msg_success "OnlyOffice container started successfully."
+    fi
+}
+
+function setup_onlyoffice_proxy() {
+    if [[ ! "$install_local_oo" =~ ^[Yy]$ ]] || [[ ! "$setup_oo_proxy" =~ ^[Yy]$ ]]; then return; fi
+    msg_info "Configuring Nginx proxy for $oo_subdomain..."
+
+    local proxy_conf="
+# 1. Simulate the global 'map' directive for WebSockets
+set \$connection_upgrade \"upgrade\";
+if (\$http_upgrade = \"\") {
+    set \$connection_upgrade \"close\";
+}
+
+# 2. Block unused paths
+location = / { return 404; }
+location ^~ /welcome/ { return 404; }
+location ^~ /example/ { return 404; }
+location = /info.json { return 404; }
+location = /favicon.ico {
+    return 404;
+    log_not_found off;
+    access_log off;
+}
+
+# 3. Main Proxy Location
+location / {
+    proxy_pass http://127.0.0.1:8380;
+    proxy_http_version 1.1;
+    proxy_buffering off;
+    proxy_set_header Upgrade \$http_upgrade;
+    proxy_set_header Connection \$connection_upgrade;
+    proxy_set_header Host \$http_host;
+    proxy_set_header X-Real-IP \$remote_addr;
+    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto \$scheme;
+    proxy_set_header X-Forwarded-Host \$http_host;
+    proxy_read_timeout 3600s;
+    proxy_connect_timeout 3600s;
+    proxy_send_timeout 3600s;
+}
+
+# 4. Security Mitigations
+if (\$query_string ~* \"(?:__proto__|constructor|execSync|child_process|process\.mainModule|eval\()\") {
+    return 403;
+}
+if (\$request_method !~ ^(GET|POST|OPTIONS)$) {
+    return 405;
+}
+
+add_header Content-Security-Policy \"frame-ancestors 'self' https://$main_domain https://*.$main_domain;\" always;
+add_header X-Content-Type-Options \"nosniff\" always;
+add_header X-XSS-Protection \"1; mode=block\" always;
+client_max_body_size 100M;
+"
+
+    if command -v plesk >/dev/null 2>&1; then
+        msg_info "Plesk detected. Creating subdomain and proxy..."
+        execute_logged plesk bin subdomain --create "${oo_subdomain%%.*}" -domain "$main_domain" -www-root "/${oo_subdomain%%.*}" -empty-document-root true || true
+        execute_logged plesk bin extension --exec letsencrypt cli.php -d "$oo_subdomain" -m "$email_sender" || true
+        
+        local plesk_conf_dir="/var/www/vhosts/system/$oo_subdomain/conf"
+        mkdir -p "$plesk_conf_dir"
+        echo "$proxy_conf" > "$plesk_conf_dir/vhost_nginx.conf"
+        execute_logged plesk sbin httpdmng --reconfigure-domain "$oo_subdomain"
+        msg_success "Plesk OnlyOffice proxy configured."
+
+    elif [ -d "/usr/local/ispconfig" ]; then
+        msg_warn "ISPConfig detected. Automatic subdomain creation via CLI is unsafe. Please manually create $oo_subdomain and add the Nginx proxy directives."
+        echo "$proxy_conf" > "$CLOUD_DIR/ispconfig_oo_proxy_snippet.txt"
+        msg_info "Proxy snippet saved to $CLOUD_DIR/ispconfig_oo_proxy_snippet.txt"
+
+    elif command -v nginx >/dev/null 2>&1; then
+        msg_info "Standard Nginx detected."
+        local site_conf="/etc/nginx/sites-available/$oo_subdomain.conf"
+        cat <<EOF > "$site_conf"
+server {
+    listen 80;
+    server_name $oo_subdomain;
+    $proxy_conf
+}
+EOF
+        ln -sf "$site_conf" "/etc/nginx/sites-enabled/"
+        if command -v certbot >/dev/null 2>&1; then
+            execute_logged certbot --nginx -d "$oo_subdomain" --non-interactive --agree-tos -m "$email_sender" || true
+        else
+            msg_warn "Certbot not found. Skipping Let's Encrypt."
+        fi
+        execute_logged systemctl reload nginx || true
+        msg_success "Standard Nginx proxy configured."
+    else
+        msg_warn "No supported web server found for automatic proxy configuration."
     fi
 }
 
@@ -874,6 +1038,23 @@ EOF
     msg_success "Cronjobs configured in $cron_file."
 }
 
+function update_onlyoffice_container() {
+    if [[ ! "$install_local_oo" =~ ^[Yy]$ ]]; then return; fi
+    msg_info "Updating local OnlyOffice Docker container via Watchtower..."
+    local container_name="Onlyoffice"
+    
+    if ! docker ps -a --format '{{.Names}}' | grep -Eq "^${container_name}\$"; then
+        msg_warn "Container '$container_name' not found. Skipping update."
+        return
+    fi
+
+    if ! execute_logged docker run --rm -v /var/run/docker.sock:/var/run/docker.sock containrrr/watchtower --run-once "$container_name"; then
+        msg_warn "Watchtower failed to update Onlyoffice."
+    else
+        msg_success "OnlyOffice container checked/updated successfully."
+    fi
+}
+
 function execute_uninstall() {
     msg_info "Removing Application Files..."
     
@@ -960,11 +1141,11 @@ if [[ "$1" == "--update" || "$1" == "update" ]]; then
     msg_info "Running in automated update mode."
 elif [ -f "$STATE_FILE" ]; then
     msg_header "MyDocpile Management"
-    echo "  1) Update       (Copy newer files, install missing dependencies)"
-    echo "  2) Refresh      (Re-run whole setup, keep existing config.php)"
-    echo "  3) Reinit       (Remove and completely reconfigure config.php)"
-    echo "  4) Reinstall    (Wipe configuration and reinstall from scratch)"
-    echo "  5) Uninstall    (Remove MyDocpile software and files)"
+    echo "  1) Update        (Copy newer files, install missing dependencies)"
+    echo "  2) Refresh       (Re-run whole setup, keep existing config.php)"
+    echo "  3) Reinit        (Remove and completely reconfigure config.php)"
+    echo "  4) Reinstall     (Wipe configuration and reinstall from scratch)"
+    echo "  5) Uninstall     (Remove MyDocpile software and files)"
     echo "  6) Uninstall All (Remove software AND installed system packages)"
     echo "  7) Reset Admin   (Reset the cloudadmin password only)"
     echo "  8) Exit"
@@ -1000,6 +1181,8 @@ case $MODE in
 		fetch_repository_if_missing
         deploy_application_files ""
         generate_config
+        install_local_onlyoffice
+        setup_onlyoffice_proxy
         apply_admin_password
         install_composer_components
         if [[ "$opt_mailparse" =~ ^[Yy]$ ]]; then optional_component_mailparse; fi
@@ -1019,6 +1202,8 @@ case $MODE in
 		fetch_repository_if_missing
         deploy_application_files ""
         generate_config
+        install_local_onlyoffice
+        setup_onlyoffice_proxy
         apply_admin_password
         install_composer_components
         if [[ "$opt_mailparse" =~ ^[Yy]$ ]]; then optional_component_mailparse; fi
@@ -1045,6 +1230,8 @@ case $MODE in
         gather_configuration
         detect_php_binary
         generate_config
+        install_local_onlyoffice
+        setup_onlyoffice_proxy
         save_state
         msg_success "Configuration successfully re-initialized."
         ;;
@@ -1063,6 +1250,7 @@ case $MODE in
 		fetch_repository_if_missing
         deploy_application_files "-u"
         install_composer_components
+        update_onlyoffice_container
         msg_success "Update complete."
         show_post_install_instructions
         ;;
