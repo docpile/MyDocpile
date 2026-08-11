@@ -9,7 +9,7 @@ Nobody said the resulting code would be beautiful (in fact, especially the early
 Where security critical, I also intervened and even did some coding myself. The login handler here is just a simplified version of the one I use in reality (would be to complex in the dependencies and therefore in the setup to include all the stuff here). 
 
 The principal idea for this whole app was security:
- - As much zero trust as reasonably possible, at least on server side. Don't trust anything...
+ - As much zero trust as reasonably possible, especially also on server side. Don't trust anything...
  - End-to-End-Encryption options in cloud (as replacement for famous Boxcryptor) and webmail (here, PGP compatible).
  - Login safety (as much as possible without further external dependencies, see above)
  - A webmail reading pane that makes reading mails as secure as any technically possible: Image filter and proxy; all links get intercepted and checked when clicking; DMARC compliance display; and so on.
