@@ -2,6 +2,28 @@
 # Add them to your current settings.
 # Edit the port if needed
 
+
+		
+# ---------- SECURITY
+# 1. Block suspicious query strings (Prototype Pollution / RCE vectors)
+if ($query_string ~* "(?:__proto__|constructor|execSync|child_process|process\.mainModule|eval\()") {
+    return 403;
+}
+
+# 2. Restrict HTTP Methods (ONLYOFFICE primarily needs GET, POST, OPTIONS)
+if ($request_method !~ ^(GET|POST|OPTIONS)$) {
+    return 405;
+}
+
+# 3. Security Headers (ONLYOFFICE requires framing; restrict CSP to your trusted domains)
+add_header Content-Security-Policy "frame-ancestors 'self' https://neutronmali.app https://docpile.cloud https://*.fourthmail.com https://*.fourthmail.de https://docpile.de ;" always;
+add_header X-Content-Type-Options "nosniff" always;
+add_header X-XSS-Protection "1; mode=block" always;
+
+# ---------- END SECURITY
+
+
+
 # 1. Simulate the global 'map' directive for WebSockets inside the server block
     set $connection_upgrade "upgrade";
     if ($http_upgrade = "") {
