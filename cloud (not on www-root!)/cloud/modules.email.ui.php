@@ -2304,6 +2304,52 @@ window._emailHandleItemClick = function(item, m, e) {
                     if (r.status === 'OK') {
                         // ALWAYS cache on fetch. The >5MB purge happens when we click away.
                         myCloudEmailState.bodyCache[mKey] = r;
+
+                        // --- IMAGE PRE-CACHING ENGINE ---
+                        // Silently load external images so they appear instantly when the email is clicked.
+                        if (r.body) {
+                            const useProxy = (typeof window.myCloudEmailProxyEnabled !== 'undefined') ? window.myCloudEmailProxyEnabled : true;
+                            const proxyUrl = (url) => {
+                                if (!useProxy || !url.match(/^https?:\/\//i)) return url;
+                                return '?myCloud_email_proxy_img=' + encodeURIComponent(btoa(url)) + '&proxy_token=' + window.myCloudCsrfToken;
+                            };
+
+                            const devKey = typeof myCloudGetCurrentDeviceKey === 'function' ? myCloudGetCurrentDeviceKey() : 'desktop';
+                            const trustedDomains = (myCloudState.settings && myCloudState.settings[devKey] && myCloudState.settings[devKey].trustedEmailDomains) || [];
+                            const senderDomain = (mObj.fromEmail || '').split('@').pop().toLowerCase();
+                            const isTrusted = trustedDomains.includes(senderDomain);
+
+                            const imgUrls = new Set();
+                            const srcRegex = /(?:src|background)=(['"])(https?:\/\/[^\1>]+)\1/gi;
+                            const urlRegex = /url\((['"]?)(https?:\/\/[^\1)]+)\1\)/gi;
+                            
+                            let match;
+                            while ((match = srcRegex.exec(r.body)) !== null) imgUrls.add(match[2]);
+                            while ((match = urlRegex.exec(r.body)) !== null) imgUrls.add(match[2]);
+							
+
+                            imgUrls.forEach(url => {
+                                if (useProxy || isTrusted) {
+                                    // --- SPY PIXEL & TRACKER FILTER ---
+                                    const uLower = url.toLowerCase();
+                                    const isTrackerUrl = uLower.includes('track') || 
+                                                         uLower.includes('pixel') || 
+                                                         uLower.includes('open') || 
+                                                         uLower.includes('collect') || 
+                                                         uLower.includes('log') || 
+                                                         uLower.includes('counter');
+                                    
+                                    if (!isTrackerUrl) {
+                                        // Fetch immediately for instant 1:1 UI rendering of actual content images
+                                        const img = new Image();
+                                        img.src = useProxy ? proxyUrl(url) : url;
+                                    }
+                                    // -----------------------------------
+                                }
+                            });
+                        }
+                        // --------------------------------
+
                         return r;
                     } else {
                         delete myCloudEmailState.bodyCache[mKey];
@@ -2314,11 +2360,13 @@ window._emailHandleItemClick = function(item, m, e) {
                 });
             };
 
-            // Fire background fetches for the 3 messages directly below the current one
-            prefetchBody(currentIndex - 1); // Look UP 1
-            prefetchBody(currentIndex + 1); // Look DOWN 1
-            prefetchBody(currentIndex + 2); // Look DOWN 2
-            prefetchBody(currentIndex + 3); // Look DOWN 3
+            // Fire background fetches for the messages directly below the current one
+            // --- PREDICTIVE UX: VARIABLE-DRIVEN AUTOLOADER ---
+            const prefetchUp = 2;
+            const prefetchDown = 10;
+            for (let i = -prefetchUp; i <= prefetchDown; i++) {
+                if (i !== 0) prefetchBody(currentIndex + i);
+            }
             // -----------------------------------------------------------------------
 
             myCloudEmailReadMessage(m.id, m);

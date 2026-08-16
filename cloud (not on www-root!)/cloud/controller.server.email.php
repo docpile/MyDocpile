@@ -2750,28 +2750,59 @@ class MyCloudEmailServer {
                     $rawBody = $msg->getRawBody();
                     $rawMsg = $rawHeader . "\r\n" . $rawBody;
                     
+                    $htmlContent = '';
                     if ($msg->hasHTMLBody()) {
-                        $htmlContent = $msg->getHTMLBody();
-                    } else {
-                        $plainText = htmlspecialchars((string)$msg->getTextBody() ?: '', ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                        $htmlContent = (string)$msg->getHTMLBody();
+                    }
+                    
+                    // --- BULLETPROOF RAW MIME EXTRACTOR ---
+                    // Bypasses Webklex parser failures due to soft line breaks corrupting boundaries.
+                    $cleanTestHtml = trim(strip_tags($htmlContent));
+                    if (empty($cleanTestHtml) || strlen($htmlContent) < 1500 || stripos($htmlContent, '</body>') === false) {
+                        $bestHtml = '';
+                        // Strict regex prevents matching HTML comments (<!--) by requiring 10+ valid MIME boundary characters
+                        $parts = preg_split('/(?:\r\n|\n)--[a-zA-Z0-9=_+\-\.]{10,}/', $rawBody);
                         
-                        // Safely parse URLs and emails into clickable links for plain text emails.
-                        // Because this runs AFTER htmlspecialchars, it is immune to attribute breakout XSS.
-                        // The resulting HTML tags will natively pass through the frontend DOMPurify and inherit the exact same "ask before open" warning logic.
+                        foreach ($parts as $p) {
+                            $splitIdx = strpos($p, "\r\n\r\n");
+                            if ($splitIdx === false) $splitIdx = strpos($p, "\n\n");
+                            
+                            if ($splitIdx !== false) {
+                                $partHeaders = substr($p, 0, $splitIdx);
+                                if (preg_match('/Content-Type:\s*text\/html/i', $partHeaders)) {
+                                    $partBody = trim(substr($p, $splitIdx));
+                                    if (stripos($partHeaders, 'quoted-printable') !== false) {
+                                        $partBody = quoted_printable_decode($partBody);
+                                    } elseif (stripos($partHeaders, 'base64') !== false) {
+                                        $partBody = base64_decode(str_replace(["\r", "\n", " "], '', $partBody));
+                                    }
+                                    if (strlen($partBody) > strlen($bestHtml)) {
+                                        $bestHtml = $partBody;
+                                    }
+                                }
+                            }
+                        }
+                        if (strlen($bestHtml) > strlen($htmlContent)) {
+                            $htmlContent = $bestHtml;
+                        }
+                    }
+
+                    // Fallback to text/plain if absolutely no HTML is found
+                    if (empty(trim(strip_tags($htmlContent)))) {
+                        $plainText = htmlspecialchars((string)$msg->getTextBody() ?: '', ENT_QUOTES | ENT_HTML5, 'UTF-8');
                         $plainText = preg_replace_callback('/(https?:\/\/[^\s<]+[^\s<.,;:!?)\]\'"&])|([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i', function($m) {
                             if (!empty($m[1])) return '<a href="' . $m[1] . '">' . $m[1] . '</a>';
                             if (!empty($m[2])) return '<a href="mailto:' . $m[2] . '">' . $m[2] . '</a>';
                             return $m[0];
                         }, $plainText);
-                        
                         $htmlContent = nl2br($plainText);
                     }
-                    
+
                     // --- FALLBACK PGP/MIME DETECTION ---
                     if (stripos($rawHeader, 'multipart/encrypted') !== false || stripos($msg->getContentType() ?? '', 'multipart/encrypted') !== false) {
                         if (strpos($htmlContent, '-----BEGIN PGP MESSAGE-----') === false && preg_match('/-----BEGIN PGP MESSAGE-----.*?-----END PGP MESSAGE-----/s', $rawBody, $m)) {
                             $htmlContent = "<pre>\n" . trim($m[0]) . "\n</pre>";
-	                    }
+                        }
                     }
 
                     $trustScore = 'unknown';
@@ -2832,22 +2863,29 @@ class MyCloudEmailServer {
                         $msgAttachments = $msg->getAttachments();
                     } catch (\Throwable $e) {}
 
+                    // Prune the attachments array to remove the body parts that were misclassified
+                    foreach ($msgAttachments as $idx => $att) {
+                        $mimeType = strtolower(trim(explode(';', (string)($att->content_type ?? $att->mime ?? ''))[0]));
+                        $isUnnamed = empty($att->name) || stripos($att->name, 'unknown') !== false || stripos($att->name, 'att00') !== false;
+                        if (($mimeType === 'text/html' || $mimeType === 'text/plain' || $mimeType === 'multipart/related') && $isUnnamed) {
+                            unset($msgAttachments[$idx]);
+                        }
+                    }
+                    $msgAttachments = array_values(is_object($msgAttachments) ? iterator_to_array($msgAttachments) : (array)$msgAttachments);
+
                     foreach ($msgAttachments as $att) {
                         try {
                             $attContent = $att->getContent() ?? '';
                             
                             // --- AGGRESSIVE PGP/MIME ATTACHMENT EXTRACTION ---
                             if (strpos($attContent, '-----BEGIN PGP MESSAGE-----') !== false) {
-                                // Elevate the payload back into the body so the frontend decrypter sees it
                                 $htmlContent = "<pre>\n" . htmlspecialchars(trim($attContent), ENT_QUOTES | ENT_HTML5, 'UTF-8') . "\n</pre>";
-                                continue; // Hide from downloadable attachments
+                                continue;
                             }
                             if (trim($attContent) === 'Version: 1' || stripos($att->content_type ?? '', 'application/pgp-encrypted') !== false) {
-                                continue; // Hide the protocol metadata attachment
+                                continue;
                             }
 
-                            // ZERO TRUST: Safely embed bounce reports and nested RFC822 messages directly into the body.
-                            // The library often assigns dummy names to missing filenames. We rely strictly on the validated MIME type.
                             $mimeType = '';
                             if (method_exists($att, 'getMimeType')) $mimeType = $att->getMimeType();
                             if (empty($mimeType)) $mimeType = $att->content_type ?? $att->mime ?? '';
@@ -2895,8 +2933,39 @@ class MyCloudEmailServer {
                     $client->disconnect();
 
                     // ==========================================
-                    // SQUARE ONE EXTRACTION
+                    // SQUARE ONE EXTRACTION & PURIFICATION
                     // ==========================================
+                    $htmlContent = str_replace("\0", "", (string)$htmlContent);
+                    $htmlContent = mb_convert_encoding($htmlContent, 'UTF-8', 'UTF-8');
+
+                    // 1. OUTLOOK CONDITIONAL COMMENT CLEANER
+                    $mailBody = preg_replace('/<!--\[if[^\]]*\]>(?:<!-->|<!--\s*-->|<!\s*-->|-->)?/i', '', $mailBody);
+                    $mailBody = preg_replace('/(?:<!--\s*)?<!\[endif\]-->/i', '', $mailBody);
+                    
+                    // Clean up any remaining isolated malformed comment artifacts (like <! -->)
+                    $mailBody = preg_replace('/<!\s*-->/', '', $mailBody);
+                    $mailBody = str_replace('<!-->', '', $mailBody);
+
+                    // 2. STRUCTURAL TAG PRE-CLEANER (No PCRE Backtracking)
+                    $bodyStart = stripos($htmlContent, '<body');
+                    if ($bodyStart !== false) {
+                        $bodyEnd = strripos($htmlContent, '</body>');
+                        if ($bodyEnd !== false) {
+                            $startPos = strpos($htmlContent, '>', $bodyStart) + 1;
+                            $htmlContent = substr($htmlContent, $startPos, $bodyEnd - $startPos);
+                        }
+                    } else {
+                        $htmlContent = preg_replace('/<!DOCTYPE[^>]*>/i', '', $htmlContent);
+                        $htmlContent = preg_replace('/<\/?html[^>]*>/i', '', $htmlContent);
+                        $headStart = stripos($htmlContent, '<head');
+                        if ($headStart !== false) {
+                            $headEnd = stripos($htmlContent, '</head>');
+                            if ($headEnd !== false) {
+                                $htmlContent = substr($htmlContent, 0, $headStart) . substr($htmlContent, $headEnd + 7);
+                            }
+                        }
+                    }
+
                     if (class_exists('HTMLPurifier')) {
                         $config = \HTMLPurifier_Config::createDefault();
                         $config->set('HTML.TargetBlank', true);
@@ -2921,6 +2990,7 @@ class MyCloudEmailServer {
                     }
 
                     $listUnsubscribe = '';
+                    
                     if (preg_match('/(?:^|[\r\n])List-Unsubscribe:\s*(.*?)(?=[\r\n][A-Za-z0-9\-]+:|$)/is', $rawHeader, $m)) {
                         $flat = preg_replace('/[\r\n\t]+/', ' ', $m[1]);
                         $flat = preg_replace('/\?=\s+=\?/', '?==?', $flat);
@@ -2951,6 +3021,499 @@ class MyCloudEmailServer {
                 } catch (\Throwable $e) {
                     if ($client) $client->disconnect();
                     $this->sendJsonAndExit(['status'=>'ERR', 'msg'=>'Failed to fetch body: ' . $e->getMessage()]);
+                }
+                break;
+
+            case 'email_dl_pdf':
+                $configs = $this->loadConfigs();
+                $accId = $_POST['account_id'] ?? '';
+                $folder = $_POST['folder'] ?? 'INBOX';
+                $msgId = preg_replace('/[^a-zA-Z0-9,:-]/', '', $_POST['message_id'] ?? '');
+
+                if (!isset($configs[$accId])) exit('Account not found');
+                list($client, $folderObj, $err) = $this->connectImap($configs[$accId], $folder, true);
+                if (!$client || !$folderObj) { header('Content-Type: text/plain'); exit('Connection failed: ' . htmlspecialchars($err)); } 
+
+                try {
+                    $msg = $folderObj->query()->getMessageByUid($msgId);
+                    if (!$msg) { header('Content-Type: text/plain'); exit('Message not found'); }
+
+                    $subject = (string)$msg->getSubject() ?: 'No Subject';
+
+                    $addrs = $this->extractMessageAddresses($msg);
+                    $ts = $this->extractMessageTimestamp($msg);
+                    
+                    $date = date('D, d M Y H:i:s', $ts);
+                    $dateFormatted = date('Y-m-d H-i-s', $ts);
+
+                    $rawBody = $msg->getRawBody();
+                    $mailBody = '';
+
+                    if ($msg->hasHTMLBody()) {
+                        $mailBody = (string)$msg->getHTMLBody();
+                    }
+
+                    // --- IMMUNE RAW MIME EXTRACTOR FOR PDF ---
+                    $cleanTestHtml = trim(strip_tags($mailBody));
+                    if (empty($cleanTestHtml) || strlen($mailBody) < 1500 || stripos($mailBody, '</body>') === false) {
+                        $bestHtml = '';
+                        $parts = preg_split('/(?:\r\n|\n)--[a-zA-Z0-9=_+\-\.]{10,}/', $rawBody);
+                        
+                        foreach ($parts as $p) {
+                            $splitIdx = strpos($p, "\r\n\r\n");
+                            if ($splitIdx === false) $splitIdx = strpos($p, "\n\n");
+                            
+                            if ($splitIdx !== false) {
+                                $partHeaders = substr($p, 0, $splitIdx);
+                                if (preg_match('/Content-Type:\s*text\/html/i', $partHeaders)) {
+                                    $partBody = trim(substr($p, $splitIdx));
+                                    if (stripos($partHeaders, 'quoted-printable') !== false) {
+                                        $partBody = quoted_printable_decode($partBody);
+                                    } elseif (stripos($partHeaders, 'base64') !== false) {
+                                        $partBody = base64_decode(str_replace(["\r", "\n", " "], '', $partBody));
+                                    }
+                                    if (strlen($partBody) > strlen($bestHtml)) {
+                                        $bestHtml = $partBody;
+                                    }
+                                }
+                            }
+                        }
+                        if (strlen($bestHtml) > strlen($mailBody)) {
+                            $mailBody = $bestHtml;
+                        }
+                    }
+
+                    if (empty(trim(strip_tags($mailBody)))) {
+                        $plainText = htmlspecialchars((string)$msg->getTextBody() ?: '', ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                        $plainText = preg_replace_callback('/(https?:\/\/[^\s<]+[^\s<.,;:!?)\]\'"&])|([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i', function($m) {
+                            if (!empty($m[1])) return '<a href="' . $m[1] . '">' . $m[1] . '</a>';
+                            if (!empty($m[2])) return '<a href="mailto:' . $m[2] . '">' . $m[2] . '</a>';
+                            return $m[0];
+                        }, $plainText);
+                        $mailBody = nl2br($plainText);
+                    }
+
+                    // ZERO TRUST: Safely extract bounce reports before PDF assembly
+                    $bounceHtml = '';
+                    $filteredAttachments = [];
+                    
+                    $attachments = [];
+                    try {
+                        $attachments = $msg->getAttachments();
+                    } catch (\Throwable $e) {}
+
+                    // Prune the attachments array
+                    foreach ($attachments as $idx => $att) {
+                        $mimeType = strtolower(trim(explode(';', (string)($att->content_type ?? $att->mime ?? ''))[0]));
+                        $isUnnamed = empty($att->name) || stripos($att->name, 'unknown') !== false || stripos($att->name, 'att00') !== false;
+                        if (($mimeType === 'text/html' || $mimeType === 'text/plain' || $mimeType === 'multipart/related') && $isUnnamed) {
+                            unset($attachments[$idx]);
+                        }
+                    }
+                    $attachments = array_values(is_object($attachments) ? iterator_to_array($attachments) : (array)$attachments);
+
+                    foreach ($attachments as $att) {
+                        $mimeType = '';
+                        if (method_exists($att, 'getMimeType')) $mimeType = $att->getMimeType();
+                        if (empty($mimeType)) $mimeType = $att->content_type ?? $att->mime ?? '';
+                        $mimeType = strtolower(trim(explode(';', (string)$mimeType)[0]));
+
+                        if (strpos($mimeType, 'message/') === 0 || $mimeType === 'text/rfc822') {
+                            $originalName = $att->name ?? '';
+                            $dispName = empty($originalName) || $originalName === 'unknown' ? 'Attached Message / Delivery Report' : $originalName;
+                            
+                            $textContent = $att->getContent() ?? '';
+                            if (stripos($textContent, 'Content-Transfer-Encoding: quoted-printable') !== false) {
+                                $textContent = quoted_printable_decode($textContent);
+                            }
+                            
+                            $bounceText = htmlspecialchars(trim($textContent), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                            
+                            $bounceHtml .= "<div style=\"border: 1px solid #ccc; background-color: #fcfcfc; padding: 15px; margin-top: 50px; clear: both; border-radius: 4px;\">";
+                            $bounceHtml .= "<div style=\"font-weight: bold; font-family: sans-serif; font-size: 13px; color: #333; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #ddd;\">&#128196; " . htmlspecialchars($dispName, ENT_QUOTES, 'UTF-8') . "</div>";
+                            $bounceHtml .= "<pre style=\"white-space:pre-wrap; font-family:monospace; font-size:12px; color:#555; word-break: break-all; margin: 0;\">" . $bounceText . "</pre></div>";
+                        } else {
+                            $filteredAttachments[] = $att;
+                        }
+                    }
+                    $mailBody .= $bounceHtml;
+
+                    $client->disconnect();
+
+                    // ==========================================
+                    // SQUARE ONE EXTRACTION & PURIFICATION
+                    // ==========================================
+                    $mailBody = str_replace("\0", "", (string)$mailBody);
+                    $mailBody = mb_convert_encoding($mailBody, 'UTF-8', 'UTF-8');
+
+                    // 1. OUTLOOK CONDITIONAL COMMENT CLEANER
+                    $htmlContent = preg_replace('/<!--\[if[^\]]*\]>(?:<!-->|<!--\s*-->|<!\s*-->|-->)?/i', '', $htmlContent);
+                    $htmlContent = preg_replace('/(?:<!--\s*)?<!\[endif\]-->/i', '', $htmlContent);
+                    
+                    // Clean up any remaining isolated malformed comment artifacts (like <! -->)
+                    $htmlContent = preg_replace('/<!\s*-->/', '', $htmlContent);
+                    $htmlContent = str_replace('<!-->', '', $htmlContent);
+
+                    // 2. STRUCTURAL TAG PRE-CLEANER
+                    $bodyStart = stripos($mailBody, '<body');
+                    if ($bodyStart !== false) {
+                        $bodyEnd = strripos($mailBody, '</body>');
+                        if ($bodyEnd !== false) {
+                            $startPos = strpos($mailBody, '>', $bodyStart) + 1;
+                            $mailBody = substr($mailBody, $startPos, $bodyEnd - $startPos);
+                        }
+                    } else {
+                        $mailBody = preg_replace('/<!DOCTYPE[^>]*>/i', '', $mailBody);
+                        $mailBody = preg_replace('/<\/?html[^>]*>/i', '', $mailBody);
+                        $headStart = stripos($mailBody, '<head');
+                        if ($headStart !== false) {
+                            $headEnd = stripos($mailBody, '</head>');
+                            if ($headEnd !== false) {
+                                $mailBody = substr($mailBody, 0, $headStart) . substr($mailBody, $headEnd + 7);
+                            }
+                        }
+                    }
+
+                    $dom = new DOMDocument();
+                    libxml_use_internal_errors(true);
+                    $dom->loadHTML('<?xml encoding="UTF-8"><meta http-equiv="Content-Type" content="text/html; charset=utf-8">' . $mailBody, LIBXML_NONET | LIBXML_NOXMLDECL | LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+                    
+                    $badTags = ['script', 'link', 'iframe', 'object', 'embed', 'applet', 'meta', 'base', 'video', 'audio', 'source', 'track', 'picture', 'form', 'math', 'frameset', 'frame'];
+                    foreach ($badTags as $tag) {
+                        $nodes = $dom->getElementsByTagName($tag);
+                        for ($i = $nodes->length - 1; $i >= 0; $i--) {
+                            $node = $nodes->item($i);
+                            $node->parentNode->removeChild($node);
+                        }
+                    }
+
+                    $loadImages = isset($_POST['load_images']) && $_POST['load_images'] === '1';
+                    $styleTags = $dom->getElementsByTagName('style');
+                    for ($i = 0; $i < $styleTags->length; $i++) {
+                        $node = $styleTags->item($i);
+                        $css = $node->nodeValue;
+                        $css = preg_replace('/@import\s+(?:url\()?[\'"]?[^\'")]*[\'"]?\)?\s*;/i', '', $css);
+                        if (!$loadImages) {
+                            $css = preg_replace('/url\([\'"]?(?!data:|cid:)[^)\'"]+[\'"]?\)/i', 'url(data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACwAAAAAAQABAAACAkQBADs=)', $css);
+                        } else {
+                            $css = preg_replace('/url\([\'"]?(file|ftp|gopher|phar):\/\/[^)\'"]+[\'"]?\)/i', 'url(data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACwAAAAAAQABAAACAkQBADs=)', $css);
+                            $css = preg_replace('/url\([\'"]?https?:\/\/(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|169\.254\.|::1)[^)\'"]*[\'"]?\)/i', 'url(data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACwAAAAAAQABAAACAkQBADs=)', $css);
+                        }
+                        $node->nodeValue = $css;
+                    }                
+
+                    $xpath = new DOMXPath($dom);
+                    $nodes = $xpath->query('//*[@style]');
+                    foreach ($nodes as $node) {
+                        $style = $node->getAttribute('style');
+                        $styleLower = strtolower($style);
+                        if (strpos($styleLower, 'expression(') !== false || strpos($styleLower, 'javascript:') !== false || strpos($styleLower, 'behavior:') !== false) {
+                            $node->removeAttribute('style');
+                        } elseif (!$loadImages && (strpos($styleLower, 'url(') !== false || strpos($styleLower, '@import') !== false)) {
+                            $safeStyle = preg_replace('/url\([\'"]?[^)\'"]+[\'"]?\)/i', 'url(data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACwAAAAAAQABAAACAkQBADs=)', $style);
+                            $node->setAttribute('style', $safeStyle);
+                        }
+                    }
+                    
+                    $nodes = $xpath->query('//*[@background]');
+                    foreach ($nodes as $node) {
+                        if (!$loadImages) $node->removeAttribute('background');
+                    }
+
+                    $nodes = $dom->getElementsByTagName('img');
+                    for ($i = $nodes->length - 1; $i >= 0; $i--) {
+                        $node = $nodes->item($i);
+                        $src = $node->getAttribute('src');
+                        if ($src && !preg_match('/^data:/i', $src) && !preg_match('/^cid:/i', $src)) {
+                            $isSafeUrl = false;
+                            if ($loadImages) {
+                                $parsed = parse_url($src);
+                                $scheme = strtolower($parsed['scheme'] ?? '');
+                                $host = strtolower($parsed['host'] ?? '');
+                                if (in_array($scheme, ['http', 'https']) && !preg_match('/^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|169\.254\.|::1)/i', $host)) {
+                                    $isSafeUrl = true;
+                                }
+                            }
+                            if (!$isSafeUrl) {
+                                 $node->setAttribute('src', 'data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACwAAAAAAQABAAACAkQBADs=');
+                                 $node->setAttribute('style', $node->getAttribute('style') . '; border: 1px dashed #ccc; height: 24px !important; width: 24px !important; min-height: 0 !important; display: inline-block;');
+                                 $node->removeAttribute('height');
+                            }
+                        }
+                    }
+                    
+                    $nodes = $dom->getElementsByTagName('a');
+                    for ($i = $nodes->length - 1; $i >= 0; $i--) {
+                        $node = $nodes->item($i);
+                        $href = $node->getAttribute('href');
+                        if (preg_match('/^(javascript|vbscript|data):/i', trim($href))) {
+                            $node->removeAttribute('href');
+                        }
+                    }
+                    
+                    $styleHtml = '';
+                    foreach ($dom->getElementsByTagName('style') as $stNode) {
+                        $styleHtml .= $dom->saveHTML($stNode);
+                    }
+
+                    $mailBody = '';
+                    $bodyNode = $dom->getElementsByTagName('body')->item(0);
+                    if ($bodyNode) {
+                        foreach ($bodyNode->childNodes as $child) { $mailBody .= $dom->saveHTML($child); }
+                    } else {
+                        $mailBody = $dom->saveHTML();
+                    }
+                    
+                    $mailBody = $styleHtml . $mailBody;
+                    $mailBody = str_replace(['<?xml encoding="UTF-8">', '<meta http-equiv="Content-Type" content="text/html; charset=utf-8">'], '', $mailBody);
+                    libxml_clear_errors();
+
+                    $rawHeader = $msg->getHeader()->raw;
+                    $reqReceipt = preg_match('/^Disposition-Notification-To:/mi', $rawHeader) || preg_match('/^Return-Receipt-To:/mi', $rawHeader);
+                    $isFlagged = false;
+                    if (method_exists($msg, 'hasFlag')) {
+                        $isFlagged = $msg->hasFlag('Flagged');
+                    } elseif (method_exists($msg, 'getFlags')) {
+                        $flags = $msg->getFlags();
+                        if (is_iterable($flags)) {
+                            foreach($flags as $f) {
+                                if (stripos($f, 'flagged') !== false) { $isFlagged = true; break; }
+                            }
+                        }
+                    }
+
+                    $rawTo = preg_match('/^To:\s*([^\r\n]+)/mi', $rawHeader, $m) ? trim($this->decodeImapHeader($m[1])) : '';
+                    $rawCc = preg_match('/^Cc:\s*([^\r\n]+)/mi', $rawHeader, $m) ? trim($this->decodeImapHeader($m[1])) : '';
+                    $rawBcc = preg_match('/^Bcc:\s*([^\r\n]+)/mi', $rawHeader, $m) ? trim($this->decodeImapHeader($m[1])) : '';
+                    $finalTo = !empty($addrs['to']) ? $addrs['to'] : $rawTo;
+                    $finalCc = !empty($addrs['cc']) ? $addrs['cc'] : $rawCc;
+                    $finalBcc = !empty($addrs['bcc']) ? $addrs['bcc'] : $rawBcc;
+
+                    $headerHtml = "<div class=\"email-header\">";
+                    $headerHtml .= "<b>From:</b> " . htmlspecialchars($addrs['from_formatted']) . "<br>";
+                    $headerHtml .= "<b>Sent:</b> " . htmlspecialchars($date) . "<br>";
+                    if (!empty($finalTo)) $headerHtml .= "<b>To:</b> " . htmlspecialchars($finalTo) . "<br>";
+                    if (!empty($finalCc)) $headerHtml .= "<b>Cc:</b> " . htmlspecialchars($finalCc) . "<br>";
+                    if (!empty($finalBcc)) $headerHtml .= "<b>Bcc:</b> " . htmlspecialchars($finalBcc) . "<br>";
+                    $headerHtml .= "<b>Subject:</b> " . htmlspecialchars($subject) . "<br>";
+
+                    $extras = [];
+                    if ($isFlagged) $extras[] = "&#128681; Flagged";
+                    if ($reqReceipt) $extras[] = "&#128065; Read Receipt Requested";
+                    if (!empty($extras)) {
+                        $headerHtml .= "<b>Status:</b> " . implode(', ', $extras) . "<br>";
+                    }
+                    $headerHtml .= "</div>";
+
+                    $printCss = "body { font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #333333; line-height: 1.5; padding: 20px; margin: 0; background: #fff; } .email-header { border-bottom: 1px solid #e1e1e1; padding-bottom: 15px; margin-bottom: 20px; font-size: 13px; } .email-header b { display: inline-block; min-width: 80px; color: #555; } .email-header div { margin-bottom: 4px; } img { max-width: 100%; height: auto; page-break-inside: avoid; } table { border-collapse: collapse; } * { word-wrap: break-word; overflow-wrap: break-word; } p { margin-top: 0; margin-bottom: 1em; }";
+                    
+                    $mailBody = preg_replace('/<(script|iframe|object|embed|applet|meta|base|link).*?>.*?<\/\1>/is', '', $mailBody);
+                    $mailBody = preg_replace('/<(script|iframe|object|embed|applet|meta|base|link)[^>]*>/is', '', $mailBody);
+                    
+                    $html = "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><title>" . htmlspecialchars($subject) . "</title><style>" . $printCss . "</style></head><body>" . $headerHtml . "<div class=\"ce-email-body-content\">" . $mailBody . "</div></body></html>";
+
+                    $globalTemp = $GLOBALS['temp_dir'] ?? sys_get_temp_dir();
+                    $tmpDir = $globalTemp . '/eml_pdf_' . bin2hex(random_bytes(16));
+                    if (!@mkdir($tmpDir, 0700, true) && !is_dir($tmpDir)) {
+                        header('Content-Type: text/plain'); exit('Failed to allocate secure temporary directory.');
+                    }
+                
+                    $mainHtml = $tmpDir . '/mail.html';
+                    $mainPdf = $tmpDir . '/mail.pdf';
+                    file_put_contents($mainHtml, $html);
+
+                    $usedOnlyOffice = false;
+                    global $cloud_onlyoffice_URL, $cloud_onlyoffice_Secret, $cloud_system_url;
+                    if (!empty($cloud_onlyoffice_URL) && !empty($cloud_onlyoffice_Secret)) {
+                        $docKey = bin2hex(random_bytes(16));
+                        $stateFile = $globalTemp . '/myCloud_office_' . $docKey . '.json';
+                        file_put_contents($stateFile, json_encode(['path' => $mainHtml, 'expires' => time() + 300, 'username' => $this->username, 'key' => $this->key]));
+                        chmod($stateFile, 0600);
+                        
+                        $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') 
+                                 || $_SERVER['SERVER_PORT'] == 443
+                                 || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
+                        $protocol = $isHttps ? "https://" : "http://";
+                        
+                        // ZERO TRUST: Avoid Host header reflection to prevent SSRF callback hijacking
+                        if (!empty($cloud_system_url)) {
+                            $baseUrl = rtrim($cloud_system_url, '/');
+                        } else {
+                            $safeHost = preg_replace('/[^a-zA-Z0-9.-]/', '', $_SERVER['SERVER_NAME'] ?? 'localhost');
+                            $baseUrl = rtrim($protocol . $safeHost . parse_url($_SERVER['PHP_SELF'], PHP_URL_PATH), '/');
+                        }
+                        
+                        $payload = ["async" => false, "filetype" => "html", "key" => $docKey, "outputtype" => "pdf", "title" => "mail.html", "url" => $baseUrl . "/myCloudOfficeFetch/" . $docKey];
+                        
+                        $k = $cloud_onlyoffice_Secret;
+                        $h = str_replace(['+','/','='], ['-','_',''], base64_encode(json_encode(['typ'=>'JWT','alg'=>'HS256'])));
+                        $b = str_replace(['+','/','='], ['-','_',''], base64_encode(json_encode($payload)));
+                        $s = str_replace(['+','/','='], ['-','_',''], base64_encode(hash_hmac('sha256', "$h.$b", $k, true)));
+                        $payload['token'] = "$h.$b.$s";
+                        
+                        $ch = curl_init(rtrim($cloud_onlyoffice_URL, '/') . '/ConvertService.ashx');
+                        curl_setopt($ch, CURLOPT_POST, true);
+                        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+                        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json', 'Accept: application/json']);
+                        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+                        $response = curl_exec($ch);
+                        curl_close($ch);
+                        
+                        @unlink($stateFile);
+                        
+                        $resData = json_decode($response, true);
+                        if (!empty($resData['fileUrl']) && strpos((string)$resData['fileUrl'], 'http') === 0) {
+                            $callbackHost = parse_url($resData['fileUrl'], PHP_URL_HOST);
+                            $callbackIp = gethostbyname($callbackHost);
+                            $ooHost = parse_url($cloud_onlyoffice_URL, PHP_URL_HOST);
+                            $isTrustedOnlyOffice = ($callbackHost === $ooHost || $callbackIp === gethostbyname($ooHost));
+
+                            if ($isTrustedOnlyOffice || filter_var($callbackIp, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) !== false || in_array($callbackIp, ['127.0.0.1', '::1'])) {
+                                $chDl = curl_init($resData['fileUrl']);
+                                curl_setopt($chDl, CURLOPT_RETURNTRANSFER, true);
+                                curl_setopt($chDl, CURLOPT_FOLLOWLOCATION, false);
+                                $callbackPort = parse_url($resData['fileUrl'], PHP_URL_SCHEME) === 'https' ? 443 : 80;
+                                curl_setopt($chDl, CURLOPT_RESOLVE, ["{$callbackHost}:{$callbackPort}:{$callbackIp}"]);
+                                curl_setopt($chDl, CURLOPT_SSL_VERIFYPEER, false);
+                                curl_setopt($chDl, CURLOPT_SSL_VERIFYHOST, 0);
+                                $pdfContent = curl_exec($chDl);
+                                if (curl_getinfo($chDl, CURLINFO_HTTP_CODE) === 200 && $pdfContent !== false) { 
+                                    file_put_contents($mainPdf, $pdfContent); $usedOnlyOffice = true; 
+                                }
+                                curl_close($chDl);
+                            }
+                        }
+                    }
+
+                    if (!$usedOnlyOffice || !file_exists($mainPdf) || filesize($mainPdf) == 0) {
+                        $wkPaths = ['wkhtmltopdf --disable-smart-shrinking', '/usr/bin/wkhtmltopdf --disable-smart-shrinking', '/usr/local/bin/wkhtmltopdf --disable-smart-shrinking'];
+                        foreach ($wkPaths as $wk) {
+                            @exec($wk . " --encoding utf-8 " . escapeshellarg($mainHtml) . " " . escapeshellarg($mainPdf) . " 2>&1");
+                            if (file_exists($mainPdf) && filesize($mainPdf) > 0) break;
+                        }
+                    }
+                    
+                    if (!file_exists($mainPdf) || filesize($mainPdf) == 0) {
+                        $cleanBody = preg_replace('/<(style|script)\b[^>]*>.*?<\/\1>/is', '', $mailBody);
+                        $plainText = strip_tags(str_replace(['<br>', '<br/>', '<br />', '</p>', '</div>', '</tr>', '</td>'], "\n", $cleanBody));
+                        $plainText = html_entity_decode($plainText, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                        $plainText = preg_replace("/\n\s*\n/", "\n\n", trim($plainText));
+                        $plainText = wordwrap($plainText, 95, "\n", true);
+                        $toLine = !empty($finalTo) ? "To: " . $finalTo . "\n" : "";
+                        $ccLine = !empty($finalCc) ? "Cc: " . $finalCc . "\n" : "";
+                        $bccLine = !empty($finalBcc) ? "Bcc: " . $finalBcc . "\n" : "";
+                        $statusLine = !empty($extras) ? "Status: " . str_replace(['&#128681;', '&#128065;'], ['[Flagged]', '[Read Receipt]'], implode(', ', $extras)) . "\n" : "";
+                        $headerText = "From: " . $addrs['from_formatted'] . "\nSent: $date\n" . $toLine . $ccLine . $bccLine . "Subject: $subject\n" . $statusLine . str_repeat("-", 80) . "\n\n";
+                        $txtFile = $tmpDir . '/mail.txt';
+                        file_put_contents($txtFile, $headerText . $plainText);
+                        
+                        $imPaths = ['convert', '/usr/bin/convert', '/usr/local/bin/convert'];
+                        foreach ($imPaths as $im) {
+                            @exec($im . " -background white -fill black -pointsize 12 text:" . escapeshellarg($txtFile) . " " . escapeshellarg($mainPdf) . " 2>&1");
+                            if (file_exists($mainPdf) && filesize($mainPdf) > 0) break;
+                        }
+                    }
+
+                    if (!file_exists($mainPdf) || filesize($mainPdf) == 0) {
+                        $safeTitle = preg_replace('/[^a-zA-Z0-9.\-_ ]/', '_', $subject);
+                        @exec("convert -size 595x842 xc:white -pointsize 14 -fill black -annotate +50+50 'Email: " . escapeshellarg($safeTitle) . "\n\n(HTML to PDF conversion tools missing.\nAttachments appended below.)' " . escapeshellarg($mainPdf) . " 2>&1");
+                    }
+
+                    if (!file_exists($mainPdf) || filesize($mainPdf) == 0) {
+                        header('Content-Type: text/plain'); 
+                        exit('Failed to generate base PDF.');
+                    }
+
+                    $mergePdfs = [$mainPdf];
+                    $attachFiles = [];
+
+                    foreach ($filteredAttachments as $att) {
+                        $attName = preg_replace('/[^a-zA-Z0-9.\-_ ]/', '_', $att->name);
+                        if (empty($attName)) $attName = 'attachment_' . uniqid();
+                        $attExt = strtolower(pathinfo($attName, PATHINFO_EXTENSION));
+                        
+                        $tmpPath = $tmpDir . '/' . $attName;
+                        file_put_contents($tmpPath, $att->getContent());
+
+                        if ($attExt === 'pdf') {
+                            @exec("qpdf --requires-password " . escapeshellarg($tmpPath), $qOut, $qRet);
+                            if ($qRet === 0) $attachFiles[] = $tmpPath; 
+                            else $mergePdfs[] = $tmpPath;                
+                        } elseif (in_array($attExt, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'])) {
+                            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                            $realMime = finfo_file($finfo, $tmpPath);
+                            finfo_close($finfo);
+                            if (!in_array($realMime, ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp'])) {
+                                $attachFiles[] = $tmpPath;
+                                continue;
+                            }
+
+                            // Force ImageMagick to treat the file exactly as the verified MIME type
+                            // Prevents ImageTragick style delegates bypass via polyglot files
+                            $imFormatMap = ['image/jpeg' => 'jpeg', 'image/png' => 'png', 'image/gif' => 'gif', 'image/webp' => 'webp', 'image/bmp' => 'bmp'];
+                            $imFormat = $imFormatMap[$realMime] ?? 'jpeg';
+
+                            $imgPdf = $tmpPath . '.pdf';
+                            @exec("magick convert " . escapeshellarg($imFormat . ':' . $tmpPath) . " " . escapeshellarg($imgPdf) . " 2>&1", $mOut, $mRet);
+                            if ($mRet !== 0) @exec("convert " . escapeshellarg($imFormat . ':' . $tmpPath) . " " . escapeshellarg($imgPdf) . " 2>&1");
+                            
+                            if (file_exists($imgPdf)) $mergePdfs[] = $imgPdf; 
+                            else $attachFiles[] = $tmpPath;                    
+                        } else {
+                            $attachFiles[] = $tmpPath; 
+                        }
+                    }
+
+                    $mergedPdf = $tmpDir . '/merged.pdf';
+                    if (count($mergePdfs) > 1) {
+                        @exec("pdftk " . implode(' ', array_map('escapeshellarg', $mergePdfs)) . " cat output " . escapeshellarg($mergedPdf) . " 2>&1");
+                        if (!file_exists($mergedPdf) || filesize($mergedPdf) == 0) {
+                            $qArgs = []; foreach($mergePdfs as $m) { $qArgs[] = escapeshellarg($m) . " 1-z"; }
+                            @exec("qpdf --empty --pages " . implode(' ', $qArgs) . " -- " . escapeshellarg($mergedPdf) . " 2>&1");
+                        }
+                        if (!file_exists($mergedPdf) || filesize($mergedPdf) == 0) {
+                            @exec("pdfunite " . implode(' ', array_map('escapeshellarg', $mergePdfs)) . " " . escapeshellarg($mergedPdf) . " 2>&1");
+                        }
+                        if (!file_exists($mergedPdf) || filesize($mergedPdf) == 0) {
+                            @exec("gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -dAutoRotatePages=/None -sOutputFile=" . escapeshellarg($mergedPdf) . " " . implode(' ', array_map('escapeshellarg', $mergePdfs)));
+                        }
+                        $basePdfForAttachment = file_exists($mergedPdf) ? $mergedPdf : $mainPdf;
+                    } else {
+                        $basePdfForAttachment = $mainPdf;
+                    }
+
+                    $finalPdf = $tmpDir . '/final.pdf';
+                    if (count($attachFiles) > 0) {
+                        @exec("pdftk " . escapeshellarg($basePdfForAttachment) . " attach_files " . implode(' ', array_map('escapeshellarg', $attachFiles)) . " output " . escapeshellarg($finalPdf));
+                        if (!file_exists($finalPdf)) $finalPdf = $basePdfForAttachment;
+                    } else {
+                        $finalPdf = $basePdfForAttachment;
+                    }
+
+                    if (file_exists($finalPdf)) {
+                        $outData = file_get_contents($finalPdf);
+                        $safeSubject = preg_replace('/[\/\\\\:*?"<>|]/', '_', $subject);
+                        $filename = $dateFormatted . ' ' . (empty(trim($safeSubject)) ? 'Email' : trim($safeSubject)) . '.pdf';
+                        
+                        $safeFilenameASCII = preg_replace('/[^\x20-\x7E]/', '_', $filename);
+                        $encodedFilename = rawurlencode($filename);
+                        
+                        while (ob_get_level() > 0) ob_end_clean();
+                        header('Content-Type: application/pdf');
+                        header('Content-Disposition: attachment; filename="' . str_replace('"', '_', $safeFilenameASCII) . '"; filename*=UTF-8\'\'' . $encodedFilename);
+                        header('Content-Length: ' . strlen($outData));
+                        echo $outData;
+                    } else {
+                        echo "Error generating final PDF.";
+                    }
+
+                    foreach (glob($tmpDir . '/*') as $f) { if (is_file($f)) @unlink($f); }
+                    @rmdir($tmpDir);
+                    exit;
+                } catch (\Throwable $e) {
+                    header('Content-Type: text/plain'); exit('PDF Fetch failed: ' . $e->getMessage());
                 }
                 break;
 				
@@ -3287,418 +3850,6 @@ class MyCloudEmailServer {
                     exit;
                 } catch (\Throwable $e) {
                     header('Content-Type: text/plain'); exit('Fetch failed: ' . $e->getMessage());
-                }
-
-            case 'email_dl_pdf':
-                $configs = $this->loadConfigs();
-                $accId = $_POST['account_id'] ?? '';
-                $folder = $_POST['folder'] ?? 'INBOX';
-                $msgId = preg_replace('/[^a-zA-Z0-9,:-]/', '', $_POST['message_id'] ?? '');
-
-                if (!isset($configs[$accId])) exit('Account not found');
-                list($client, $folderObj, $err) = $this->connectImap($configs[$accId], $folder, true);
-                if (!$client || !$folderObj) { header('Content-Type: text/plain'); exit('Connection failed: ' . htmlspecialchars($err)); } 
-
-                try {
-                    $msg = $folderObj->query()->getMessageByUid($msgId);
-                    if (!$msg) { header('Content-Type: text/plain'); exit('Message not found'); }
-
-                    $subject = (string)$msg->getSubject() ?: 'No Subject';
-
-                    $addrs = $this->extractMessageAddresses($msg);
-                    $ts = $this->extractMessageTimestamp($msg);
-                    
-                    $date = date('D, d M Y H:i:s', $ts);
-                    $dateFormatted = date('Y-m-d H-i-s', $ts);
-
-                    if ($msg->hasHTMLBody()) {
-                        $mailBody = $msg->getHTMLBody();
-                    } else {
-                        $plainText = htmlspecialchars((string)$msg->getTextBody() ?: '', ENT_QUOTES | ENT_HTML5, 'UTF-8');
-                        
-                        // ZERO TRUST: Auto-linkify plain text before PDF generation so links remain clickable in the resulting PDF.
-                        $plainText = preg_replace_callback('/(https?:\/\/[^\s<]+[^\s<.,;:!?)\]\'"&])|([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i', function($m) {
-                            if (!empty($m[1])) return '<a href="' . $m[1] . '">' . $m[1] . '</a>';
-                            if (!empty($m[2])) return '<a href="mailto:' . $m[2] . '">' . $m[2] . '</a>';
-                            return $m[0];
-                        }, $plainText);
-                        
-                        $mailBody = nl2br($plainText);
-                    }
-
-                    // ZERO TRUST: Safely extract bounce reports before PDF assembly
-                    $bounceHtml = '';
-                    $filteredAttachments = [];
-                    $attachments = $msg->getAttachments();
-                    foreach ($attachments as $att) {
-                        $mimeType = '';
-                        if (method_exists($att, 'getMimeType')) $mimeType = $att->getMimeType();
-                        if (empty($mimeType)) $mimeType = $att->content_type ?? $att->mime ?? '';
-                        $mimeType = strtolower(trim(explode(';', (string)$mimeType)[0]));
-
-                        if (strpos($mimeType, 'message/') === 0 || $mimeType === 'text/rfc822') {
-                            $originalName = $att->name ?? '';
-                            $dispName = empty($originalName) || $originalName === 'unknown' ? 'Attached Message / Delivery Report' : $originalName;
-                            
-                            $textContent = $att->getContent() ?? '';
-                            if (stripos($textContent, 'Content-Transfer-Encoding: quoted-printable') !== false) {
-                                $textContent = quoted_printable_decode($textContent);
-                            }
-                            
-                            $bounceText = htmlspecialchars(trim($textContent), ENT_QUOTES | ENT_HTML5, 'UTF-8');
-                            
-                            $bounceHtml .= "<div style=\"border: 1px solid #ccc; background-color: #fcfcfc; padding: 15px; margin-top: 50px; clear: both; border-radius: 4px;\">";
-                            $bounceHtml .= "<div style=\"font-weight: bold; font-family: sans-serif; font-size: 13px; color: #333; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #ddd;\">&#128196; " . htmlspecialchars($dispName, ENT_QUOTES, 'UTF-8') . "</div>";
-                            $bounceHtml .= "<pre style=\"white-space:pre-wrap; font-family:monospace; font-size:12px; color:#555; word-break: break-all; margin: 0;\">" . $bounceText . "</pre></div>";
-                        } else {
-                            $filteredAttachments[] = $att;
-                        }
-                    }
-                    $mailBody .= $bounceHtml;
-
-                    $rawHeader = (string)$msg->getHeader()->raw;
-                    $reqReceipt = preg_match('/^Disposition-Notification-To:/mi', $rawHeader) || preg_match('/^Return-Receipt-To:/mi', $rawHeader);
-                    $isFlagged = false;
-                    if (method_exists($msg, 'hasFlag')) {
-                        $isFlagged = $msg->hasFlag('Flagged');
-                    } elseif (method_exists($msg, 'getFlags')) {
-                        $flags = $msg->getFlags();
-                        if (is_iterable($flags)) {
-                            foreach($flags as $f) {
-                                if (stripos($f, 'flagged') !== false) { $isFlagged = true; break; }
-                            }
-                        }
-                    }
-
-                    $rawTo = preg_match('/^To:\s*([^\r\n]+)/mi', $rawHeader, $m) ? trim($this->decodeImapHeader($m[1])) : '';
-                    $rawCc = preg_match('/^Cc:\s*([^\r\n]+)/mi', $rawHeader, $m) ? trim($this->decodeImapHeader($m[1])) : '';
-                    $rawBcc = preg_match('/^Bcc:\s*([^\r\n]+)/mi', $rawHeader, $m) ? trim($this->decodeImapHeader($m[1])) : '';
-                    $finalTo = !empty($addrs['to']) ? $addrs['to'] : $rawTo;
-                    $finalCc = !empty($addrs['cc']) ? $addrs['cc'] : $rawCc;
-                    $finalBcc = !empty($addrs['bcc']) ? $addrs['bcc'] : $rawBcc;
-
-                    $headerHtml = "<div class=\"email-header\">";
-                    $headerHtml .= "<b>From:</b> " . htmlspecialchars($addrs['from_formatted']) . "<br>";
-                    $headerHtml .= "<b>Sent:</b> " . htmlspecialchars($date) . "<br>";
-                    if (!empty($finalTo)) $headerHtml .= "<b>To:</b> " . htmlspecialchars($finalTo) . "<br>";
-                    if (!empty($finalCc)) $headerHtml .= "<b>Cc:</b> " . htmlspecialchars($finalCc) . "<br>";
-                    if (!empty($finalBcc)) $headerHtml .= "<b>Bcc:</b> " . htmlspecialchars($finalBcc) . "<br>";
-                    $headerHtml .= "<b>Subject:</b> " . htmlspecialchars($subject) . "<br>";
-
-                    $extras = [];
-                    if ($isFlagged) $extras[] = "&#128681; Flagged";
-                    if ($reqReceipt) $extras[] = "&#128065; Read Receipt Requested";
-                    if (!empty($extras)) {
-                        $headerHtml .= "<b>Status:</b> " . implode(', ', $extras) . "<br>";
-                    }
-                    $headerHtml .= "</div>";
-
-                    $mailBody = str_replace("\0", "", $mailBody);
-
-                    $dom = new DOMDocument();
-                    libxml_use_internal_errors(true);
-                    $dom->loadHTML('<?xml encoding="UTF-8"><meta http-equiv="Content-Type" content="text/html; charset=utf-8">' . $mailBody, LIBXML_NONET | LIBXML_NOXMLDECL | LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
-                    
-                    $badTags = ['script', 'link', 'iframe', 'object', 'embed', 'applet', 'meta', 'base', 'video', 'audio', 'source', 'track', 'picture', 'form', 'math', 'frameset', 'frame'];
-                    foreach ($badTags as $tag) {
-                        $nodes = $dom->getElementsByTagName($tag);
-                        for ($i = $nodes->length - 1; $i >= 0; $i--) {
-                            $node = $nodes->item($i);
-                            $node->parentNode->removeChild($node);
-                        }
-                    }
-
-                    $loadImages = isset($_POST['load_images']) && $_POST['load_images'] === '1';
-                    $styleTags = $dom->getElementsByTagName('style');
-                    for ($i = 0; $i < $styleTags->length; $i++) {
-                        $node = $styleTags->item($i);
-                        $css = $node->nodeValue;
-                        $css = preg_replace('/@import\s+(?:url\()?[\'"]?[^\'")]*[\'"]?\)?\s*;/i', '', $css);
-                        if (!$loadImages) {
-                            $css = preg_replace('/url\([\'"]?(?!data:|cid:)[^)\'"]+[\'"]?\)/i', 'url(data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACwAAAAAAQABAAACAkQBADs=)', $css);
-                        } else {
-                            $css = preg_replace('/url\([\'"]?(file|ftp|gopher|phar):\/\/[^)\'"]+[\'"]?\)/i', 'url(data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACwAAAAAAQABAAACAkQBADs=)', $css);
-                            $css = preg_replace('/url\([\'"]?https?:\/\/(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|169\.254\.|::1)[^)\'"]*[\'"]?\)/i', 'url(data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACwAAAAAAQABAAACAkQBADs=)', $css);
-                        }
-                        $node->nodeValue = $css;
-                    }                
-
-                    $xpath = new DOMXPath($dom);
-                    $nodes = $xpath->query('//*[@style]');
-                    foreach ($nodes as $node) {
-                        $style = $node->getAttribute('style');
-                        $styleLower = strtolower($style);
-                        if (strpos($styleLower, 'expression(') !== false || strpos($styleLower, 'javascript:') !== false || strpos($styleLower, 'behavior:') !== false) {
-                            $node->removeAttribute('style');
-                        } elseif (!$loadImages && (strpos($styleLower, 'url(') !== false || strpos($styleLower, '@import') !== false)) {
-                            $safeStyle = preg_replace('/url\([\'"]?[^)\'"]+[\'"]?\)/i', 'url(data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACwAAAAAAQABAAACAkQBADs=)', $style);
-                            $node->setAttribute('style', $safeStyle);
-                        }
-                    }
-                    
-                    $nodes = $xpath->query('//*[@background]');
-                    foreach ($nodes as $node) {
-                        if (!$loadImages) $node->removeAttribute('background');
-                    }
-
-                    $nodes = $dom->getElementsByTagName('img');
-                    for ($i = $nodes->length - 1; $i >= 0; $i--) {
-                        $node = $nodes->item($i);
-                        $src = $node->getAttribute('src');
-                        if ($src && !preg_match('/^data:/i', $src) && !preg_match('/^cid:/i', $src)) {
-                            $isSafeUrl = false;
-                            if ($loadImages) {
-                                $parsed = parse_url($src);
-                                $scheme = strtolower($parsed['scheme'] ?? '');
-                                $host = strtolower($parsed['host'] ?? '');
-                                if (in_array($scheme, ['http', 'https']) && !preg_match('/^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|169\.254\.|::1)/i', $host)) {
-                                    $isSafeUrl = true;
-                                }
-                            }
-                            if (!$isSafeUrl) {
-                                 $node->setAttribute('src', 'data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACwAAAAAAQABAAACAkQBADs=');
-                                 $node->setAttribute('style', $node->getAttribute('style') . '; border: 1px dashed #ccc; height: 24px !important; width: 24px !important; min-height: 0 !important; display: inline-block;');
-                                 $node->removeAttribute('height');
-                            }
-                        }
-                    }
-                    
-                    $nodes = $dom->getElementsByTagName('a');
-                    for ($i = $nodes->length - 1; $i >= 0; $i--) {
-                        $node = $nodes->item($i);
-                        $href = $node->getAttribute('href');
-                        if (preg_match('/^(javascript|vbscript|data):/i', trim($href))) {
-                            $node->removeAttribute('href');
-                        }
-                    }
-                    
-                    $styleHtml = '';
-                    foreach ($dom->getElementsByTagName('style') as $stNode) {
-                        $styleHtml .= $dom->saveHTML($stNode);
-                    }
-
-                    $mailBody = '';
-                    $bodyNode = $dom->getElementsByTagName('body')->item(0);
-                    if ($bodyNode) {
-                        foreach ($bodyNode->childNodes as $child) { $mailBody .= $dom->saveHTML($child); }
-                    } else {
-                        $mailBody = $dom->saveHTML();
-                    }
-                    
-                    $mailBody = $styleHtml . $mailBody;
-                    $mailBody = str_replace(['<?xml encoding="UTF-8">', '<meta http-equiv="Content-Type" content="text/html; charset=utf-8">'], '', $mailBody);
-                    libxml_clear_errors();
-
-                    $printCss = "body { font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #333333; line-height: 1.5; padding: 20px; margin: 0; background: #fff; } .email-header { border-bottom: 1px solid #e1e1e1; padding-bottom: 15px; margin-bottom: 20px; font-size: 13px; } .email-header b { display: inline-block; min-width: 80px; color: #555; } .email-header div { margin-bottom: 4px; } img { max-width: 100%; height: auto; page-break-inside: avoid; } table { border-collapse: collapse; } * { word-wrap: break-word; overflow-wrap: break-word; } p { margin-top: 0; margin-bottom: 1em; }";
-                    
-                    $mailBody = preg_replace('/<(script|iframe|object|embed|applet|meta|base|link).*?>.*?<\/\1>/is', '', $mailBody);
-                    $mailBody = preg_replace('/<(script|iframe|object|embed|applet|meta|base|link)[^>]*>/is', '', $mailBody);
-                    
-                    $html = "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><title>" . htmlspecialchars($subject) . "</title><style>" . $printCss . "</style></head><body>" . $headerHtml . "<div class=\"ce-email-body-content\">" . $mailBody . "</div></body></html>";
-
-                    $globalTemp = $GLOBALS['temp_dir'] ?? sys_get_temp_dir();
-                    $tmpDir = $globalTemp . '/eml_pdf_' . bin2hex(random_bytes(16));
-                    if (!@mkdir($tmpDir, 0700, true) && !is_dir($tmpDir)) {
-                        header('Content-Type: text/plain'); exit('Failed to allocate secure temporary directory.');
-                    }
-                
-                    $mainHtml = $tmpDir . '/mail.html';
-                    $mainPdf = $tmpDir . '/mail.pdf';
-                    file_put_contents($mainHtml, $html);
-
-                    $usedOnlyOffice = false;
-                    global $cloud_onlyoffice_URL, $cloud_onlyoffice_Secret, $cloud_system_url;
-                    if (!empty($cloud_onlyoffice_URL) && !empty($cloud_onlyoffice_Secret)) {
-                        $docKey = bin2hex(random_bytes(16));
-                        $stateFile = $globalTemp . '/myCloud_office_' . $docKey . '.json';
-                        file_put_contents($stateFile, json_encode(['path' => $mainHtml, 'expires' => time() + 300, 'username' => $this->username, 'key' => $this->key]));
-                        chmod($stateFile, 0600);
-                        
-                        $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') 
-                                 || $_SERVER['SERVER_PORT'] == 443
-                                 || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
-                        $protocol = $isHttps ? "https://" : "http://";
-                        
-                        // ZERO TRUST: Avoid Host header reflection to prevent SSRF callback hijacking
-                        if (!empty($cloud_system_url)) {
-                            $baseUrl = rtrim($cloud_system_url, '/');
-                        } else {
-                            $safeHost = preg_replace('/[^a-zA-Z0-9.-]/', '', $_SERVER['SERVER_NAME'] ?? 'localhost');
-                            $baseUrl = rtrim($protocol . $safeHost . parse_url($_SERVER['PHP_SELF'], PHP_URL_PATH), '/');
-                        }
-                        
-                        $payload = ["async" => false, "filetype" => "html", "key" => $docKey, "outputtype" => "pdf", "title" => "mail.html", "url" => $baseUrl . "/myCloudOfficeFetch/" . $docKey];
-                        
-                        $k = $cloud_onlyoffice_Secret;
-                        $h = str_replace(['+','/','='], ['-','_',''], base64_encode(json_encode(['typ'=>'JWT','alg'=>'HS256'])));
-                        $b = str_replace(['+','/','='], ['-','_',''], base64_encode(json_encode($payload)));
-                        $s = str_replace(['+','/','='], ['-','_',''], base64_encode(hash_hmac('sha256', "$h.$b", $k, true)));
-                        $payload['token'] = "$h.$b.$s";
-                        
-                        $ch = curl_init(rtrim($cloud_onlyoffice_URL, '/') . '/ConvertService.ashx');
-                        curl_setopt($ch, CURLOPT_POST, true);
-                        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-                        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json', 'Accept: application/json']);
-                        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-                        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-                        $response = curl_exec($ch);
-                        curl_close($ch);
-                        
-                        @unlink($stateFile);
-                        
-                        $resData = json_decode($response, true);
-                        if (!empty($resData['fileUrl']) && strpos((string)$resData['fileUrl'], 'http') === 0) {
-                            $callbackHost = parse_url($resData['fileUrl'], PHP_URL_HOST);
-                            $callbackIp = gethostbyname($callbackHost);
-                            $ooHost = parse_url($cloud_onlyoffice_URL, PHP_URL_HOST);
-                            $isTrustedOnlyOffice = ($callbackHost === $ooHost || $callbackIp === gethostbyname($ooHost));
-
-                            if ($isTrustedOnlyOffice || filter_var($callbackIp, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) !== false || in_array($callbackIp, ['127.0.0.1', '::1'])) {
-                                $chDl = curl_init($resData['fileUrl']);
-                                curl_setopt($chDl, CURLOPT_RETURNTRANSFER, true);
-                                curl_setopt($chDl, CURLOPT_FOLLOWLOCATION, false);
-                                $callbackPort = parse_url($resData['fileUrl'], PHP_URL_SCHEME) === 'https' ? 443 : 80;
-                                curl_setopt($chDl, CURLOPT_RESOLVE, ["{$callbackHost}:{$callbackPort}:{$callbackIp}"]);
-                                curl_setopt($chDl, CURLOPT_SSL_VERIFYPEER, false);
-                                curl_setopt($chDl, CURLOPT_SSL_VERIFYHOST, 0);
-                                $pdfContent = curl_exec($chDl);
-                                if (curl_getinfo($chDl, CURLINFO_HTTP_CODE) === 200 && $pdfContent !== false) { 
-                                    file_put_contents($mainPdf, $pdfContent); $usedOnlyOffice = true; 
-                                }
-                                curl_close($chDl);
-                            }
-                        }
-                    }
-
-                    if (!$usedOnlyOffice || !file_exists($mainPdf) || filesize($mainPdf) == 0) {
-                        $wkPaths = ['wkhtmltopdf --disable-smart-shrinking', '/usr/bin/wkhtmltopdf --disable-smart-shrinking', '/usr/local/bin/wkhtmltopdf --disable-smart-shrinking'];
-                        foreach ($wkPaths as $wk) {
-                            @exec($wk . " --encoding utf-8 " . escapeshellarg($mainHtml) . " " . escapeshellarg($mainPdf) . " 2>&1");
-                            if (file_exists($mainPdf) && filesize($mainPdf) > 0) break;
-                        }
-                    }
-                    
-                    if (!file_exists($mainPdf) || filesize($mainPdf) == 0) {
-                        $cleanBody = preg_replace('/<(style|script)\b[^>]*>.*?<\/\1>/is', '', $mailBody);
-                        $plainText = strip_tags(str_replace(['<br>', '<br/>', '<br />', '</p>', '</div>', '</tr>', '</td>'], "\n", $cleanBody));
-                        $plainText = html_entity_decode($plainText, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-                        $plainText = preg_replace("/\n\s*\n/", "\n\n", trim($plainText));
-                        $plainText = wordwrap($plainText, 95, "\n", true);
-                        $toLine = !empty($finalTo) ? "To: " . $finalTo . "\n" : "";
-                        $ccLine = !empty($finalCc) ? "Cc: " . $finalCc . "\n" : "";
-                        $bccLine = !empty($finalBcc) ? "Bcc: " . $finalBcc . "\n" : "";
-                        $statusLine = !empty($extras) ? "Status: " . str_replace(['&#128681;', '&#128065;'], ['[Flagged]', '[Read Receipt]'], implode(', ', $extras)) . "\n" : "";
-                        $headerText = "From: " . $addrs['from_formatted'] . "\nSent: $date\n" . $toLine . $ccLine . $bccLine . "Subject: $subject\n" . $statusLine . str_repeat("-", 80) . "\n\n";
-                        $txtFile = $tmpDir . '/mail.txt';
-                        file_put_contents($txtFile, $headerText . $plainText);
-                        
-                        $imPaths = ['convert', '/usr/bin/convert', '/usr/local/bin/convert'];
-                        foreach ($imPaths as $im) {
-                            @exec($im . " -background white -fill black -pointsize 12 text:" . escapeshellarg($txtFile) . " " . escapeshellarg($mainPdf) . " 2>&1");
-                            if (file_exists($mainPdf) && filesize($mainPdf) > 0) break;
-                        }
-                    }
-
-                    if (!file_exists($mainPdf) || filesize($mainPdf) == 0) {
-                        $safeTitle = preg_replace('/[^a-zA-Z0-9.\-_ ]/', '_', $subject);
-                        @exec("convert -size 595x842 xc:white -pointsize 14 -fill black -annotate +50+50 'Email: " . escapeshellarg($safeTitle) . "\n\n(HTML to PDF conversion tools missing.\nAttachments appended below.)' " . escapeshellarg($mainPdf) . " 2>&1");
-                    }
-
-                    if (!file_exists($mainPdf) || filesize($mainPdf) == 0) {
-                        header('Content-Type: text/plain'); 
-                        exit('Failed to generate base PDF.');
-                    }
-
-                    $mergePdfs = [$mainPdf];
-                    $attachFiles = [];
-
-                    foreach ($filteredAttachments as $att) {
-                        $attName = preg_replace('/[^a-zA-Z0-9.\-_ ]/', '_', $att->name);
-                        if (empty($attName)) $attName = 'attachment_' . uniqid();
-                        $attExt = strtolower(pathinfo($attName, PATHINFO_EXTENSION));
-                        
-                        $tmpPath = $tmpDir . '/' . $attName;
-                        file_put_contents($tmpPath, $att->getContent());
-
-                        if ($attExt === 'pdf') {
-                            @exec("qpdf --requires-password " . escapeshellarg($tmpPath), $qOut, $qRet);
-                            if ($qRet === 0) $attachFiles[] = $tmpPath; 
-                            else $mergePdfs[] = $tmpPath;                
-                        } elseif (in_array($attExt, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'])) {
-                            $finfo = finfo_open(FILEINFO_MIME_TYPE);
-                            $realMime = finfo_file($finfo, $tmpPath);
-                            finfo_close($finfo);
-                            if (!in_array($realMime, ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp'])) {
-                                $attachFiles[] = $tmpPath;
-                                continue;
-                            }
-
-                            // Force ImageMagick to treat the file exactly as the verified MIME type
-                            // Prevents ImageTragick style delegates bypass via polyglot files
-                            $imFormatMap = ['image/jpeg' => 'jpeg', 'image/png' => 'png', 'image/gif' => 'gif', 'image/webp' => 'webp', 'image/bmp' => 'bmp'];
-                            $imFormat = $imFormatMap[$realMime] ?? 'jpeg';
-
-                            $imgPdf = $tmpPath . '.pdf';
-                            @exec("magick convert " . escapeshellarg($imFormat . ':' . $tmpPath) . " " . escapeshellarg($imgPdf) . " 2>&1", $mOut, $mRet);
-                            if ($mRet !== 0) @exec("convert " . escapeshellarg($imFormat . ':' . $tmpPath) . " " . escapeshellarg($imgPdf) . " 2>&1");
-                            
-                            if (file_exists($imgPdf)) $mergePdfs[] = $imgPdf; 
-                            else $attachFiles[] = $tmpPath;                    
-                        } else {
-                            $attachFiles[] = $tmpPath; 
-                        }
-                    }
-                    $client->disconnect();
-
-                    $mergedPdf = $tmpDir . '/merged.pdf';
-                    if (count($mergePdfs) > 1) {
-                        @exec("pdftk " . implode(' ', array_map('escapeshellarg', $mergePdfs)) . " cat output " . escapeshellarg($mergedPdf) . " 2>&1");
-                        if (!file_exists($mergedPdf) || filesize($mergedPdf) == 0) {
-                            $qArgs = []; foreach($mergePdfs as $m) { $qArgs[] = escapeshellarg($m) . " 1-z"; }
-                            @exec("qpdf --empty --pages " . implode(' ', $qArgs) . " -- " . escapeshellarg($mergedPdf) . " 2>&1");
-                        }
-                        if (!file_exists($mergedPdf) || filesize($mergedPdf) == 0) {
-                            @exec("pdfunite " . implode(' ', array_map('escapeshellarg', $mergePdfs)) . " " . escapeshellarg($mergedPdf) . " 2>&1");
-                        }
-                        if (!file_exists($mergedPdf) || filesize($mergedPdf) == 0) {
-                            @exec("gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -dAutoRotatePages=/None -sOutputFile=" . escapeshellarg($mergedPdf) . " " . implode(' ', array_map('escapeshellarg', $mergePdfs)));
-                        }
-                        $basePdfForAttachment = file_exists($mergedPdf) ? $mergedPdf : $mainPdf;
-                    } else {
-                        $basePdfForAttachment = $mainPdf;
-                    }
-
-                    $finalPdf = $tmpDir . '/final.pdf';
-                    if (count($attachFiles) > 0) {
-                        @exec("pdftk " . escapeshellarg($basePdfForAttachment) . " attach_files " . implode(' ', array_map('escapeshellarg', $attachFiles)) . " output " . escapeshellarg($finalPdf));
-                        if (!file_exists($finalPdf)) $finalPdf = $basePdfForAttachment;
-                    } else {
-                        $finalPdf = $basePdfForAttachment;
-                    }
-
-                    if (file_exists($finalPdf)) {
-                        $outData = file_get_contents($finalPdf);
-                        $safeSubject = preg_replace('/[\/\\\\:*?"<>|]/', '_', $subject);
-                        $filename = $dateFormatted . ' ' . (empty(trim($safeSubject)) ? 'Email' : trim($safeSubject)) . '.pdf';
-                        
-                        $safeFilenameASCII = preg_replace('/[^\x20-\x7E]/', '_', $filename);
-                        $encodedFilename = rawurlencode($filename);
-                        
-                        while (ob_get_level() > 0) ob_end_clean();
-                        header('Content-Type: application/pdf');
-                        header('Content-Disposition: attachment; filename="' . str_replace('"', '_', $safeFilenameASCII) . '"; filename*=UTF-8\'\'' . $encodedFilename);
-                        header('Content-Length: ' . strlen($outData));
-                        echo $outData;
-                    } else {
-                        echo "Error generating final PDF.";
-                    }
-
-                    foreach (glob($tmpDir . '/*') as $f) { if (is_file($f)) @unlink($f); }
-                    @rmdir($tmpDir);
-                    exit;
-                } catch (\Throwable $e) {
-                    header('Content-Type: text/plain'); exit('PDF Fetch failed: ' . $e->getMessage());
                 }
 
             case 'email_delete_msg':

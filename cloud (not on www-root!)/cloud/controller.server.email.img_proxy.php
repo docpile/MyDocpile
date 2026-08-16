@@ -77,6 +77,14 @@ class MyCloudEmailImageProxy {
             $cleanedParams = [];
             $paramsStripped = false;
             
+			
+            // POISON POOL: Fake attribution data to ruin their marketing metrics
+            $poisonData = [
+                'organic_search', 'direct_traffic', 'null', 'undefined', 'opt_route',
+                'social_media_ad', 'false', '0', 'test_user', 'deleted',
+                bin2hex(random_bytes(4)), hash('crc32', microtime())
+            ];
+
             foreach ($queryParams as $key => $value) {
                 $keyLower = strtolower($key);
                 $isTracker = false;
@@ -87,7 +95,11 @@ class MyCloudEmailImageProxy {
                         break;
                     }
                 }
-                if (!$isTracker) {
+                if ($isTracker) {
+                    // Overwrite the tracking parameter with database-polluting garbage
+                    $cleanedParams[$key] = $poisonData[array_rand($poisonData)];
+                    $paramsStripped = true;
+                } else {
                     $cleanedParams[$key] = $value;
                 }
             }
@@ -115,8 +127,22 @@ class MyCloudEmailImageProxy {
             self::serveBlank();
         }
 
-        global $cloud_mail_proxy_ua;
-        $ua = !empty($cloud_mail_proxy_ua) ? $cloud_mail_proxy_ua : 'Mail Proxy';
+        // --- DEVICE & OS ROULETTE ---
+        // Spoof a realistic user agent to destroy their device analytics.
+        $uaPool = [
+            'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+            'Mozilla/5.0 (iPad; CPU OS 16_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Mobile/15E148 Safari/604.1',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.4 Safari/605.1.15',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 Edg/115.0.1901.203',
+            'Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/115.0',
+            'Mozilla/5.0 (Linux; Android 13; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36',
+        ];
+        $ua = $uaPool[array_rand($uaPool)];
+        
+        // Randomize Accept-Language to ruin geographic profiling
+        $langPool = ['en-US,en;q=0.9', 'de-DE,de;q=0.9,en;q=0.8', 'fr-FR,fr;q=0.9,en;q=0.8', 'es-ES,es;q=0.9', 'en-GB,en;q=0.9'];
+        $lang = $langPool[array_rand($langPool)];
 
         // 2. FETCH IMAGE SECURELY
         $ch = curl_init($url);
@@ -129,6 +155,7 @@ class MyCloudEmailImageProxy {
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, false); // Disable redirects to prevent routing to private IPs
         curl_setopt($ch, CURLOPT_TIMEOUT, 10);
         curl_setopt($ch, CURLOPT_USERAGENT, $ua);
+		curl_setopt($ch, CURLOPT_HTTPHEADER, ['Accept-Language: ' . $lang, 'Accept: image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8']);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
         

@@ -1,3 +1,8 @@
+4.1.283
+	Fix: Webmail: Certain mail bodies are not displayed but handled as attachments instead
+	Improvement: Webmail: Faster caching
+	Improvement: Webmail: Picture tracking defense enhancements
+
 4.1.282
 	Improvement: Webmail: More natural mail stacking in list view
 	Fix: Webmail: Cache garbage collector
