@@ -1325,6 +1325,7 @@ function myCloudRenderUI() {
         actionsDiv.className = 'ce-row-actions';
 
         if (!isRecycleBinItem) {
+            const itemRole = typeof window.myCloudGetEffectiveRole === 'function' ? window.myCloudGetEffectiveRole(i.name) : myCloudUserRole;
             var createAction = function(cls, svg, title, clickHandler) {
                 var wrap = document.createElement('div');
                 wrap.className = "ce-action-icon " + cls;
@@ -1347,19 +1348,19 @@ function myCloudRenderUI() {
                     myCloudAction_Delete();
                 }));
             } else {
-                if (isPreviewable && window.myCloudActionAllowed('preview')) {
+                if (isPreviewable && window.myCloudActionAllowed('preview', itemRole)) {
                     actionsDiv.appendChild(createAction('ce-act-preview', myCloudSvg.preview, myCloud_LANG.preview, function() {
                         myCloudDownloadFile(i.name, i.name.split('/').pop(), true);
                     }));
                 }
 
-                if (isEditable) {
+                if (isEditable && window.myCloudActionAllowed('edit_file', itemRole)) {
                     actionsDiv.appendChild(createAction('ce-act-edit', myCloudSvg.edit_file, myCloud_LANG.edit || 'Edit', function() {
                         myCloudHandleEnterAction(i, ext, isContainer);
                     }));
                 }
 
-                if (window.myCloudActionAllowed('download')) {
+                if (window.myCloudActionAllowed('download', itemRole)) {
                     actionsDiv.appendChild(createAction('ce-act-download', myCloudSvg.download, myCloud_LANG.download, function() {
                         myCloudDownloadFile(i.name, i.name.split('/').pop(), false);
                     }));
@@ -1370,7 +1371,7 @@ function myCloudRenderUI() {
                 actionsDiv.appendChild(sep1);
 
                 var isFav = myCloudIsFavorite(i.name);
-                if (!isInsideZip && window.myCloudActionAllowed('fav_toggle')) {
+                if (!isInsideZip && window.myCloudActionAllowed('fav_toggle', itemRole)) {
                     actionsDiv.appendChild(createAction('ce-act-fav', isFav ? myCloudSvg.star_filled : myCloudSvg.star, myCloud_LANG.fav_toggle, function() {
                         myCloudToggleFavorite(i.name);
                         var me = actionsDiv.lastChild;
@@ -1380,19 +1381,19 @@ function myCloudRenderUI() {
                 } 
 
                 if (i.name !== '/') {
-                    if (window.myCloudActionAllowed('duplicate') && !isInsideZip) {
+                    if (window.myCloudActionAllowed('duplicate', itemRole) && !isInsideZip) {
                         actionsDiv.appendChild(createAction('ce-act-duplicate', myCloudSvg.duplicate, (typeof myCloud_LANG !== 'undefined' ? myCloud_LANG.duplicate : 'Duplicate'), function() {
                             st.selectedFiles = [i.name];
                             if (typeof myCloudAction_Duplicate === 'function') myCloudAction_Duplicate(i.name);
                         }));
                     }
-                    if (window.myCloudActionAllowed('copy') || isInsideZip) {
+                    if (window.myCloudActionAllowed('copy', itemRole) || isInsideZip) {
                         actionsDiv.appendChild(createAction('ce-act-copy', myCloudSvg.copy, myCloud_LANG.copy, function() {
                             st.selectedFiles = [i.name];
                             myCloudAction_CopyMove(false);
                         }));
                     }
-                    if (window.myCloudActionAllowed('move') && !isInsideZip) {
+                    if (window.myCloudActionAllowed('move', itemRole) && !isInsideZip) {
                         actionsDiv.appendChild(createAction('ce-act-move', myCloudSvg.move, myCloud_LANG.move, function() {
                             st.selectedFiles = [i.name];
                             myCloudAction_CopyMove(true);
@@ -1402,7 +1403,7 @@ function myCloudRenderUI() {
                     sep2.className = 'ce-row-action-sep';
                     actionsDiv.appendChild(sep2);
 
-                    if (window.myCloudActionAllowed('rename') && !isInsideZip) {
+                    if (window.myCloudActionAllowed('rename', itemRole) && !isInsideZip) {
                         actionsDiv.appendChild(createAction('ce-act-rename', myCloudSvg.rename, myCloud_LANG.rename, function() {
                             if (!st.selectedFiles.includes(i.name) || st.selectedFiles.length <= 1) {
                                 st.selectedFiles = [i.name];
@@ -1410,7 +1411,7 @@ function myCloudRenderUI() {
                             setTimeout(myCloudAction_Rename, 0);
                         }));
                     }
-                    if (window.myCloudActionAllowed('delete') && !isInsideZip) {
+                    if (window.myCloudActionAllowed('delete', itemRole) && !isInsideZip) {
                         actionsDiv.appendChild(createAction('ce-act-delete', myCloudSvg.delete, myCloud_LANG.delete, function() {
                             st.selectedFiles = [i.name];
                             myCloudAction_Delete();

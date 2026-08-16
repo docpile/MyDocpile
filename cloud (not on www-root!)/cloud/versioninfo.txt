@@ -1,3 +1,6 @@
+4.2.284
+	Security: Option to set rights on certain subdirs of shared clouds so as to restict rights on them for certain users
+
 4.1.283
 	Fix: Webmail: Certain mail bodies are not displayed but handled as attachments instead
 	Improvement: Webmail: Faster caching

@@ -76,6 +76,7 @@ if ($__userConfig && (!isset($__userConfig['cloud'][$__key]) || empty($__key)) &
 if ($__userConfig && isset($__userConfig['cloud'][$__key])) {
     $__ex_role = $__userConfig['cloud'][$__key]['rights'] ?? 'no-access';
     $__ex_interface = $__userConfig['cloud'][$__key]['interface'] ?? 'default';
+	$__ex_subfolder_rights = $__userConfig['cloud'][$__key]['subfolder_rights'] ?? [];
 	if ($__ex_interface === 'email' && $__ex_role === 'no-access') $__ex_role = 'full';
     if (!empty($__userConfig['cloud'][$__key]['path'])) {
         $cloud_path = $__userConfig['cloud'][$__key]['path'];
@@ -104,13 +105,15 @@ class MyCloudServer {
     private $officeSecret;
     private $officeInternalBase;
     private $officeExternalUrl;
+	private $subfolder_rights;
 
     public function __construct() {
-        global $cloud_path, $__ex_role, $cloud_onlyoffice_Secret, $cloud_onlyoffice_URL, $cloud_onlyoffice_ext_URL;
-        
+        global $cloud_path, $__ex_role, $__ex_subfolder_rights, $cloud_onlyoffice_Secret, $cloud_onlyoffice_URL, $cloud_onlyoffice_ext_URL;
+		
         $this->username = $_SESSION['username'] ?? 'guest';
         $this->key      = $_REQUEST['myCloud_key'] ?? '';
         $this->role     = $__ex_role ?? 'no-access';
+		$this->subfolder_rights = $__ex_subfolder_rights ?? [];
         $this->share_db = $GLOBALS['cloud_share_db'] ?? __DIR__ . '/../data/shares.json';
  
         $this->officeSecret      = $cloud_onlyoffice_Secret;
@@ -169,6 +172,30 @@ class MyCloudServer {
         }
         
         return false;
+    }
+
+    private function getEffectiveRoleForAbsPath($fullPath) {
+        if (!$fullPath || empty($this->subfolder_rights)) return $this->role;
+        $jail = realpath($this->cloud_path);
+        if (!$jail || strpos($fullPath, $jail) !== 0) return $this->role;
+        
+        $relPath = '/' . ltrim(str_replace('\\', '/', substr($fullPath, strlen($jail))), '/');
+        if ($relPath === '') $relPath = '/';
+        
+        $bestMatch = '/';
+        $bestRole = $this->role;
+        
+        foreach ($this->subfolder_rights as $pathKey => $customRole) {
+            $pathKey = '/' . ltrim(str_replace('\\', '/', $pathKey), '/');
+            if ($relPath === $pathKey) return $customRole;
+            if ($pathKey !== '/' && strpos($relPath, $pathKey . '/') === 0) {
+                if (strlen($pathKey) > strlen($bestMatch)) {
+                    $bestMatch = $pathKey;
+                    $bestRole = $customRole;
+                }
+            }
+        }
+        return $bestRole;
     }
 
     private function log($action, $src, $tgt = '-', $result = 'OK') {
@@ -560,8 +587,19 @@ class MyCloudServer {
             $effectiveAction = 'print';
         }
         
-        if ($this->isActionBlocked($effectiveAction)) {
-			$this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Permission denied: Action restricted by current rights level (' . $this->role . ').']);
+        $effectiveRole = $this->role;
+        $pathlessActions = ['load_settings', 'save_settings', 'switch_language', 'change_password', 'reset_settings', 'get_help_data', 'refresh_csrf', 'load_views', 'load_favorites', 'load_tags', 'load_paths', 'check_office_state'];
+        
+        if (!in_array($effectiveAction, $pathlessActions) && strpos($effectiveAction, 'email_') !== 0) {
+            $rawPath = $_POST['path'] ?? $_POST['dir'] ?? $_POST['parent'] ?? $_POST['src'] ?? '/';
+            $fullPath = $this->resolve($rawPath);
+            if ($fullPath) {
+                $effectiveRole = $this->getEffectiveRoleForAbsPath($fullPath);
+            }
+        }
+
+        if ($this->isActionBlocked($effectiveAction, $effectiveRole)) {
+			$this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Permission denied: Action restricted by effective rights level (' . $effectiveRole . ').']);
         }
 
         // Release session lock for heavy I/O operations
@@ -819,6 +857,7 @@ class MyCloudServer {
                 if ($i === '.' || $i === '..' || $i === '.recycle_bin' || $e === '.mail' || $i === '.recoll') continue;
                 if ($checkLimits()) return ['size'=>$totalSize, 'files'=>$totalFiles, 'dirs'=>$totalDirs, 'aborted'=>true];
                 $p = $dir . DIRECTORY_SEPARATOR . $i;
+                if ($this->getEffectiveRoleForAbsPath($p) === 'hidden') continue;
                 if (is_dir($p)) {
                     $sub = $scanStats($p);
                     $totalSize += $sub['size'];
@@ -839,6 +878,7 @@ class MyCloudServer {
             foreach($rootItems as $i) {
                 if ($i === '.' || $i === '..' || $i === '.recycle_bin' || $e === '.mail' || $i === '.recoll') continue;
                 $p = $target . DIRECTORY_SEPARATOR . $i;
+                if ($this->getEffectiveRoleForAbsPath($p) === 'hidden') continue;
                 if (is_dir($p)) {
                     $s = $scanStats($p); 
                     $finalStats['dirs']++;
@@ -1497,7 +1537,8 @@ class MyCloudServer {
                         }
                     }
                     $zip->close();
-                    $this->sendJsonAndExit(['status' => 'OK', 'data' => array_values($data)]);
+                    $effectiveRole = $this->getEffectiveRoleForAbsPath($zipFilePath);
+                    $this->sendJsonAndExit(['status' => 'OK', 'data' => array_values($data), 'role' => $effectiveRole]);
                 }
             }
         }
@@ -1531,6 +1572,11 @@ class MyCloudServer {
 
         if (!$startDir || !is_dir($startDir)) $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Invalid directory']);
 
+        $startDirRole = $this->getEffectiveRoleForAbsPath($startDir);
+        if ($startDirRole === 'hidden' || $startDirRole === 'no-access') {
+            $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Access denied']);
+        }
+
         $data = [];
         $imagesToProcess = []; 
         $stack = [[$startDir, $path, 1]];
@@ -1543,6 +1589,7 @@ class MyCloudServer {
                 if ($e === '.' || $e === '..') continue;
                 if ($e === '.recycle_bin' || $e === '.recoll' || $e === '.mail' || $e === '.mycloud_crypto_salt') continue;
                 $fp = $currDir . '/' . $e;
+                if ($this->getEffectiveRoleForAbsPath($fp) === 'hidden') continue;
                 $rp = $currRel === '/' ? '/' . $e : rtrim($currRel, '/') . '/' . $e;
                 $isDir = is_dir($fp);
                 $isEncrypted = $isDir && file_exists($fp . '/.mycloud_crypto_salt');
@@ -1597,7 +1644,7 @@ class MyCloudServer {
         @ini_set('zlib.output_compression', 'Off');
         if (function_exists('apache_setenv')) @apache_setenv('no-gzip', 1);
         ob_start();
-        echo json_encode(['status' => 'OK', 'data' => $data, 'role' => $this->role, 'is_encrypted_root' => ($cryptoRoot !== null), 'crypto_root' => $cryptoRoot]);
+        echo json_encode(['status' => 'OK', 'data' => $data, 'role' => $startDirRole, 'is_encrypted_root' => ($cryptoRoot !== null), 'crypto_root' => $cryptoRoot]);
         $size = ob_get_length();
         header("Content-Type: application/json"); header("Connection: close"); header("Content-Encoding: none"); header("Content-Length: " . $size);
         session_write_close();
@@ -1774,6 +1821,7 @@ class MyCloudServer {
                     // 2. Security & Directory Filter: Cloud boundary & Existence
                     if (strpos($f, $searchPrefix) !== 0 || strpos($f, $this->recycle_dir) === 0 || !file_exists($f)) continue;
 					if (substr($f, -4) === '.enc') continue;
+                    if ($this->getEffectiveRoleForAbsPath($f) === 'hidden') continue;
  
                     // Route through date/size filters
                     $mtime = filemtime($f);
@@ -1818,6 +1866,7 @@ class MyCloudServer {
             if ($realPath === $recollDir || strpos($realPath, $recollDir . DIRECTORY_SEPARATOR) === 0) continue;
 			if ($file->getFilename() === '.mycloud_crypto_salt') continue;
 			if (substr($file->getFilename(), -4) === '.enc') continue;
+            if ($this->getEffectiveRoleForAbsPath($realPath) === 'hidden') continue;
             
             $relativePath = '/' . substr($realPath, strlen($this->cloud_path));
             $relativePath = str_replace('\\', '/', $relativePath);
@@ -2128,6 +2177,11 @@ class MyCloudServer {
         $errs = []; $res = [];
         foreach($ops as $item) {
             $src = $this->resolve($item['src']);
+            $srcRole = $this->getEffectiveRoleForAbsPath($src);
+            if ($this->isActionBlocked('batch_rename', $srcRole)) {
+                $errs[] = "Denied: {$item['src']}";
+                continue;
+            }
             
             // --- CENTRAL GATEKEEPER ---
             $safeNewName = $this->sanitizeAndValidateName($item['new'], true);
@@ -2254,6 +2308,12 @@ class MyCloudServer {
     private function actionCopyMove($mode) {
         $src = $this->resolve($_POST['src'] ?? '');
         $destDir = rtrim($this->resolve($_POST['dest'] ?? '/'), '/');
+
+        $destRole = $this->getEffectiveRoleForAbsPath($destDir);
+        if ($this->isActionBlocked($mode, $destRole)) {
+            $this->sendJsonAndExit(['status'=>'ERR','msg'=>'Permission denied for destination folder.']);
+        }
+
         if ($mode === 'copy' && (strpos($src, $this->recycle_dir)===0 || strpos($destDir, $this->recycle_dir)===0)) $this->sendJsonAndExit(['status'=>'ERR','msg'=>'No copy in/out bin']);
         if (preg_match('/\.zip(\/|$)/i', $_POST['dest']??'')) $this->sendJsonAndExit(['status'=>'ERR','msg'=>'ZIP read-only']);
         
@@ -2596,6 +2656,12 @@ class MyCloudServer {
         
         $src = $this->resolve($_POST['src'] ?? '');
         $dest = isset($_POST['dest']) ? $this->resolve($_POST['dest']) : dirname($src);
+
+        $destRole = $this->getEffectiveRoleForAbsPath($dest);
+        if ($this->isActionBlocked('zip', $destRole)) {
+            $sendMsg(0, 'Permission denied for destination', 'ERR'); exit;
+        }
+
         if (!$src || !is_dir($src)) { $sendMsg(0, 'Invalid src', 'ERR'); exit; }
         
         // Fortification: Route the new ZIP filename through the gatekeeper

@@ -154,7 +154,8 @@ if (isset($_POST['myCloud_action']) && in_array($_POST['myCloud_action'], ['clou
                  $userCloudData[$k] = [
                      'interface' => $c['interface'] ?? 'default',
                      'rights' => $r,
-					 'is_private' => $is_private
+					 'is_private' => $is_private,
+                     'subfolder_rights' => $c['subfolder_rights'] ?? []
                  ];
             }
              break;

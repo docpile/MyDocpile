@@ -292,6 +292,38 @@ if (!function_exists('CloudAdmin_handle_ajax')) {
         if ($res === true) echo json_encode(['status' => 'ok']); else echo json_encode(['status' => 'error', 'msg' => $res]); exit;
     }
 
+    if ($action === 'get_subdirs') {
+        $base = $_POST['base_path'] ?? '';
+        $rel = $_POST['rel_path'] ?? '/';
+        
+        $realBase = realpath($base);
+        if (!$realBase || !is_dir($realBase)) {
+            ob_end_clean(); header('Content-Type: application/json'); echo json_encode(['status' => 'error', 'msg' => 'Base cloud path does not exist on server.']); exit;
+        }
+
+        $full = rtrim($realBase, '/\\') . '/' . ltrim(str_replace('\\', '/', $rel), '/');
+        $realFull = realpath($full);
+
+        if (!$realFull || strpos($realFull, $realBase) !== 0 || !is_dir($realFull)) {
+            ob_end_clean(); header('Content-Type: application/json'); echo json_encode(['status' => 'error', 'msg' => 'Subdirectory does not exist or escapes boundary.']); exit;
+        }
+
+        $dirs = [];
+        $items = @scandir($realFull);
+        if (is_array($items)) {
+            foreach ($items as $item) {
+                if ($item === '.' || $item === '..' || $item === '.recycle_bin') continue;
+                if (is_dir($realFull . DIRECTORY_SEPARATOR . $item)) $dirs[] = $item;
+            }
+        }
+        natcasesort($dirs);
+        
+        $currentRel = '/' . ltrim(str_replace('\\', '/', substr($realFull, strlen($realBase))), '/');
+        if ($currentRel === '') $currentRel = '/';
+        
+        ob_end_clean(); header('Content-Type: application/json'); echo json_encode(['status' => 'ok', 'dirs' => array_values($dirs), 'current' => $currentRel]); exit;
+    }
+
     if ($action === 'save_config') {
         $p = json_decode($_POST['payload'], true);
         if (!$p) { ob_end_clean(); header('Content-Type: application/json'); echo json_encode(['status' => 'error', 'msg' => 'Bad Data']); exit; }
@@ -619,6 +651,117 @@ if (isset($_GET['myCloud_dynamic_js'])):
     let ca_Dirty_Users = new Set();
     let ca_Dirty_Cfg = new Set();
     let ca_Drag_El = null;
+	
+    window.ca_add_subfolder_row = function(cloudRow, path = '', right = 'read-only') {
+        const list = cloudRow.querySelector('.ca-subfolders-list');
+        const L = typeof myCloud_LANG !== 'undefined' ? myCloud_LANG : {};
+        const row = document.createElement('div');
+        row.className = 'ca-subfolder-row';
+        row.innerHTML = 
+            '<div style="display:flex; flex:2; min-width:120px;">' +
+                '<input type="text" class="ca-input ca-sf-path" placeholder="/relative/path" value="' + path + '" oninput="ca_mark_dirty(this)" style="border-top-right-radius:0; border-bottom-right-radius:0; border-right:none; margin:0; width:100%;">' +
+                '<button class="ca-btn ca-btn-outline" type="button" title="' + (L.select_folder || 'Select Folder') + '" onclick="ca_open_dir_picker(this)" style="border-top-left-radius:0; border-bottom-left-radius:0; padding:0 10px; background:var(--ca-bg-app); margin:0;">' +
+                    '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M20 6h-8l-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6 12v-3h-4v-4h4V8l5 5-5 5z"/></svg>' +
+                '</button>' +
+            '</div>' +
+            '<select class="ca-select ca-sf-rights" onchange="ca_mark_dirty(this)" style="flex: 1; min-width: 120px; margin:0;">' +
+                '<option value="full">' + (L.full_access || 'Full Access') + '</option>' +
+                '<option value="modify">' + (L.modify || 'Modify') + '</option>' +
+                '<option value="edit-print">' + (L.edit_print || 'Edit & Print') + '</option>' +
+                '<option value="edit-only">' + (L.edit_only || 'Edit Only') + '</option>' +
+                '<option value="read-only">' + (L.read_only || 'Read Only') + '</option>' +
+                '<option value="hidden">' + (L.hidden || 'Hidden') + '</option>' +
+            '</select>' +
+            '<button class="ca-btn ca-btn-danger ca-btn-sm" type="button" title="' + (L.remove || 'Remove') + '" onclick="this.closest(\'.ca-subfolder-row\').remove(); ca_mark_dirty(this);" style="flex-shrink: 0; margin:0;"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 17.59 17.59 13.41 12 19 6.41z"/></svg></button>';
+        row.querySelector('.ca-sf-rights').value = right;
+        list.appendChild(row);
+    };
+
+    window.ca_open_dir_picker = function(btn) {
+        const L = typeof myCloud_LANG !== 'undefined' ? myCloud_LANG : {};
+        const row = btn.closest('.ca-dynamic-row');
+        const basePath = row.querySelector('.ca-c-path').value.trim();
+        if (!basePath) {
+            myCloudShowAlert(L.error_prefix || 'Error', L.err_missing_basepath || 'Please enter an absolute Cloud Path first before browsing subfolders.');
+            return;
+        }
+        const pathInput = btn.previousElementSibling;
+        
+        ca_show_dir_picker(basePath, pathInput.value.trim() || '/', function(selectedPath) {
+            pathInput.value = selectedPath;
+            ca_mark_dirty(pathInput);
+        });
+    };
+
+    window.ca_show_dir_picker = function(basePath, startPath, onSelect) {
+        const L = typeof myCloud_LANG !== 'undefined' ? myCloud_LANG : {};
+        
+        const existing = document.getElementById('ca_dir_picker_overlay');
+        if (existing) existing.remove();
+
+        const overlay = document.createElement('div');
+        overlay.id = 'ca_dir_picker_overlay';
+        overlay.className = 'myCloudOverlay'; 
+        overlay.style.display = 'flex';
+        overlay.style.zIndex = '150000';
+
+        const modal = document.createElement('div');
+        modal.className = 'myCloudModal tree-selector';
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
+        
+        const loadDir = (relPath) => {
+            modal.innerHTML = '<div class="myCloudModalHeader">' + (L.select_folder || 'Select Folder') + '</div><div class="myCloudModalBody" style="padding:20px;text-align:center;">' + (L.loading || 'Loading...') + '</div>';
+            
+            const fd = new URLSearchParams({ ca_action: 'get_subdirs', csrf_token: window.myCloudCsrfToken, base_path: basePath, rel_path: relPath });
+            fetch(window.location.href, { method: 'POST', body: fd, headers: {'X-Requested-With': 'XMLHttpRequest'} })
+            .then(r => r.json()).then(res => {
+                if (res.status === 'ok') renderDir(res.current, res.dirs);
+                else modal.innerHTML = '<div class="myCloudModalHeader">' + (L.select_folder || 'Select Folder') + '<span class="myCloudClose" onclick="this.closest(\'.myCloudOverlay\').remove()">✕</span></div><div class="myCloudModalBody" style="padding:20px;color:var(--ca-danger);">' + (L.error_prefix || 'Error') + ': ' + res.msg + '</div>';
+            }).catch(e => {
+                modal.innerHTML = '<div class="myCloudModalHeader">' + (L.select_folder || 'Select Folder') + '<span class="myCloudClose" onclick="this.closest(\'.myCloudOverlay\').remove()">✕</span></div><div class="myCloudModalBody" style="padding:20px;color:var(--ca-danger);">' + (L.network_error || 'Network Error') + '</div>';
+            });
+        };
+
+        const renderDir = (currentPath, dirs) => {
+            let listHtml = '<ul style="list-style:none; padding:0; margin:0;">';
+            if (currentPath !== '/' && currentPath !== '') listHtml += '<li class="ca-picker-item" data-path=".." style="padding:8px 12px; cursor:pointer; border-bottom:1px solid var(--ca-border-subtle); display:flex; align-items:center; gap:8px;"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M20 6h-8l-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6 12v-3h-4v-4h4V8l5 5-5 5z"/></svg> <b>.. (' + (L.up || 'Up') + ')</b></li>';
+            if (dirs.length === 0) listHtml += '<li style="padding:15px; text-align:center; color:var(--ca-text-muted);">' + (L.empty_lbl || 'Empty') + '</li>';
+            else dirs.forEach(d => { listHtml += '<li class="ca-picker-item" data-path="' + d + '" style="padding:8px 12px; cursor:pointer; border-bottom:1px solid var(--ca-border-subtle); display:flex; align-items:center; gap:8px;"><svg viewBox="0 0 24 24" width="16" height="16" fill="#ffc800"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg> ' + d + '</li>'; });
+            listHtml += '</ul>';
+
+            // Robust translation fallback
+            let btnText = L.ok;
+            if (!btnText || btnText.trim() === '') btnText = L.save || 'OK';
+
+            // Bound to global window to avoid DOM query detachment issues
+            window._ca_picker_confirm = function() {
+                onSelect(currentPath);
+                overlay.remove();
+            };
+
+            let html = '<div class="myCloudModalHeader" style="justify-content:space-between; align-items:center;"><span>' + (L.select_folder || 'Select Folder') + '</span><button onclick="this.closest(\'.myCloudOverlay\').remove()" style="background:transparent; border:none; font-size:20px; cursor:pointer; color:inherit; line-height:1;">✕</button></div>' +
+                       '<div class="myCloudModalBody" style="display:flex; flex-direction:column; padding: 15px; height: 350px;">' +
+                         '<div style="font-family:monospace; background:var(--ca-bg-app); padding:8px; border-radius:4px; margin-bottom:10px; word-break:break-all; font-size:12px; border:1px solid var(--ca-border-subtle); flex-shrink:0;">' + currentPath + '</div>' +
+                         '<div style="flex:1; overflow-y:auto; border:1px solid var(--ca-border-normal); border-radius:4px; background:var(--ca-bg-card);">' + listHtml + '</div>' +
+                         '<div class="myCloudButtons" style="margin-top:15px; justify-content:flex-end; gap:10px; flex-shrink:0;">' +
+                             '<button onclick="this.closest(\'.myCloudOverlay\').remove()" style="padding:8px 16px;">' + (L.cancel || 'Cancel') + '</button>' +
+                             '<button onclick="window._ca_picker_confirm()" style="background:var(--accent-primary); color:#fff; border:none; padding:8px 16px; border-radius:4px;">' + btnText + '</button>' +
+                         '</div>' +
+                       '</div>';
+            
+            modal.innerHTML = html;
+
+            if (typeof myCloudApplyTheme === 'function') myCloudApplyTheme();
+
+            modal.querySelectorAll('.ca-picker-item').forEach(li => {
+                li.onmouseenter = () => li.style.background = 'var(--ca-bg-sidebar-hover)';
+                li.onmouseleave = () => li.style.background = 'transparent';
+                li.onclick = () => { loadDir(li.dataset.path === '..' ? '/' + currentPath.split('/').filter(Boolean).slice(0, -1).join('/') : (currentPath === '/' ? '/' + li.dataset.path : currentPath + '/' + li.dataset.path)); };
+            });
+        };
+        loadDir(startPath);
+    };
 
     // --- PROTECTION AGAINST ACCIDENTAL CLOSING ---
     if (!window.ca_CloseProtectionBound) {
@@ -631,16 +774,20 @@ if (isset($_GET['myCloud_dynamic_js'])):
         ca_Is_Dirty = true; 
         if (el && el.dataset && el.dataset.name) {
             ca_Dirty_Users.add(el.dataset.name);
-            document.getElementById('ca_unsaved_users').innerText = 'Unsaved: ' + Array.from(ca_Dirty_Users).join(', ');
+            const unsavedInd = document.getElementById('ca_unsaved_users');
+            if (unsavedInd) unsavedInd.innerText = 'Unsaved: ' + Array.from(ca_Dirty_Users).join(', ');
         }
-	document.getElementById('ca_floating_save_user').classList.add('visible');
+        const saveBtn = document.getElementById('ca_floating_save_user');
+        if (saveBtn) saveBtn.classList.add('visible');
     }
     
     function ca_clean_dirty() { 
         ca_Is_Dirty = false; 
         ca_Dirty_Users.clear(); 
-        document.getElementById('ca_unsaved_users').innerText = ''; 
-		document.getElementById('ca_floating_save_user').classList.remove('visible');
+        const unsavedInd = document.getElementById('ca_unsaved_users');
+        if (unsavedInd) unsavedInd.innerText = ''; 
+        const saveBtn = document.getElementById('ca_floating_save_user');
+        if (saveBtn) saveBtn.classList.remove('visible');
     }
     
     function ca_interface_changed(sel) {
@@ -836,6 +983,7 @@ if (isset($_GET['myCloud_dynamic_js'])):
     function ca_add_cloud_row(n='', d=null) {
         const div = document.createElement('div'); div.className = 'ca-dynamic-row';
         div.style.flexDirection = 'column'; div.style.alignItems = 'stretch';
+		const L = typeof myCloud_LANG !== 'undefined' ? myCloud_LANG : {};
         
         div.addEventListener('dragstart', ca_drag_start);
         div.addEventListener('dragend', ca_drag_end);
@@ -875,11 +1023,24 @@ if (isset($_GET['myCloud_dynamic_js'])):
             '</div>' +
             '<div class="ca-hover-tooltip" data-tooltip="Absolute server path. Must be within allowed directories (open_basedir). Use user@ip:port for Admin SSH." style="width: 100%; margin-top: 4px; display: flex;">' +
                 '<input type="text" placeholder="/absolute/path (NOT within www-root!) | For Admin Mode (SFTP): user@ip:port" class="ca-input ca-c-path" data-name="Cloud Path" oninput="ca_mark_dirty(this)" value="' + p_path + '" style="width: 100%;">' +
+            '</div>' +
+            '<div class="ca-subfolder-box" >' +
+                '<div class="ca-subfolder-header">' +
+                    '<span>' + (L.subfolder_rights || 'Subfolder Permissions (Overrides base rights)') + '</span>' +
+                    '<button class="ca-btn ca-btn-outline ca-btn-sm" type="button" onclick="ca_add_subfolder_row(this.closest(\'.ca-dynamic-row\'))" style="padding:2px 8px; font-size:11px; background:var(--ca-bg-card);">+ ' + (L.add_path || 'Add Path') + '</button>' +
+                '</div>' +
+                '<div class="ca-subfolders-list"></div>' +
             '</div>';
         
         if(d) div.querySelector('.ca-c-rights').value = d.rights;
         if(d && d.interface) div.querySelector('.ca-c-interface').value = d.interface;
         document.getElementById('ca_cloud_container').appendChild(div);
+
+        if (d && d.subfolder_rights) {
+            Object.keys(d.subfolder_rights).forEach(subPath => {
+                ca_add_subfolder_row(div, subPath, d.subfolder_rights[subPath]);
+            });
+        }
 
         if (n === '') {
             const nameInput = div.querySelector('.ca-c-name');
@@ -1021,10 +1182,21 @@ if (isset($_GET['myCloud_dynamic_js'])):
         document.querySelectorAll('#ca_cloud_container .ca-dynamic-row').forEach(r => {
             const cn = r.querySelector('.ca-c-name').value.trim();
             if(cn) {
+                const subfolders = {};
+                r.querySelectorAll('.ca-subfolder-row').forEach(subRow => {
+                    let subPath = subRow.querySelector('.ca-sf-path').value.trim();
+                    const subRight = subRow.querySelector('.ca-sf-rights').value;
+                    if (subPath) {
+                        if (!subPath.startsWith('/')) subPath = '/' + subPath;
+                        subfolders[subPath] = subRight;
+                    }
+                });
+
                 p.clouds[cn] = {
                     path: r.querySelector('.ca-c-path').value,
                     rights: r.querySelector('.ca-c-rights').value,
-                    interface: r.querySelector('.ca-c-interface').value
+                    interface: r.querySelector('.ca-c-interface').value,
+                    subfolder_rights: subfolders
                 };
             }
         });

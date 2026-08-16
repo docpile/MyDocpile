@@ -77,14 +77,15 @@
     .ca-input, .ca-select { width: 100%; padding: 8px 10px; border: 1px solid var(--ca-border-normal); border-radius: 6px; font-size: 13px; color: var(--ca-text-dark); background: var(--ca-bg-card); transition: border-color 0.2s, box-shadow 0.2s; box-sizing: border-box; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
     .ca-input:focus, .ca-select:focus { outline: none; border-color: var(--ca-accent); box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15); }
     
-    /* Dynamic Cloud Rows */
-    .ca-dynamic-box { border: 1px dashed var(--ca-border-strong); border-radius: 8px; background: transparent; padding: 10px; min-height: 40px; }
-    .ca-dynamic-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; background: var(--ca-bg-card); padding: 10px; border: 1px solid var(--ca-border-subtle); border-radius: 6px; flex-wrap: wrap; box-shadow: 0 1px 2px rgba(0,0,0,0.05); transition: transform 0.1s, box-shadow 0.1s; }
-    .ca-dynamic-row:hover { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
-    .ca-dynamic-row:last-child { margin-bottom: 0; }
-    .ca-drag-handle { color: var(--ca-border-strong); cursor: grab; user-select: none; font-size: 16px; padding: 0 6px; }
-    .ca-drag-handle:hover { color: var(--ca-text-dark); }
+    /* Subfolder Permissions UI */
+    .ca-subfolder-box { margin-top: 4px; padding: 12px 12px 12px 16px; margin-left: 34px; margin-bottom: 18px; background: var(--ca-bg-app); border: 1px solid var(--ca-border-subtle); border-left: 3px solid var(--ca-border-strong); border-radius: 6px; box-sizing: border-box; }
+    .ce-dark-mode .ca-subfolder-box { background: rgba(0,0,0,0.15); border-left-color: var(--ca-border-strong); }
+    .ca-subfolder-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; color: var(--ca-text-muted); }
+    .ca-subfolder-row { display: flex; gap: 8px; margin-bottom: 6px; align-items: center; background: var(--ca-bg-card); padding: 4px 6px; border: 1px solid var(--ca-border-subtle); border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+    .ca-subfolder-row:last-child { margin-bottom: 0; }
+    .ca-sf-path, .ca-sf-rights { margin: 0; padding: 4px 8px; font-size: 12px; height: 26px; box-sizing: border-box; }
     
+
     /* Buttons */
     .ca-btn { display: inline-flex; align-items: center; justify-content: center; padding: 8px 16px; border: 1px solid transparent; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
     .ca-btn-primary { background: var(--ca-accent); color: #fff; box-shadow: 0 1px 2px rgba(79, 70, 229, 0.3); }

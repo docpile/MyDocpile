@@ -17,16 +17,52 @@ if (typeof myCloudSvg !== 'undefined') {
     if (!myCloudSvg.help) myCloudSvg.help = '<svg viewBox="0 0 24 24" style="fill:none !important; stroke:currentColor !important; stroke-width:1.5 !important; stroke-linecap:round !important; stroke-linejoin:round !important;"><circle cx="12" cy="12" r="10" style="fill:none !important; stroke:currentColor !important;"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" style="fill:none !important; stroke:currentColor !important;"></path><line x1="12" y1="17" x2="12.01" y2="17" style="fill:none !important; stroke:currentColor !important;"></line></svg>';
 }
 
+window.myCloudGetEffectiveRole = function(path) {
+    if (!path) path = '/';
+    const st = myCloudState;
+    const config = (typeof myCloudCloudConfig !== 'undefined') ? myCloudCloudConfig[st.key] : null;
+    let baseRole = (typeof myCloudUserRole !== 'undefined') ? myCloudUserRole : 'no-access';
+    
+    if (!config || !config.subfolder_rights || Object.keys(config.subfolder_rights).length === 0) return baseRole;
+    
+    let bestMatch = '/';
+    let bestRole = config.rights || baseRole;
+    
+    const subs = config.subfolder_rights;
+    const normPath = '/' + path.replace(/^[\/\\]+/, '').replace(/\\/g, '/');
+    
+    for (let subPath in subs) {
+        let cleanSub = '/' + subPath.replace(/^[\/\\]+/, '').replace(/\\/g, '/');
+        if (normPath === cleanSub) {
+            return subs[subPath];
+        }
+        if (cleanSub !== '/' && normPath.startsWith(cleanSub + '/')) {
+            if (cleanSub.length > bestMatch.length) {
+                bestMatch = cleanSub;
+                bestRole = subs[subPath];
+            }
+        }
+    }
+    return bestRole;
+};
+
 function getActionStatus(action) {
     const st = myCloudState;
     let disabled = false, hidden = false, active = false;
 
-    // 1. Determine the right for the current context (Item level overrides global role)
-    let currentRight = typeof myCloudUserRole !== 'undefined' ? myCloudUserRole : 'read-only';
-    if (st.selectedFiles && st.selectedFiles.length === 1) {
-        const item = st.allItems.find(i => i.name === st.selectedFiles[0]);
-        if (item && item.rights) currentRight = item.rights;
+    // 1. Determine target path context dynamically
+    let targetPath = st.currentDir;
+    if (st.isCommanderMode) {
+        const side = st.commanderActive || 'left';
+        targetPath = (side === 'left') ? st.commanderLeft.dir : st.commanderRight.dir;
     }
+
+    const itemActions = ['rename', 'delete', 'copy', 'move', 'duplicate', 'download', 'preview', 'edit_file', 'properties', 'zip_copy', 'share', 'change_vault_pwd', 'fix_encryption', 'pdf_stack_menu', 'pdf_toolkit', 'pdf_combine_images', 'pdf_unstack'];
+    if (itemActions.includes(action) && st.selectedFiles && st.selectedFiles.length > 0) {
+        targetPath = st.selectedFiles[0]; 
+    }
+
+    let currentRight = window.myCloudGetEffectiveRole(targetPath);
 	
 	// Action Name Mapping for the Matrix
     let matrixKey = action;
@@ -72,6 +108,7 @@ function getActionStatus(action) {
         case 'share':
             if (typeof window.myCloudAction_Share !== 'function') return { disabled: true, hidden: true, active: false };
             disabled = (selCount !== 1);
+            if (window.myCloudGetEffectiveRole(targetPath) === 'hidden') hidden = true;
             break;
         case 'share_list':
             if (typeof window.cxShowAllShares !== 'function') return { disabled: true, hidden: true, active: false };
@@ -83,7 +120,7 @@ function getActionStatus(action) {
             break;
 		case 'search':
 			disabled = isCurrentDirEncrypted;
-			hidden = isCurrentDirEncrypted;
+			hidden = isCurrentDirEncrypted || (currentRight === 'hidden');
 			break;
         case 'preview':
         case 'edit_file':
@@ -646,39 +683,6 @@ function myCloudRenderToolbar() {
         '<path class="ce-grp-icon" d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" transform="translate(13, 5) scale(0.9)"/>' +
     '</svg>';
 
-    const filterAllowed = (actionsArray) => actionsArray.filter(act => {
-        let key = act;
-        if (act === 'commander_toggle') key = 'view_commander';
-        if (act === 'office_toggle') key = 'view_office';
-        if (act === 'pdf_stack_menu') key = 'pdf_stack';
-        if (act === 'select_all' || act === 'invert_selection' || act === 'clear_selection') key = 'selection_buttons';
-        if (act === 'toggle_tree') key = 'treeview_button';
-        if (act === 'view_toggle') key = 'iconview_button';
-        if (act === 'change_vault_pwd' || act === 'fix_encryption') key = 'encrypt';
-        
-        if (act !== 'encrypt_dir' && !window.myCloudActionAllowed(key)) return false;
-        if (act === 'office_toggle' && !window.myCloudActionAllowed('preview')) return false;
-        
-        return true;
-    });
-
-    const toolsActions    = filterAllowed(['toggle_tree', 'view_toggle', 'office_toggle', 'commander_toggle', 'search', 'refresh']);
-    const editActions     = filterAllowed(['edit_file', 'newfile', 'newfolder', 'copy', 'move', 'duplicate', 'rename', 'delete', 'permissions']);
-    const standardActions = filterAllowed(['preview', 'download', 'upload', 'print', 'pdf_stack_menu', 'encrypt_dir', 'change_vault_pwd', 'fix_encryption']);
-    const actionActions   = filterAllowed(['preview', 'download', 'upload', 'print', 'pdf_stack_menu', 'encrypt_dir', 'change_vault_pwd', 'fix_encryption']);
-
-    if (myCloudUserRole === 'admin_mode' && window.myCloudActionAllowed('terminal')) toolsActions.push('terminal');
-
-    const selectionActions = filterAllowed(['select_all', 'invert_selection', 'clear_selection']);
-
-    let totalAllowedButtons = toolsActions.length + editActions.length + selectionActions.length + standardActions.length;
-    if (window.myCloudActionAllowed('fav_toggle')) totalAllowedButtons++;
-    if (window.myCloudActionAllowed('settings')) totalAllowedButtons++;
-    
-    let isStacked = config.stackedToolbar;
-    if (totalAllowedButtons < ribbonThreshold) isStacked = false;
-	const hideDisabled = config.hideDisabled === true && (!isStacked || devKey === 'phone')
-
     const translations = {
         toggle_tree: myCloud_LANG.tree_view,
         view_toggle: myCloud_LANG.view_symbol,
@@ -972,6 +976,30 @@ function myCloudRenderToolbar() {
     }
 
 
+    // --- DYNAMIC THRESHOLD EVALUATOR ---
+    // Calculate threshold by actively querying status for every button to mirror exact visible state
+    let totalAllowedButtons = 0;
+    ribbonTabs.forEach(tab => {
+        tab.columns.forEach(col => {
+            col.rows.forEach(row => {
+                row.forEach(item => {
+                    if (item.act) {
+                        const status = getActionStatus(item.act);
+                        if (!status.hidden) totalAllowedButtons++;
+                    }
+                });
+            });
+        });
+    });
+
+    const currentDirRole = window.myCloudGetEffectiveRole(myCloudState.currentDir);
+    if (window.myCloudActionAllowed('fav_toggle', currentDirRole)) totalAllowedButtons++;
+    if (window.myCloudActionAllowed('settings', currentDirRole)) totalAllowedButtons++;
+
+    let isStacked = config.stackedToolbar;
+    if (totalAllowedButtons < ribbonThreshold) isStacked = false;
+    const hideDisabled = config.hideDisabled === true && (!isStacked || devKey === 'phone');
+
     if (isStacked) {
         toolbar.classList.add('ce-stacked-toolbar');
 
@@ -1015,7 +1043,7 @@ function myCloudRenderToolbar() {
                     row.forEach(item => {
                         if (item.act) {
 							const status = getActionStatus(item.act);
-                            if (!status.hidden && window.myCloudActionAllowed(item.act)) hasVisible = true;
+                            if (!status.hidden) hasVisible = true;
                         }
                     });
                 });
@@ -1040,8 +1068,8 @@ function myCloudRenderToolbar() {
                             return;
                         }
                         const status = getActionStatus(item.act);
-                        if (!status.hidden && window.myCloudActionAllowed(item.act)) {
-                            if (needsDivider) {
+                        if (!status.hidden) {
+							if (needsDivider) {
                                 const d = document.createElement('div');
                                 d.className = 'myCloudDivider';
                                 toolbar.appendChild(d);
@@ -2812,7 +2840,8 @@ function myCloudShowContextMenu(e, item, isTree) {
 
     const render = (target, list) => {
         list.forEach(a => {
-            const right = (typeof item !== 'undefined' && item.rights) ? item.rights : (typeof myCloudUserRole !== 'undefined' ? myCloudUserRole : 'read-only');
+            const targetPath = (typeof item !== 'undefined' && item.name) ? item.name : myCloudState.currentDir;
+            const right = window.myCloudGetEffectiveRole(targetPath);
             if (a.show === false || !window.myCloudActionAllowed(a.act, right)) return;
 
 
@@ -2997,6 +3026,7 @@ function myCloudShowBackgroundContextMenu(e, side) {
     const role = (typeof myCloudUserRole !== 'undefined') ? myCloudUserRole : 'no-access';
     const isInsideZip = /\.zip(\/|$)/i.test(dir);
     const isRecycleBin = (dir === '/.recycle_bin');
+	const dirRole = window.myCloudGetEffectiveRole(dir);
 
     document.querySelectorAll('.myCloudContextMenu').forEach(function(m) { m.remove(); });
 	const oldSpacer2 = document.getElementById('ceMenuSpacer');
@@ -3011,9 +3041,9 @@ function myCloudShowBackgroundContextMenu(e, side) {
 
     const actions = [
         { label: myCloud_LANG.refresh || 'Update', icon: myCloudSvg.refresh, act: 'refresh', show: !isRecycleBin && !isInsideZip },
-        { label: myCloud_LANG.new_file || 'New File', icon: myCloudSvg.newfile, act: 'newfile', show: window.myCloudActionAllowed('newfile') && !isInsideZip && !isRecycleBin },
-        { label: myCloud_LANG.new_folder || 'New Folder', icon: myCloudSvg.newfolder, act: 'newfolder', show: window.myCloudActionAllowed('newfolder') && !isInsideZip && !isRecycleBin },
-        { label: myCloud_LANG.upload || 'Upload', icon: myCloudSvg.upload, act: 'upload', show: window.myCloudActionAllowed('upload') && !isInsideZip && !isRecycleBin }
+        { label: myCloud_LANG.new_file || 'New File', icon: myCloudSvg.newfile, act: 'newfile', show: window.myCloudActionAllowed('newfile', dirRole) && !isInsideZip && !isRecycleBin },
+        { label: myCloud_LANG.new_folder || 'New Folder', icon: myCloudSvg.newfolder, act: 'newfolder', show: window.myCloudActionAllowed('newfolder', dirRole) && !isInsideZip && !isRecycleBin },
+        { label: myCloud_LANG.upload || 'Upload', icon: myCloudSvg.upload, act: 'upload', show: window.myCloudActionAllowed('upload', dirRole) && !isInsideZip && !isRecycleBin }
     ];
     
     let hasItems = false;
