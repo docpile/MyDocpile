@@ -182,21 +182,112 @@ class MyCloudServer {
         $relPath = '/' . ltrim(str_replace('\\', '/', substr($fullPath, strlen($jail))), '/');
         if ($relPath === '') $relPath = '/';
         
-        $bestMatch = '/';
+        $bestMatchLength = 0;
         $bestRole = $this->role;
         
         foreach ($this->subfolder_rights as $pathKey => $customRole) {
             $pathKey = '/' . ltrim(str_replace('\\', '/', $pathKey), '/');
-            if ($relPath === $pathKey) return $customRole;
-            if ($pathKey !== '/' && strpos($relPath, $pathKey . '/') === 0) {
-                if (strlen($pathKey) > strlen($bestMatch)) {
-                    $bestMatch = $pathKey;
-                    $bestRole = $customRole;
+            $isWildcard = strpos($pathKey, '*') !== false || strpos($pathKey, '?') !== false;
+            
+            if ($isWildcard) {
+                // Matches the wildcard folder exactly OR matches any deeper subfolder inside it securely
+                if (fnmatch($pathKey, $relPath, FNM_PATHNAME | FNM_CASEFOLD) || fnmatch($pathKey . '/*', $relPath, FNM_PATHNAME | FNM_CASEFOLD)) {
+                    if (strlen($pathKey) > $bestMatchLength) {
+                        $bestMatchLength = strlen($pathKey);
+                        $bestRole = $customRole;
+                    }
+                }
+            } else {
+                if ($relPath === $pathKey) return $customRole; // Exact literal match overrides immediately
+                if ($pathKey !== '/' && strpos($relPath, $pathKey . '/') === 0) {
+                    if (strlen($pathKey) > $bestMatchLength) {
+                        $bestMatchLength = strlen($pathKey);
+                        $bestRole = $customRole;
+                    }
                 }
             }
         }
         return $bestRole;
     }
+
+    private function healSubfolderPaths($oldAbs, $newAbs = null) {
+        global $user_db, $user_details, $users;
+        
+        // Ensure atomic writer is available
+        if (!function_exists('CloudAdmin_atomic_write_vars')) {
+            $adminModule = __DIR__ . '/modules.admin_ui.php';
+            if (file_exists($adminModule)) include_once $adminModule;
+        }
+        
+        if (!function_exists('CloudAdmin_atomic_write_vars') || !isset($user_db) || empty($user_details)) return;
+
+        $globalChanged = false;
+        
+        // Normalize absolute paths with trailing slashes for safe subfolder matching
+        $oldPrefixAbs = rtrim(str_replace('\\', '/', $oldAbs), '/') . '/';
+        $newPrefixAbs = $newAbs ? rtrim(str_replace('\\', '/', $newAbs), '/') . '/' : null;
+
+        foreach ($user_details as &$ud) {
+            if (empty($ud['cloud']) || !is_array($ud['cloud'])) continue;
+            
+            foreach ($ud['cloud'] as $cloudKey => &$cloudConfig) {
+                if (empty($cloudConfig['subfolder_rights']) || empty($cloudConfig['path'])) continue;
+                
+                $jail = realpath($cloudConfig['path']);
+                if (!$jail) continue;
+                $jail = str_replace('\\', '/', $jail);
+                
+                $newRights = [];
+                $localChanged = false;
+                
+                foreach ($cloudConfig['subfolder_rights'] as $relPath => $role) {
+                    // Reconstruct the absolute path of this specific rule
+                    $ruleAbs = rtrim($jail, '/') . '/' . ltrim(str_replace('\\', '/', $relPath), '/');
+                    
+                    // Does this rule perfectly match the moved/deleted folder, OR is it inside it?
+                    if ($ruleAbs === rtrim($oldPrefixAbs, '/') || strpos($ruleAbs . '/', $oldPrefixAbs) === 0) {
+                        $localChanged = true;
+                        $globalChanged = true;
+                        
+                        // If it's a rename/move, calculate the new path
+                        if ($newPrefixAbs !== null) {
+                            if ($ruleAbs === rtrim($oldPrefixAbs, '/')) {
+                                $newRuleAbs = rtrim($newPrefixAbs, '/');
+                            } else {
+                                $newRuleAbs = $newPrefixAbs . substr($ruleAbs, strlen($oldPrefixAbs));
+                            }
+                            
+                            // Check if the new absolute path is STILL inside this user's cloud jail
+                            if (strpos($newRuleAbs . '/', $jail . '/') === 0) {
+                                $newRel = '/' . ltrim(substr($newRuleAbs, strlen($jail)), '/');
+                                if ($newRel === '') $newRel = '/';
+                                $newRights[$newRel] = $role;
+                            }
+                        }
+                    } else {
+                        // Unaffected rule
+                        $newRights[$relPath] = $role;
+                    }
+                }
+                
+                if ($localChanged) {
+                    $cloudConfig['subfolder_rights'] = $newRights;
+                    
+                    // Update in-memory state for the active user session
+                    if ($ud['name'] === $this->username && $cloudKey === $this->key) {
+                        $this->subfolder_rights = $newRights;
+                        global $__userConfig;
+                        if ($__userConfig) $__userConfig['cloud'][$this->key]['subfolder_rights'] = $newRights;
+                    }
+                }
+            }
+        }
+        
+        if ($globalChanged) {
+            CloudAdmin_atomic_write_vars($user_db, ['users' => ca_gen_strict($users), 'user_details' => ca_gen_strict($user_details)]);
+        }
+    }
+
 
     private function log($action, $src, $tgt = '-', $result = 'OK') {
         global $cloud_logfile;
@@ -854,7 +945,7 @@ class MyCloudServer {
             if (!is_array($items)) return ['size'=>0, 'files'=>0, 'dirs'=>0];
 
             foreach ($items as $i) {
-                if ($i === '.' || $i === '..' || $i === '.recycle_bin' || $e === '.mail' || $i === '.recoll') continue;
+                if ($i === '.' || $i === '..' || $i === '.recycle_bin' || $i === '.mail' || $i === '.recoll') continue;
                 if ($checkLimits()) return ['size'=>$totalSize, 'files'=>$totalFiles, 'dirs'=>$totalDirs, 'aborted'=>true];
                 $p = $dir . DIRECTORY_SEPARATOR . $i;
                 if ($this->getEffectiveRoleForAbsPath($p) === 'hidden') continue;
@@ -876,7 +967,7 @@ class MyCloudServer {
         $rootItems = @scandir($target);
         if (is_array($rootItems)) {
             foreach($rootItems as $i) {
-                if ($i === '.' || $i === '..' || $i === '.recycle_bin' || $e === '.mail' || $i === '.recoll') continue;
+                if ($i === '.' || $i === '..' || $i === '.recycle_bin' || $i === '.mail' || $i === '.recoll') continue;
                 $p = $target . DIRECTORY_SEPARATOR . $i;
                 if ($this->getEffectiveRoleForAbsPath($p) === 'hidden') continue;
                 if (is_dir($p)) {
@@ -2192,7 +2283,10 @@ class MyCloudServer {
             }
             $target = dirname($src) . DIRECTORY_SEPARATOR . $safeNewName;
             if (file_exists($target) && $target !== $src) $target = $this->getUniqueName($target);
-            if (@rename($src, $target)) $res[] = basename($target); else $errs[] = "Failed: {$item['src']}";
+            if (@rename($src, $target)) {
+                $this->healSubfolderPaths($src, $target);
+                $res[] = basename($target);
+            } else $errs[] = "Failed: {$item['src']}";
         }
         $this->log('BATCH_RENAME', count($res).' items');
         $this->sendJsonAndExit(['status' => empty($errs)?'OK':'PARTIAL', 'errors'=>$errs]);
@@ -2211,7 +2305,11 @@ class MyCloudServer {
         
         $dest = dirname($src) . '/' . $newName;
         if (file_exists($dest)) $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Exists']);
-        if (!@rename($src, $dest)) $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Failed']);
+        if (!@rename($src, $dest)) {
+            $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Failed']);
+        } else {
+            $this->healSubfolderPaths($src, $dest);
+        }
         
         $this->log('RENAME', $_POST['src'], dirname($_POST['src']) . '/' . $newName);
         $this->sendJsonAndExit(['status' => 'OK', 'newPath' => dirname($_POST['src']) . '/' . $newName]);
@@ -2287,6 +2385,7 @@ class MyCloudServer {
             if (@rename($src, $target)) {
                 $meta = ['origin' => '/' . ltrim(substr($src, strlen($this->cloud_path)), '/'), 'time' => time()];
                 file_put_contents($target . '.meta', json_encode($meta));
+				$this->healSubfolderPaths($src, $target); // Route rule pointing into recycle bin
                 $this->log('RECYCLE', $_POST['src']);
                 $this->sendJsonAndExit(['status' => 'OK', 'recycled' => '/.recycle_bin/' . basename($target)]);
             } else {
@@ -2300,6 +2399,7 @@ class MyCloudServer {
             foreach ($iter as $f) $f->isDir() ? @rmdir($f->getRealPath()) : @unlink($f->getRealPath());
             @rmdir($src);
         } else { @unlink($src); }
+		$this->healSubfolderPaths($src, null); // Wipe permanent deletions from config
         
         $this->log('DELETE', $_POST['src']);
         $this->sendJsonAndExit(['status' => 'OK']);
@@ -2327,6 +2427,7 @@ class MyCloudServer {
                 if (@rename($src, $target)) {
                     $meta = ['origin' => '/' . ltrim(substr($src, strlen($this->cloud_path)), '/'), 'time' => time()];
                     file_put_contents($target . '.meta', json_encode($meta));
+					$this->healSubfolderPaths($src, $target);
                     $this->sendJsonAndExit(['status' => 'OK', 'recycled' => '/.recycle_bin/' . basename($target)]);
                 }
             }
@@ -2412,7 +2513,11 @@ class MyCloudServer {
         }
 
         if ($mode === 'move') {
-            if (!@rename($src, $dest)) $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Move failed']);
+            if (!@rename($src, $dest)) {
+                $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Move failed']);
+            } else {
+                $this->healSubfolderPaths($src, $dest);
+            }
         } else {
             if (is_dir($src)) {
                 $iter = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($src, RecursiveDirectoryIterator::SKIP_DOTS), RecursiveIteratorIterator::SELF_FIRST);

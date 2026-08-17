@@ -323,6 +323,30 @@ if (!function_exists('CloudAdmin_handle_ajax')) {
         
         ob_end_clean(); header('Content-Type: application/json'); echo json_encode(['status' => 'ok', 'dirs' => array_values($dirs), 'current' => $currentRel]); exit;
     }
+	
+    if ($action === 'get_full_tree') {
+        $base = $_POST['base_path'] ?? '';
+        $realBase = realpath($base);
+        if (!$realBase || !is_dir($realBase)) {
+            ob_end_clean(); header('Content-Type: application/json'); echo json_encode(['status' => 'error', 'msg' => 'Base path invalid.']); exit;
+        }
+        $dirs = ['/'];
+        try {
+            $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($realBase, RecursiveDirectoryIterator::SKIP_DOTS), RecursiveIteratorIterator::SELF_FIRST);
+            foreach ($iterator as $file) {
+                if ($file->isDir()) {
+                    $rel = '/' . ltrim(str_replace('\\', '/', substr($file->getRealPath(), strlen($realBase))), '/');
+                    // Hide native recycle bin internal paths to prevent UI clutter in the explorer
+                    if (strpos($rel, '/.recycle_bin') !== 0) {
+                        $dirs[] = $rel;
+                    }
+                }
+            }
+        } catch (Throwable $e) {}
+        
+        sort($dirs);
+        ob_end_clean(); header('Content-Type: application/json'); echo json_encode(['status' => 'ok', 'dirs' => $dirs]); exit;
+    }
 
     if ($action === 'save_config') {
         $p = json_decode($_POST['payload'], true);
@@ -763,6 +787,103 @@ if (isset($_GET['myCloud_dynamic_js'])):
         loadDir(startPath);
     };
 
+    window.ca_show_rights_explorer = function(btn) {
+        const L = typeof myCloud_LANG !== 'undefined' ? myCloud_LANG : {};
+        const row = btn.closest('.ca-dynamic-row');
+        const basePath = row.querySelector('.ca-c-path').value.trim();
+        const baseRole = row.querySelector('.ca-c-rights').value;
+        
+        if (!basePath) {
+            myCloudShowAlert(L.error_prefix || 'Error', L.err_missing_basepath || 'Please enter an absolute Cloud Path first.');
+            return;
+        }
+
+        // Extract current, live unsaved rules directly from the DOM fields
+        const currentRules = {};
+        row.querySelectorAll('.ca-subfolder-row').forEach(subRow => {
+            let subPath = subRow.querySelector('.ca-sf-path').value.trim();
+            const subRight = subRow.querySelector('.ca-sf-rights').value;
+            if (subPath) {
+                if (!subPath.startsWith('/')) subPath = '/' + subPath;
+                currentRules[subPath] = subRight;
+            }
+        });
+
+        // Temporary RAM injection of our rule evaluator for this specific analysis
+        const evaluateRole = (path) => {
+            let bestMatchLength = 0;
+            let effectiveRole = baseRole;
+            const wildcardToRegex = (pattern) => new RegExp('^' + pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.') + '(\\/.*)?$', 'i');
+
+            for (let subPath in currentRules) {
+                let cleanSub = '/' + subPath.replace(/^[\/\\]+/, '').replace(/\\/g, '/');
+                let isWildcard = cleanSub.includes('*') || cleanSub.includes('?');
+                
+                if (isWildcard) {
+                    if (wildcardToRegex(cleanSub).test(path)) {
+                        if (cleanSub.length > bestMatchLength) {
+                            bestMatchLength = cleanSub.length;
+                            effectiveRole = currentRules[subPath];
+                        }
+                    }
+                } else {
+                    if (path === cleanSub) return currentRules[subPath];
+                    if (cleanSub !== '/' && path.startsWith(cleanSub + '/')) {
+                        if (cleanSub.length > bestMatchLength) {
+                            bestMatchLength = cleanSub.length;
+                            effectiveRole = currentRules[subPath];
+                        }
+                    }
+                }
+            }
+            return effectiveRole;
+        };
+
+        const colorMap = {
+            'full': '#10b981', 'modify': '#f59e0b', 'edit-print': '#f59e0b', 'edit-only': '#f59e0b',
+            'read-only': '#64748b', 'mail-read-only': '#64748b', 'hidden': '#ef4444', 'admin_mode': '#8b5cf6'
+        };
+
+        const overlay = document.createElement('div');
+        overlay.className = 'myCloudOverlay'; 
+        overlay.style.display = 'flex';
+        overlay.style.zIndex = '150000';
+
+        const modal = document.createElement('div');
+        modal.className = 'myCloudModal tree-selector';
+        modal.innerHTML = '<div class="myCloudModalHeader">Effective Rights Explorer</div><div class="myCloudModalBody" style="padding:20px;text-align:center;">' + (L.loading || 'Scanning Tree...') + '</div>';
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
+        if (typeof myCloudApplyTheme === 'function') myCloudApplyTheme();
+
+        const fd = new URLSearchParams({ ca_action: 'get_full_tree', csrf_token: window.myCloudCsrfToken, base_path: basePath });
+        fetch(window.location.href, { method: 'POST', body: fd, headers: {'X-Requested-With': 'XMLHttpRequest'} })
+        .then(r => r.json()).then(res => {
+            if (res.status !== 'ok') {
+                modal.innerHTML = '<div class="myCloudModalHeader">Effective Rights Explorer<span class="myCloudClose" onclick="this.closest(\'.myCloudOverlay\').remove()">✕</span></div><div class="myCloudModalBody" style="padding:20px;color:var(--ca-danger);">' + res.msg + '</div>';
+                return;
+            }
+            
+            let listHtml = '<ul style="list-style:none; padding:0; margin:0; font-family:monospace; font-size:12px;">';
+            res.dirs.forEach(d => {
+                const role = evaluateRole(d);
+                const color = colorMap[role] || '#64748b';
+                const depth = d.split('/').filter(Boolean).length;
+                const padding = depth * 15;
+                listHtml += '<li style="padding:4px 8px; border-bottom:1px solid var(--ca-border-subtle); display:flex; justify-content:space-between; align-items:center;">' +
+                    '<span style="padding-left:' + padding + 'px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + d + '</span>' +
+                    '<span style="background:' + color + '; color:#fff; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:bold; margin-left:10px; flex-shrink:0;">' + role.toUpperCase() + '</span></li>';
+            });
+            listHtml += '</ul>';
+
+            modal.innerHTML = '<div class="myCloudModalHeader" style="justify-content:space-between; align-items:center;"><span>Effective Rights Explorer</span><button onclick="this.closest(\'.myCloudOverlay\').remove()" style="background:transparent; border:none; font-size:20px; cursor:pointer; color:inherit; line-height:1;">✕</button></div>' +
+                              '<div class="myCloudModalBody" style="display:flex; flex-direction:column; padding: 10px; height: 450px;">' +
+                                '<div style="flex:1; overflow-y:auto; border:1px solid var(--ca-border-normal); border-radius:4px; background:var(--ca-bg-card);">' + listHtml + '</div>' +
+                              '</div>';
+        });
+    };
+
+
     // --- PROTECTION AGAINST ACCIDENTAL CLOSING ---
     if (!window.ca_CloseProtectionBound) {
         window.ca_CloseProtectionBound = true;
@@ -1027,7 +1148,8 @@ if (isset($_GET['myCloud_dynamic_js'])):
             '<div class="ca-subfolder-box" >' +
                 '<div class="ca-subfolder-header">' +
                     '<span>' + (L.subfolder_rights || 'Subfolder Permissions (Overrides base rights)') + '</span>' +
-                    '<button class="ca-btn ca-btn-outline ca-btn-sm" type="button" onclick="ca_add_subfolder_row(this.closest(\'.ca-dynamic-row\'))" style="padding:2px 8px; font-size:11px; background:var(--ca-bg-card);">+ ' + (L.add_path || 'Add Path') + '</button>' +
+                    '<div><button class="ca-btn ca-btn-outline ca-btn-sm" type="button" onclick="ca_show_rights_explorer(this)" style="padding:2px 8px; font-size:11px; background:var(--ca-bg-card); margin-right:6px;">' + (L.preview || 'Preview Rights') + '</button>' +
+                    '<button class="ca-btn ca-btn-outline ca-btn-sm" type="button" onclick="ca_add_subfolder_row(this.closest(\'.ca-dynamic-row\'))" style="padding:2px 8px; font-size:11px; background:var(--ca-bg-card);">+ ' + (L.add_path || 'Add Path') + '</button></div>' +
                 '</div>' +
                 '<div class="ca-subfolders-list"></div>' +
             '</div>';

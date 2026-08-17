@@ -2709,7 +2709,7 @@ class MyCloudEmailServer {
                 $cachedBody = $this->loadBodyCacheData($bodyPath);
 
                 // ==========================================
-                // SQUARE ONE CACHE FIX: Delete corrupted empty cache
+                // CACHE FIX: Delete corrupted empty cache
                 // ==========================================
                 if ($cachedBody !== null && trim($cachedBody['body'] ?? '') === '') {
                     $cachedBody = null;
@@ -2939,12 +2939,12 @@ class MyCloudEmailServer {
                     $htmlContent = mb_convert_encoding($htmlContent, 'UTF-8', 'UTF-8');
 
                     // 1. OUTLOOK CONDITIONAL COMMENT CLEANER
-                    $mailBody = preg_replace('/<!--\[if[^\]]*\]>(?:<!-->|<!--\s*-->|<!\s*-->|-->)?/i', '', $mailBody);
-                    $mailBody = preg_replace('/(?:<!--\s*)?<!\[endif\]-->/i', '', $mailBody);
+                    $htmlContent = preg_replace('/<!--\[if[^\]]*\]>(?:<!-->|<!--\s*-->|<!\s*-->|-->)?/i', '', $htmlContent);
+                    $htmlContent = preg_replace('/(?:<!--\s*)?<!\[endif\]-->/i', '', $htmlContent);
                     
                     // Clean up any remaining isolated malformed comment artifacts (like <! -->)
-                    $mailBody = preg_replace('/<!\s*-->/', '', $mailBody);
-                    $mailBody = str_replace('<!-->', '', $mailBody);
+                    $htmlContent = preg_replace('/<!\s*-->/', '', $htmlContent);
+                    $htmlContent = str_replace('<!-->', '', $htmlContent);
 
                     // 2. STRUCTURAL TAG PRE-CLEANER (No PCRE Backtracking)
                     $bodyStart = stripos($htmlContent, '<body');
@@ -3147,12 +3147,12 @@ class MyCloudEmailServer {
                     $mailBody = mb_convert_encoding($mailBody, 'UTF-8', 'UTF-8');
 
                     // 1. OUTLOOK CONDITIONAL COMMENT CLEANER
-                    $htmlContent = preg_replace('/<!--\[if[^\]]*\]>(?:<!-->|<!--\s*-->|<!\s*-->|-->)?/i', '', $htmlContent);
-                    $htmlContent = preg_replace('/(?:<!--\s*)?<!\[endif\]-->/i', '', $htmlContent);
+                    $mailBody = preg_replace('/<!--\[if[^\]]*\]>(?:<!-->|<!--\s*-->|<!\s*-->|-->)?/i', '', $mailBody);
+                    $mailBody = preg_replace('/(?:<!--\s*)?<!\[endif\]-->/i', '', $mailBody);
                     
                     // Clean up any remaining isolated malformed comment artifacts (like <! -->)
-                    $htmlContent = preg_replace('/<!\s*-->/', '', $htmlContent);
-                    $htmlContent = str_replace('<!-->', '', $htmlContent);
+                    $mailBody = preg_replace('/<!\s*-->/', '', $mailBody);
+                    $mailBody = str_replace('<!-->', '', $mailBody);
 
                     // 2. STRUCTURAL TAG PRE-CLEANER
                     $bodyStart = stripos($mailBody, '<body');

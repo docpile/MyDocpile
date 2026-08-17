@@ -25,21 +25,34 @@ window.myCloudGetEffectiveRole = function(path) {
     
     if (!config || !config.subfolder_rights || Object.keys(config.subfolder_rights).length === 0) return baseRole;
     
-    let bestMatch = '/';
+    let bestMatchLength = 0;
     let bestRole = config.rights || baseRole;
     
     const subs = config.subfolder_rights;
     const normPath = '/' + path.replace(/^[\/\\]+/, '').replace(/\\/g, '/');
     
+    const wildcardToRegex = (pattern) => {
+        return new RegExp('^' + pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.') + '(\\/.*)?$', 'i');
+    };
+
     for (let subPath in subs) {
         let cleanSub = '/' + subPath.replace(/^[\/\\]+/, '').replace(/\\/g, '/');
-        if (normPath === cleanSub) {
-            return subs[subPath];
-        }
-        if (cleanSub !== '/' && normPath.startsWith(cleanSub + '/')) {
-            if (cleanSub.length > bestMatch.length) {
-                bestMatch = cleanSub;
-                bestRole = subs[subPath];
+        let isWildcard = cleanSub.includes('*') || cleanSub.includes('?');
+        
+        if (isWildcard) {
+            if (wildcardToRegex(cleanSub).test(normPath)) {
+                if (cleanSub.length > bestMatchLength) {
+                    bestMatchLength = cleanSub.length;
+                    bestRole = subs[subPath];
+                }
+            }
+        } else {
+            if (normPath === cleanSub) return subs[subPath]; // Exact literal match
+            if (cleanSub !== '/' && normPath.startsWith(cleanSub + '/')) {
+                if (cleanSub.length > bestMatchLength) {
+                    bestMatchLength = cleanSub.length;
+                    bestRole = subs[subPath];
+                }
             }
         }
     }

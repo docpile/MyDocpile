@@ -1,3 +1,8 @@
+4.2.285
+	Fix: Webmail bugfixes
+	Improvement: Rights management refinements: Recognize renames, moves...
+	Improvement: Rights management refinements: support * and ? placeholders for enhanced rights
+
 4.2.284
 	Security: Option to set rights on certain subdirs of shared clouds so as to restict rights on them for certain users
 

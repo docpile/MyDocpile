@@ -128,6 +128,11 @@ The MyDocpile software is designed to have **the least depenencies possible**. S
 * **Public Sharing:** Securely share files and folders with public or as passphrase proctected share
 
 ### 2. Core File & Directory Management
+* **Multi User, Multi Cloud:**
+  * Each user can have several clouds, each in its own tab
+  * Clouds can be shared between users, e.g. for projects, departments...
+  * Broad rights management possible, e.g. read-only, edit-only, modify and so on
+  * Even within a cloud (e.g. a project cloud) rights can be set for each subfolder so as to e.g. hide certain folders for some users or, to make these read-only for them
 * **Standard Operations:**
   * Full support for Create files and folders, Delete, Move, Copy, and Rename... Much of that also in a batch mode.
 * **Advanced Upload System:**
