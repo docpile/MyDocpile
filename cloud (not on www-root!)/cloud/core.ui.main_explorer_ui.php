@@ -1329,95 +1329,134 @@ function myCloudRenderUI() {
             var createAction = function(cls, svg, title, clickHandler) {
                 var wrap = document.createElement('div');
                 wrap.className = "ce-action-icon " + cls;
-                wrap.title = title;
                 wrap.innerHTML = svg;
                 wrap.onclick = function(e) {
                     e.stopPropagation();
+                    const tip = document.getElementById('myCloudActiveTip');
+                    if (tip) tip.remove();
                     clickHandler();
+                };
+                wrap.onmouseenter = function() {
+                    const existingTip = document.getElementById('myCloudActiveTip');
+                    if (existingTip) existingTip.remove();
+                    if (!title) return;
+                    const tip = document.createElement('div');
+                    tip.className = 'myCloudContextTooltip';
+                    tip.id = 'myCloudActiveTip';
+                    tip.textContent = title;
+                    const isRtl = document.documentElement.dir === 'rtl' || document.body.dir === 'rtl';
+                    if (isRtl) tip.setAttribute('dir', 'rtl');
+                    document.body.appendChild(tip);
+                    const rect = wrap.getBoundingClientRect();
+                    tip.style.left = (rect.left + (rect.width / 2) - (tip.offsetWidth / 2)) + 'px';
+                    tip.style.top = (rect.top - tip.offsetHeight - 8) + 'px';
+                };
+                wrap.onmouseleave = function() {
+                    const tip = document.getElementById('myCloudActiveTip');
+                    if (tip) tip.remove();
                 };
                 return wrap;
             };
             
+            const grp1 = document.createElement('div'); grp1.className = 'ce-action-group';
+            const grp2 = document.createElement('div'); grp2.className = 'ce-action-group';
+            const grp3 = document.createElement('div'); grp3.className = 'ce-action-group';
+
             if (st.currentDir === '/.recycle_bin') {
-                actionsDiv.appendChild(createAction('ce-act-restore', '<svg viewBox="0 0 24 24"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>', myCloud_LANG.restore, function() {
+                const grp3 = document.createElement('div');
+                grp3.className = 'ce-action-group';
+                
+                grp3.appendChild(createAction('ce-act-restore', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>', myCloud_LANG.restore, function() {
                     st.selectedFiles = [i.name];
                     myCloudAction_Restore();
                 }));
-                actionsDiv.appendChild(createAction('ce-act-delete', myCloudSvg.delete, myCloud_LANG.delete, function() {
+                
+                grp3.appendChild(createAction('ce-act-delete', myCloudSvg.delete, myCloud_LANG.delete, function() {
                     st.selectedFiles = [i.name];
                     myCloudAction_Delete();
                 }));
+                
+                if (grp3.hasChildNodes()) actionsDiv.appendChild(grp3);
+                
             } else {
+                const grp1 = document.createElement('div'); grp1.className = 'ce-action-group';
+                const grp2 = document.createElement('div'); grp2.className = 'ce-action-group';
+                const grp3 = document.createElement('div'); grp3.className = 'ce-action-group';
+
+                // --- GROUP 1: Preview, Download, Edit ---
                 if (isPreviewable && window.myCloudActionAllowed('preview', itemRole)) {
-                    actionsDiv.appendChild(createAction('ce-act-preview', myCloudSvg.preview, myCloud_LANG.preview, function() {
+                    grp1.appendChild(createAction('ce-act-preview', myCloudSvg.preview, myCloud_LANG.preview, function() {
                         myCloudDownloadFile(i.name, i.name.split('/').pop(), true);
                     }));
                 }
 
-                if (isEditable && window.myCloudActionAllowed('edit_file', itemRole)) {
-                    actionsDiv.appendChild(createAction('ce-act-edit', myCloudSvg.edit_file, myCloud_LANG.edit || 'Edit', function() {
-                        myCloudHandleEnterAction(i, ext, isContainer);
-                    }));
-                }
-
                 if (window.myCloudActionAllowed('download', itemRole)) {
-                    actionsDiv.appendChild(createAction('ce-act-download', myCloudSvg.download, myCloud_LANG.download, function() {
+                    grp1.appendChild(createAction('ce-act-download', myCloudSvg.download, myCloud_LANG.download, function() {
                         myCloudDownloadFile(i.name, i.name.split('/').pop(), false);
                     }));
                 }
 
-                const sep1 = document.createElement('div');
-                sep1.className = 'ce-row-action-sep';
-                actionsDiv.appendChild(sep1);
-
-                var isFav = myCloudIsFavorite(i.name);
-                if (!isInsideZip && window.myCloudActionAllowed('fav_toggle', itemRole)) {
-                    actionsDiv.appendChild(createAction('ce-act-fav', isFav ? myCloudSvg.star_filled : myCloudSvg.star, myCloud_LANG.fav_toggle, function() {
-                        myCloudToggleFavorite(i.name);
-                        var me = actionsDiv.lastChild;
-                        me.innerHTML = myCloudIsFavorite(i.name) ? myCloudSvg.star_filled : myCloudSvg.star;
-                        if (document.getElementById('myCloudContextMenu')) myCloudCloseContextMenus(); 
+                if (isEditable && window.myCloudActionAllowed('edit_file', itemRole)) {
+                    grp1.appendChild(createAction('ce-act-edit', myCloudSvg.edit_file, myCloud_LANG.edit || 'Edit', function() {
+                        myCloudHandleEnterAction(i, ext, isContainer);
                     }));
-                } 
+                }
 
+                // --- GROUP 2: Rename, Duplicate, Copy, Move ---
                 if (i.name !== '/') {
-                    if (window.myCloudActionAllowed('duplicate', itemRole) && !isInsideZip) {
-                        actionsDiv.appendChild(createAction('ce-act-duplicate', myCloudSvg.duplicate, (typeof myCloud_LANG !== 'undefined' ? myCloud_LANG.duplicate : 'Duplicate'), function() {
-                            st.selectedFiles = [i.name];
-                            if (typeof myCloudAction_Duplicate === 'function') myCloudAction_Duplicate(i.name);
-                        }));
-                    }
-                    if (window.myCloudActionAllowed('copy', itemRole) || isInsideZip) {
-                        actionsDiv.appendChild(createAction('ce-act-copy', myCloudSvg.copy, myCloud_LANG.copy, function() {
-                            st.selectedFiles = [i.name];
-                            myCloudAction_CopyMove(false);
-                        }));
-                    }
-                    if (window.myCloudActionAllowed('move', itemRole) && !isInsideZip) {
-                        actionsDiv.appendChild(createAction('ce-act-move', myCloudSvg.move, myCloud_LANG.move, function() {
-                            st.selectedFiles = [i.name];
-                            myCloudAction_CopyMove(true);
-                        }));
-                    }
-                    const sep2 = document.createElement('div');
-                    sep2.className = 'ce-row-action-sep';
-                    actionsDiv.appendChild(sep2);
-
                     if (window.myCloudActionAllowed('rename', itemRole) && !isInsideZip) {
-                        actionsDiv.appendChild(createAction('ce-act-rename', myCloudSvg.rename, myCloud_LANG.rename, function() {
+                        grp2.appendChild(createAction('ce-act-rename', myCloudSvg.rename, myCloud_LANG.rename, function() {
                             if (!st.selectedFiles.includes(i.name) || st.selectedFiles.length <= 1) {
                                 st.selectedFiles = [i.name];
                             }
                             setTimeout(myCloudAction_Rename, 0);
                         }));
                     }
-                    if (window.myCloudActionAllowed('delete', itemRole) && !isInsideZip) {
-                        actionsDiv.appendChild(createAction('ce-act-delete', myCloudSvg.delete, myCloud_LANG.delete, function() {
+                    
+                    if (window.myCloudActionAllowed('duplicate', itemRole) && !isInsideZip) {
+                        grp2.appendChild(createAction('ce-act-duplicate', myCloudSvg.duplicate, (typeof myCloud_LANG !== 'undefined' ? myCloud_LANG.duplicate : 'Duplicate'), function() {
                             st.selectedFiles = [i.name];
-                            myCloudAction_Delete();
+                            if (typeof myCloudAction_Duplicate === 'function') myCloudAction_Duplicate(i.name);
+                        }));
+                    }
+                    
+                    if (window.myCloudActionAllowed('copy', itemRole) || isInsideZip) {
+                        grp2.appendChild(createAction('ce-act-copy', myCloudSvg.copy, myCloud_LANG.copy, function() {
+                            st.selectedFiles = [i.name];
+                            myCloudAction_CopyMove(false);
+                        }));
+                    }
+                    
+                    if (window.myCloudActionAllowed('move', itemRole) && !isInsideZip) {
+                        grp2.appendChild(createAction('ce-act-move', myCloudSvg.move, myCloud_LANG.move, function() {
+                            st.selectedFiles = [i.name];
+                            myCloudAction_CopyMove(true);
                         }));
                     }
                 }
+
+                // --- GROUP 3: Others (Fav, Delete) ---
+                var isFav = myCloudIsFavorite(i.name);
+                if (!isInsideZip && window.myCloudActionAllowed('fav_toggle', itemRole)) {
+                    grp3.appendChild(createAction('ce-act-fav', isFav ? myCloudSvg.star_filled : myCloudSvg.star, myCloud_LANG.fav_toggle, function() {
+                        myCloudToggleFavorite(i.name);
+                        var me = grp3.querySelector('.ce-act-fav');
+                        if (me) me.innerHTML = myCloudIsFavorite(i.name) ? myCloudSvg.star_filled : myCloudSvg.star;
+                        if (document.getElementById('myCloudContextMenu')) myCloudCloseContextMenus(); 
+                    }));
+                } 
+
+                if (i.name !== '/' && window.myCloudActionAllowed('delete', itemRole) && !isInsideZip) {
+                    grp3.appendChild(createAction('ce-act-delete', myCloudSvg.delete, myCloud_LANG.delete, function() {
+                        st.selectedFiles = [i.name];
+                        myCloudAction_Delete();
+                    }));
+                }
+
+                // Append only groups that actually have buttons in them
+                if (grp1.hasChildNodes()) actionsDiv.appendChild(grp1);
+                if (grp2.hasChildNodes()) actionsDiv.appendChild(grp2);
+                if (grp3.hasChildNodes()) actionsDiv.appendChild(grp3);
             }
         }
 

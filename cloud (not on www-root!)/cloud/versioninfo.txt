@@ -1,3 +1,6 @@
+4.2.286
+	Improvement: Hover bar design polish, more modern icons
+
 4.2.285
 	Fix: Webmail bugfixes
 	Improvement: Rights management refinements: Recognize renames, moves...

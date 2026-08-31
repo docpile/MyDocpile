@@ -20,26 +20,19 @@
 .ce-row-actions {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     position: absolute;
     inset-inline-end: 25px; 
     top: 50%;
     transform: translateY(-50%);
-    height: 40px; 
-    padding: 0 8px;
+    height: 44px; 
+    padding: 0;
     
     
     background: var(--gray-00); 
     
-    /* Borders: Top and Bottom Only */
-	border-top: 1px solid var(--border-default);
-    border-bottom: 1px solid var(--border-default);
-    border-left: none;
-    border-right: none;
-    border-radius: 99px;
-    
-    /* Unified Shadow (traces the arrow tips correctly) */
-    filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.15));
+    border: none;
+    filter: none;
     
     opacity: 0;
     pointer-events: none;
@@ -50,14 +43,28 @@
 
 
 
-/* Staggered Children Base State */
-.ce-row-actions > div {
+/* Segmented Group Styles (The "Pills") */
+.ce-action-group {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    background: var(--gray-00);
+    border: 2px solid var(--border-default);
+    border-radius: 99px;
+    padding: 3px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
     opacity: 0;
-    transform: translateX(15px) scale(0.8);
+    transform: translateX(10px) scale(0.95);
     transition: opacity 0.2s ease, transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 
+
+ .ce-dark-mode .ce-action-group {
+     background: var(--gray-15);
+     border-color: var(--border-medium);
+     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.65);
+ }
 
 .myCloudRow:hover .ce-row-actions {
     opacity: 1;
@@ -66,26 +73,19 @@
 }
 
 /* Trigger Elegant Entrance on Hover */
-.myCloudRow:hover .ce-row-actions > div {
+.myCloudRow:hover .ce-row-actions > .ce-action-group {
     opacity: 1;
     transform: translateX(0) scale(1);
 }
  
-.myCloudRow:hover .ce-row-actions > div:nth-child(1) { animation-delay: 0.15s; }
-.myCloudRow:hover .ce-row-actions > div:nth-child(2) { animation-delay: 0.18s; }
-.myCloudRow:hover .ce-row-actions > div:nth-child(3) { animation-delay: 0.21s; }
-.myCloudRow:hover .ce-row-actions > div:nth-child(4) { animation-delay: 0.24s; }
-.myCloudRow:hover .ce-row-actions > div:nth-child(5) { animation-delay: 0.27s; }
-.myCloudRow:hover .ce-row-actions > div:nth-child(6) { animation-delay: 0.30s; }
-.myCloudRow:hover .ce-row-actions > div:nth-child(7) { animation-delay: 0.33s; }
-.myCloudRow:hover .ce-row-actions > div:nth-child(8) { animation-delay: 0.36s; }
-.myCloudRow:hover .ce-row-actions > div:nth-child(9) { animation-delay: 0.39s; }
-.myCloudRow:hover .ce-row-actions > div:nth-child(10) { animation-delay: 0.42s; }
+.myCloudRow:hover .ce-row-actions > .ce-action-group:nth-child(1) { transition-delay: 0.05s; }
+.myCloudRow:hover .ce-row-actions > .ce-action-group:nth-child(2) { transition-delay: 0.10s; }
+.myCloudRow:hover .ce-row-actions > .ce-action-group:nth-child(3) { transition-delay: 0.15s; }
 
 .ce-action-icon {
-    width: 30px;
-    height: 30px;
-    border-radius: 15px;
+    width: 32px;
+    height: 32px;
+    border-radius: 16px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -93,46 +93,31 @@
     background: transparent;
     border: 1px solid transparent;
     transition: all 0.2s ease;
+	color: var(--gray-100);
+}
+
+.ce-action-icon svg {
+    width: 18px;
+    height: 18px;
 }
 
 .ce-action-icon:hover {
     background: var(--gray-35);
-    margin-top: -2px;
-    margin-bottom: 2px; /* Replaces transform collision to retain hover bounce */
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    color: var(--gray-100);
+    transform: scale(1.1);
 }
 
-/* Category Separator Line */
-.ce-row-action-sep {
-    width: 1px;
-    height: 16px;
-    background: var(--gray-05);
-    margin: 0 2px;
-    flex-shrink: 0;
+.ce-action-icon.ce-act-delete:hover {
+    background: var(--danger);
+    color: #fff;
 }
-.ce-dark-mode .ce-row-action-sep { background: var(--border-default); }
-/* Clean up dangling separators automatically */
-.ce-row-action-sep:first-child,
-.ce-row-action-sep:last-child,
-.ce-row-action-sep + .ce-row-action-sep {
-    display: none !important;
-}
+
 
 
     /* Single Click Mode Hover Effect */
     .ce-single-click-mode .myCloudRow:hover .ce-name-text,
     .ce-single-click-mode .myCloud-symbol-item:hover .ce-sym-label { text-decoration: underline; }
 
-/* Specific action icon colors (kept vivid) */
-.ce-act-preview svg   { fill: #8D6E63 !important; }
-.ce-act-download svg  { fill: #8D6E63 !important; }
-.ce-act-edit svg      { fill: #8D6E63 !important; }
-.ce-act-fav svg       { fill: var(--gray-60) !important; }
-.ce-act-copy svg      { fill: var(--gray-60) !important; }
-.ce-act-duplicate svg { fill: var(--gray-60) !important; }
-.ce-act-move svg      { fill: var(--gray-60) !important; }
-.ce-act-rename svg    { fill: var(--gray-60) !important; }
-.ce-act-delete svg    { fill: #be8989 !important; }
 
 /* ────────────────────────────────────────────────
    #3  –  CONTEXT MENU (right-click menu)
@@ -248,8 +233,9 @@
 /* Fast Custom Tooltip */
 .myCloudContextTooltip {
     position: fixed;
-    background: #323130;
-    color: #fff;
+    background: var(--gray-05);
+    color: var(--text-primary);
+    border: 1px solid var(--border-medium);
     padding: 5px 10px;
     border-radius: 4px;
     font-size: 11px;
