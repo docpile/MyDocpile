@@ -1,3 +1,10 @@
+4.2.290
+	Security: Webmail: SSRF via Localhost Port Pivoting
+	Security: Webmail: Untrusted SSRF Fallback in PDF Generator
+	Security: Webmail: New Unified SSRF Guardian (Backend)
+	Fix: Webmail: DOM XSS Eradication (Frontend Composer)
+	Security: Webmail: Payload Armoring (Frontend Contacts)
+
 4.2.289
 	Fix: Webmail: Encryption migration hotfix
 

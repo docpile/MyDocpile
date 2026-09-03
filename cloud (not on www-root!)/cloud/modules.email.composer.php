@@ -31,12 +31,28 @@ window._emlAddRecipientTile = function(name, rawEmailStr, inputEl) {
     const tile = document.createElement('div');
     tile.className = 'ce-email-tile';
     tile.dataset.email = finalEmail;
+	tile.dataset.name = finalName;
     
     const displayTxt = finalName && finalName !== finalEmail ? finalName : finalEmail;
-    const safeName = myCloudEscapeHtml(finalName || '').replace(/\\/g, "\\\\").replace(/'/g, "\\'");
-    const safeEmail = myCloudEscapeHtml(finalEmail).replace(/\\/g, "\\\\").replace(/'/g, "\\'");
-    
-    tile.innerHTML = `<span onmouseenter="window._emailShowPopup(event, '${safeName}', '${safeEmail}')" onmouseleave="window._emailHidePopup()">${myCloudEscapeHtml(displayTxt)}</span><span onclick="window._emailHidePopup(); this.parentElement.remove()" style="cursor:pointer; margin-left:6px; font-weight:bold;">×</span>`;
+    // Eliminate DOM XSS by constructing elements and listeners natively instead of innerHTML strings
+    const textSpan = document.createElement('span');
+    textSpan.textContent = displayTxt;
+    textSpan.addEventListener('mouseenter', (e) => {
+        const popupSafeEmail = '<br><i><b>' + myCloudEscapeHtml(finalEmail) + '<br></b></i>';
+        window._emailShowPopup(e, tile.dataset.name, popupSafeEmail);
+    });
+    textSpan.addEventListener('mouseleave', () => window._emailHidePopup());
+
+    const removeSpan = document.createElement('span');
+    removeSpan.textContent = '×';
+    removeSpan.style.cssText = 'cursor:pointer; margin-left:6px; font-weight:bold;';
+    removeSpan.addEventListener('click', (e) => {
+        window._emailHidePopup();
+        tile.remove();
+    });
+
+    tile.appendChild(textSpan);
+    tile.appendChild(removeSpan);
     container.insertBefore(tile, input);
     
     return true;

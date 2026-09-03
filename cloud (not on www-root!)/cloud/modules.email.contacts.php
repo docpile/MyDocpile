@@ -142,8 +142,8 @@ window.myCloudShowEmailContacts = function() {
             let emailHtml = '';
             if (c.emails.length > 0) {
                 emailHtml = '<div style="margin:4px 0; display:flex; flex-wrap:wrap; gap:6px;">' + c.emails.map(e => 
-                    '<span style="display:inline-flex; align-items:center; background:var(--gray-10); border:1px solid var(--border-medium); border-radius:12px; padding:2px 8px; font-size:11px; cursor:pointer; color:var(--accent-primary); font-weight:500;" onclick="window._emailComposeTo(\'' + esc(e.val).replace(/'/g, "\\'") + '\', event)" title="' + (L.compose_to || 'Compose to ') + esc(e.val).replace(/"/g, '&quot;') + '">' +
-                    '✉️ <span style="color:var(--text-secondary); font-weight:normal; margin-inline:4px; font-size:10px; opacity:0.8;">' + esc(e.type) + '</span> ' + esc(e.val) + '</span>'
+                    '<span style="display:inline-flex; align-items:center; background:var(--gray-10); border:1px solid var(--border-medium); border-radius:12px; padding:2px 8px; font-size:11px; cursor:pointer; color:var(--accent-primary); font-weight:500;" onclick="window._emailComposeTo(decodeURIComponent(atob(\'' + btoa(encodeURIComponent(e.val)) + '\')), event)" title="' + (L.compose_to || 'Compose to ') + esc(e.val).replace(/"/g, '&quot;') + '">' +
+					'✉️ <span style="color:var(--text-secondary); font-weight:normal; margin-inline:4px; font-size:10px; opacity:0.8;">' + esc(e.type) + '</span> ' + esc(e.val) + '</span>'
                 ).join('') + '</div>';
             }
 

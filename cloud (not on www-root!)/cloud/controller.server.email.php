@@ -115,27 +115,25 @@ class MyCloudEmailServer {
         if ($changed) {
             $this->saveConfigs($configs);
         }
-
-//        // Proactively trigger single-file datastore upgrades
-//        $filesToCheck = [
-//            'loadContacts' => $this->contacts_file,
-//            'loadAutoContacts' => $this->auto_contacts_file,
-//            'loadTemplates' => $this->templates_file
-//        ];
-//        foreach ($filesToCheck as $method => $file) {
-//            if (file_exists($file)) {
-//                $fp = @fopen($file, 'r');
-//                if ($fp) {
-//                    $header = fread($fp, 4);
-//                    fclose($fp);
-//                    if (strpos($header, 'v4:') !== 0) {
-//                        $this->$method();
-//                    }
-//                }
-//            }
-//        }
     }
 	
+    // --- UNIFIED SSRF GUARDIAN ---
+    private function validateZeroTrustTarget($host, $port = null) {
+        $ip = gethostbyname($host);
+        if ($ip !== $host && filter_var($ip, FILTER_VALIDATE_IP)) {
+            $is_private = filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false;
+            if (($is_private && !in_array($ip, ['127.0.0.1', '::1'])) || $ip === '0.0.0.0') throw new \Exception("Zero Trust Policy Violation: Connection to internal networks is forbidden.");
+        } elseif (filter_var($host, FILTER_VALIDATE_IP)) {
+            $is_private = filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false;
+            if (($is_private && !in_array($host, ['127.0.0.1', '::1'])) || $host === '0.0.0.0') throw new \Exception("Zero Trust Policy Violation: Connection to internal networks is forbidden.");
+        }
+        // Port Pivoting Protection
+        if ($port !== null) {
+            if (!in_array((int)$port, [25, 80, 110, 143, 443, 465, 587, 993, 995, 2525])) throw new \Exception("Zero Trust Policy Violation: Invalid port: " . $port);
+        }
+        return $ip;
+    }
+
     private function sendJsonAndExit($data) {
         global $cloud_beta, $eas_debug_log;
         if (!empty($cloud_beta) && !empty($eas_debug_log)) {
@@ -521,17 +519,10 @@ class MyCloudEmailServer {
         $host = preg_replace('/[^a-zA-Z0-9.:\[\]-]/', '', $acc['imap_host']);
         $port = !empty($acc['imap_port']) ? (int)$acc['imap_port'] : 143;
         
-        $ip = gethostbyname($host);
-        if ($ip !== $host && filter_var($ip, FILTER_VALIDATE_IP)) {
-            $is_private = filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false;
-            if (($is_private && !in_array($ip, ['127.0.0.1', '::1'])) || $ip === '0.0.0.0') {
-                return [null, null, 'Connection to internal networks is forbidden.'];
-            }
-        } elseif (filter_var($host, FILTER_VALIDATE_IP)) {
-            $is_private = filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false;
-            if (($is_private && !in_array($host, ['127.0.0.1', '::1'])) || $host === '0.0.0.0') {
-                return [null, null, 'Connection to internal networks is forbidden.'];
-            }
+        try {
+            $ip = $this->validateZeroTrustTarget($host, $port);
+        } catch (\Exception $e) {
+            return [null, null, $e->getMessage()];
         }
 
         global $cloud_mail_only_localhost;
@@ -638,18 +629,10 @@ class MyCloudEmailServer {
         $pass = $this->decryptPassword($acc['password'] ?? '');
         $enc  = $acc['smtp_enc'] ?? 'none'; 
 
-        // Prevent SSRF mapping of internal infrastructure via SMTP
-        $ip = gethostbyname($host);
-        if ($ip !== $host && filter_var($ip, FILTER_VALIDATE_IP)) {
-            $is_private = filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false;
-            if (($is_private && !in_array($ip, ['127.0.0.1', '::1'])) || $ip === '0.0.0.0') {
-                return "Connection to internal metadata or private IP spaces is forbidden.";
-            }
-        } elseif (filter_var($host, FILTER_VALIDATE_IP)) {
-            $is_private = filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false;
-            if (($is_private && !in_array($host, ['127.0.0.1', '::1'])) || $host === '0.0.0.0') {
-                return "Connection to internal metadata or private IP spaces is forbidden.";
-            }
+        try {
+            $ip = $this->validateZeroTrustTarget($host, $port);
+        } catch (\Exception $e) {
+            return $e->getMessage();
         }
 
         $socket = null;
@@ -1669,6 +1652,8 @@ private function runIncrementalMigration() {
 
                 if ($acc['server_type'] === 'eas') {
                     try {
+                        $pEas = parse_url($acc['eas_host']);
+                        $this->validateZeroTrustTarget($pEas['host'] ?? '', $pEas['port'] ?? (strtolower($pEas['scheme'] ?? '') === 'https' ? 443 : 80));
                         $eas = new MyCloudEASClient($acc, $this->decryptPassword($acc['password'] ?? ''), $this->decryptPassword($acc['oauth_token'] ?? ''));
                         $folders = $eas->getFolders();
                         $this->sendJsonAndExit(['status' => 'OK', 'msg' => 'Connection successful! Found ' . count($folders) . ' folders.']);
@@ -1836,13 +1821,14 @@ private function runIncrementalMigration() {
                         @mkdir($cloud_gpg_dir, 0755, true);
                     }
                     if (is_dir($cloud_gpg_dir)) {
-                        $wkdHash = $this->getWkdHash($configs[$id]['email']);
-                        if ($wkdHash) {
-                            file_put_contents(rtrim($cloud_gpg_dir, '/\\') . '/' . $wkdHash, $pubKey);
+                        $wkdHash = $this->getWkdHash(trim($configs[$id]['email'] ?? ''));
+                        if ($wkdHash && ctype_alnum($wkdHash)) { // ZERO TRUST: Prevent LFI via crafted email payloads
+                              file_put_contents(rtrim($cloud_gpg_dir, '/\\') . '/' . $wkdHash, $pubKey);
                         }
                         foreach ($configs[$id]['aliases'] as $al) {
-                            $alWkdHash = $this->getWkdHash($al['email']);
-                            if ($alWkdHash) file_put_contents(rtrim($cloud_gpg_dir, '/\\') . '/' . $alWkdHash, $pubKey);
+							  $alEmail = is_array($al) ? ($al['email'] ?? '') : $al;
+                              $alWkdHash = $this->getWkdHash(trim($alEmail));
+                              if ($alWkdHash && ctype_alnum($alWkdHash)) file_put_contents(rtrim($cloud_gpg_dir, '/\\') . '/' . $alWkdHash, $pubKey);
                         }
                     }
                 }
@@ -2182,10 +2168,12 @@ private function runIncrementalMigration() {
                 
                 if (($configs[$accId]['server_type'] ?? 'imap') === 'eas') {
                     try {
+                        $pEas = parse_url($configs[$accId]['eas_host'] ?? '');
+                        $this->validateZeroTrustTarget($pEas['host'] ?? '', $pEas['port'] ?? (strtolower($pEas['scheme'] ?? '') === 'https' ? 443 : 80));
                         $this->refreshOauthTokenIfNeeded($configs[$accId], $accId);
                         $eas = new MyCloudEASClient($configs[$accId], $this->decryptPassword($configs[$accId]['password'] ?? ''), $this->decryptPassword($configs[$accId]['oauth_token'] ?? ''));
                         $this->sendJsonAndExit(['status' => 'OK', 'folders' => $eas->getFolders()]);
-                    } catch (\Throwable $e) { $this->sendJsonAndExit(['status'=>'ERR', 'msg'=>$e->getMessage()]); }
+                    } catch (\Throwable $e) { $this->sendJsonAndExit(['status'=>'ERR', 'msg'=>'EAS Error: ' . $e->getMessage()]); }
                 }
 
                 list($client, $folderObj, $err) = $this->connectImap($configs[$accId], '', true);
@@ -2258,11 +2246,13 @@ private function runIncrementalMigration() {
 
                 if (($configs[$accId]['server_type'] ?? 'imap') === 'eas' && $accId !== 'smartbox') {
                     try {
+                        $pEas = parse_url($configs[$accId]['eas_host'] ?? '');
+                        $this->validateZeroTrustTarget($pEas['host'] ?? '', $pEas['port'] ?? (strtolower($pEas['scheme'] ?? '') === 'https' ? 443 : 80));
                         $this->refreshOauthTokenIfNeeded($configs[$accId], $accId);
                         $eas = new MyCloudEASClient($configs[$accId], $this->decryptPassword($configs[$accId]['password'] ?? ''), $this->decryptPassword($configs[$accId]['oauth_token'] ?? ''));
                         $messages = $eas->getMessages($folder, $page, $perPage);
                         $this->sendJsonAndExit(['status' => 'OK', 'messages' => $messages, 'has_more' => count($messages) === $perPage, 'page' => $page, 'folder_state_hash' => uniqid()]);
-                    } catch (\Throwable $e) { $this->sendJsonAndExit(['status'=>'ERR', 'msg'=>$e->getMessage()]); }
+                    } catch (\Throwable $e) { $this->sendJsonAndExit(['status'=>'ERR', 'msg'=>'EAS Error: ' . $e->getMessage()]); }
                 }
 
                 if (!$forceSync && !$isStreamingSearch) {
@@ -2801,6 +2791,8 @@ private function runIncrementalMigration() {
 
                 if (($configs[$accId]['server_type'] ?? 'imap') === 'eas') {
                     try {
+                         $pEas = parse_url($configs[$accId]['eas_host'] ?? '');
+                         $this->validateZeroTrustTarget($pEas['host'] ?? '', $pEas['port'] ?? (strtolower($pEas['scheme'] ?? '') === 'https' ? 443 : 80));
                          if ($cachedBody !== null) {
                              $this->sendJsonAndExit(array_merge(['status' => 'OK', 'raw_message' => ''], $cachedBody));
                          }
@@ -2809,7 +2801,7 @@ private function runIncrementalMigration() {
                         $bodyData = $eas->getMessageBody($folder, $msgId);
                         $this->saveBodyCacheData($bodyPath, $bodyData);
                         $this->sendJsonAndExit(array_merge(['status' => 'OK', 'raw_message' => ''], $bodyData));
-                    } catch (Throwable $e) { $this->sendJsonAndExit(['status'=>'ERR', 'msg'=>$e->getMessage()]); }
+                    } catch (\Throwable $e) { $this->sendJsonAndExit(['status'=>'ERR', 'msg'=>'EAS Error: ' . $e->getMessage()]); }
                 }
 
                 if ($cachedBody !== null) {
