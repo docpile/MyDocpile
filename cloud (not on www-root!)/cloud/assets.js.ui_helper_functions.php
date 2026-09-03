@@ -53,7 +53,8 @@ function myCloudShowInputModal(header, labelText, initialValue, onConfirm, selec
     const overlay = document.getElementById('myCloudModalOverlay');
     const modal = document.getElementById('myCloudModal');
     myCloudResetModal();
-    safeHeader = myCloudEscapeHtml(header);
+    const safeHeader = myCloudEscapeHtml(header);
+    const safeInitial = myCloudEscapeHtml(initialValue);
     overlay.style.display = 'flex';
 	overlay.style.zIndex = '85000';
     modal.className = 'myCloudModal'; 
@@ -62,7 +63,7 @@ function myCloudShowInputModal(header, labelText, initialValue, onConfirm, selec
         '<div class="myCloudModalHeader">' + safeHeader + '</div>' +
         '<div class="myCloudModalBody" style="padding: 20px;">' +
             '<label style="display:block; margin-bottom:8px; font-weight:600; font-size:13px; color:var(--text-primary);">' + labelText + '</label>' +
-            '<input type="text" id="ceModalInput" class="myCloudInlineInput" value="' + initialValue + '" style="width:100%; box-sizing:border-box; padding:8px 10px; font-size:14px; margin:0;">' +
+            '<input type="text" id="ceModalInput" class="myCloudInlineInput" value="' + safeInitial + '" style="width:100%; box-sizing:border-box; padding:8px 10px; font-size:14px; margin:0;">' +
             '<div class="myCloudButtons" style="justify-content: flex-end; margin-top:20px;">' +
                 '<button onclick="myCloudCloseModal()" style="margin-right:10px;">' + myCloud_LANG.cancel + '</button>' +
                 '<button id="ceModalBtnSave" style="background:var(--accent-primary); color:#fff; border:none;">' + myCloud_LANG.ok + '</button>' +

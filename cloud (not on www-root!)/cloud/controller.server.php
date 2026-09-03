@@ -1167,7 +1167,11 @@ class MyCloudServer {
         if (empty($_SESSION['username'])) { header('HTTP/1.1 403 Forbidden'); exit; }
         $fPath = $this->resolve($_GET['file']);
         if (!$fPath || !is_file($fPath)) {  header('HTTP/1.1 404 Not Found'); exit; }
-        if ($this->role === 'no-access') {  header('HTTP/1.1 403 Forbidden'); exit; }
+        $effectiveRole = $this->getEffectiveRoleForAbsPath($fPath);
+        if ($effectiveRole === 'no-access' || $effectiveRole === 'hidden' || $this->isActionBlocked('download', $effectiveRole)) {
+            header('HTTP/1.1 403 Forbidden');
+            exit;
+        }
         session_write_close();
         
         
@@ -1210,6 +1214,11 @@ class MyCloudServer {
         // 3. RESOLVE PATH: Ensures user cannot escape their allowed cloud directory
         $fullPath = $this->resolve($path);
         if (!$fullPath || !is_file($fullPath)) { header('HTTP/1.1 204 No Content'); exit; }
+        $effectiveRole = $this->getEffectiveRoleForAbsPath($fullPath);
+        if ($effectiveRole === 'no-access' || $effectiveRole === 'hidden') {
+            header('HTTP/1.1 403 Forbidden');
+            exit;
+        }
 
         $ext = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
         
@@ -2003,7 +2012,9 @@ class MyCloudServer {
             $content = stream_get_contents($handle);
             $pattern = "/(['\"]" . preg_quote($user, '/') . "['\"]\s*=>\s*)(['\"][^'\"]+['\"])/";
             if (preg_match($pattern, $content)) {
-                $new_content = preg_replace($pattern, "$1'$new_hash'", $content);
+                $new_content = preg_replace_callback($pattern, function($m) use ($new_hash) {
+                    return $m[1] . "'" . $new_hash . "'";
+                }, $content);
                 if ($new_content && $new_content !== $content) {
                     rewind($handle); fwrite($handle, $new_content); ftruncate($handle, ftell($handle));
                     flock($handle, LOCK_UN); fclose($handle);
@@ -2669,13 +2680,24 @@ class MyCloudServer {
         $realTmpPath = false;
         foreach ($candidates as $cand) {
             if (!empty($cand) && file_exists($cand) && is_file($cand)) {
-                $realTmpPath = $cand;
+                $realTmpPath = realpath($cand);
                 break;
             }
         }
 
         if (!$realTmpPath) {
             $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Temporary file not found. Received: ' . strip_tags($tmpPath)]);
+        }
+
+        $realTempDir = realpath($GLOBALS['temp_dir'] ?? sys_get_temp_dir());
+        $appRootDir = realpath(dirname(__DIR__));
+        $isSafeTemp = ($realTempDir && strpos($realTmpPath, $realTempDir) === 0);
+        $isSafeLocal = ($appRootDir && strpos($realTmpPath, $appRootDir) === 0);
+        if (!$isSafeTemp && !$isSafeLocal) {
+            $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Temporary file source is outside allowed boundaries.']);
+        }
+        if (strpos(basename($realTmpPath), 'myCloud_eml_att_') !== 0) {
+            $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Invalid temporary file prefix.']);
         }
 
         $destDirAbs = $this->resolve($destDirRel);
@@ -2784,6 +2806,11 @@ class MyCloudServer {
         }
         $zip->close();
         if (($_POST['mode']??'') === 'move') {
+            $srcRole = $this->getEffectiveRoleForAbsPath($src);
+            if ($this->isActionBlocked('delete', $srcRole)) {
+                $sendMsg(0, 'Delete permission denied for source folder', 'ERR');
+                exit;
+            }
             $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($src, RecursiveDirectoryIterator::SKIP_DOTS), RecursiveIteratorIterator::CHILD_FIRST);
             foreach ($it as $f) $f->isDir() ? @rmdir($f->getRealPath()) : @unlink($f->getRealPath());
             @rmdir($src);
@@ -2895,11 +2922,12 @@ class MyCloudServer {
         $hasForms = (strpos($chkOut, 'FieldName:') !== false);
 
         // Fallback: ghostscript visual repair ONLY as a last resort
+        // SECURITY FIX: Added -dSAFER to prevent PostScript RCE
         $tmp_gs = tempnam(sys_get_temp_dir(), 'pdf_gs_');
         
         $cmd_gs = $hasForms
-            ? sprintf('gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -dPrinted=false -dPDFSETTINGS=/prepress -sOutputFile=%s %s 2>&1', $this->safeShellArg($tmp_gs), $this->safeShellArg($src))
-            : sprintf('gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -dPDFA=1 -dPDFACompatibilityPolicy=1 -dNoOutputFonts -dPrinted=false -dPDFSETTINGS=/prepress -sOutputFile=%s %s 2>&1', $this->safeShellArg($tmp_gs), $this->safeShellArg($src));
+            ? sprintf('gs -dSAFER -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -dPrinted=false -dPDFSETTINGS=/prepress -sOutputFile=%s %s 2>&1', $this->safeShellArg($tmp_gs), $this->safeShellArg($src))
+            : sprintf('gs -dSAFER -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -dPDFA=1 -dPDFACompatibilityPolicy=1 -dNoOutputFonts -dPrinted=false -dPDFSETTINGS=/prepress -sOutputFile=%s %s 2>&1', $this->safeShellArg($tmp_gs), $this->safeShellArg($src));
             
         shell_exec($cmd_gs);
 
@@ -2928,17 +2956,18 @@ class MyCloudServer {
         exec(sprintf('qpdf --split-pages %s %s 2>&1', $this->safeShellArg($src), $this->safeShellArg($outputPattern)), $out, $ret);
         
         // Last resort fallback: enforce PDF/A and vector curves if no forms are present
+        // SECURITY FIX: Added -dSAFER to prevent PostScript RCE
         if ($ret !== 0) {
             $gsCmd = $hasForms
-                ? sprintf('gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -dPrinted=false -sOutputFile=%s %s 2>&1', $this->safeShellArg($outputPattern), $this->safeShellArg($src))
-                : sprintf('gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -dPDFA=1 -dPDFACompatibilityPolicy=1 -dNoOutputFonts -dPrinted=false -sOutputFile=%s %s 2>&1', $this->safeShellArg($outputPattern), $this->safeShellArg($src));
+                ? sprintf('gs -dSAFER -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -dPrinted=false -sOutputFile=%s %s 2>&1', $this->safeShellArg($outputPattern), $this->safeShellArg($src))
+                : sprintf('gs -dSAFER -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -dPDFA=1 -dPDFACompatibilityPolicy=1 -dNoOutputFonts -dPrinted=false -sOutputFile=%s %s 2>&1', $this->safeShellArg($outputPattern), $this->safeShellArg($src));
             shell_exec($gsCmd);
         }
         
         $this->log('PDF_UNSTACK', $_POST['src']);
         $this->sendJsonAndExit(['status'=>'OK']);
     }
-
+	
     private function actionPdfStack() {
         $filesRel = json_decode($_POST['files'] ?? '[]', true);
         $destRel = $_POST['dest'] ?? '';
@@ -2983,10 +3012,11 @@ class MyCloudServer {
         exec($cmd, $output, $returnVar);
 
         // Fallback to Ghostscript ONLY as a last resort, preserving the PDF/A and vector curve preference
+        // SECURITY FIX: Added -dSAFER to prevent PostScript RCE
         if (($returnVar !== 0 && $returnVar !== 3) || !is_file($gsTempOut) || filesize($gsTempOut) === 0) {
             $gsCmd = $hasForms
-                ? "gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -dPrinted=false -dAutoRotatePages=/None -sOutputFile=" . $this->safeShellArg($gsTempOut) . " " . implode(' ', $gsArgs) . " 2>&1"
-                : "gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -dPDFA=1 -dPDFACompatibilityPolicy=1 -dNoOutputFonts -dPrinted=false -dAutoRotatePages=/None -sOutputFile=" . $this->safeShellArg($gsTempOut) . " " . implode(' ', $gsArgs) . " 2>&1";
+                ? "gs -dSAFER -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -dPrinted=false -dAutoRotatePages=/None -sOutputFile=" . $this->safeShellArg($gsTempOut) . " " . implode(' ', $gsArgs) . " 2>&1"
+                : "gs -dSAFER -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -dPDFA=1 -dPDFACompatibilityPolicy=1 -dNoOutputFonts -dPrinted=false -dAutoRotatePages=/None -sOutputFile=" . $this->safeShellArg($gsTempOut) . " " . implode(' ', $gsArgs) . " 2>&1";
             exec($gsCmd, $gsOutput, $gsReturnVar);
             
             if ($gsReturnVar !== 0 || !is_file($gsTempOut) || filesize($gsTempOut) === 0) {
@@ -3048,9 +3078,10 @@ class MyCloudServer {
         $hasForms = (strpos($chkOut, 'FieldName:') !== false);
 
         // Compression requires stream rewriting, so gs is used here, but with -dPrinted=false to attempt link preservation
+        // SECURITY FIX: Added -dSAFER to prevent PostScript RCE
         $cmd = $hasForms
-            ? sprintf('gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dPDFSETTINGS=/screen -dPrinted=false -dNOPAUSE -dQUIET -dBATCH -sOutputFile=%s %s 2>&1', $this->safeShellArg($dest), $this->safeShellArg($src))
-            : sprintf('gs -sDEVICE=pdfwrite -dPDFA=1 -dPDFACompatibilityPolicy=1 -dCompatibilityLevel=1.4 -dPDFSETTINGS=/screen -dNoOutputFonts -dPrinted=false -dNOPAUSE -dQUIET -dBATCH -sOutputFile=%s %s 2>&1', $this->safeShellArg($dest), $this->safeShellArg($src));
+            ? sprintf('gs -dSAFER -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dPDFSETTINGS=/screen -dPrinted=false -dNOPAUSE -dQUIET -dBATCH -sOutputFile=%s %s 2>&1', $this->safeShellArg($dest), $this->safeShellArg($src))
+            : sprintf('gs -dSAFER -sDEVICE=pdfwrite -dPDFA=1 -dPDFACompatibilityPolicy=1 -dCompatibilityLevel=1.4 -dPDFSETTINGS=/screen -dNoOutputFonts -dPrinted=false -dNOPAUSE -dQUIET -dBATCH -sOutputFile=%s %s 2>&1', $this->safeShellArg($dest), $this->safeShellArg($src));
         shell_exec($cmd);
         if (file_exists($dest)) $this->sendJsonAndExit(['status'=>'OK']);
         $this->sendJsonAndExit(['status'=>'ERR','msg'=>'Compression failed. Ghostscript (gs) is required.']);
@@ -3071,10 +3102,11 @@ class MyCloudServer {
         shell_exec($cmd);
         
         // Fallback to Ghostscript ONLY as a last resort
+        // SECURITY FIX: Added -dSAFER to prevent PostScript RCE
         if (!file_exists($dest) || filesize($dest) === 0) {
             $cmd2 = $hasForms 
-                ? sprintf('gs -sDEVICE=pdfwrite -dPrinted=false -dNOPAUSE -dBATCH -sPageList=%s -sOutputFile=%s %s 2>&1', $this->safeShellArg($pages), $this->safeShellArg($dest), $this->safeShellArg($src))
-                : sprintf('gs -sDEVICE=pdfwrite -dPDFA=1 -dPDFACompatibilityPolicy=1 -dNoOutputFonts -dPrinted=false -dNOPAUSE -dBATCH -sPageList=%s -sOutputFile=%s %s 2>&1', $this->safeShellArg($pages), $this->safeShellArg($dest), $this->safeShellArg($src));
+                ? sprintf('gs -dSAFER -sDEVICE=pdfwrite -dPrinted=false -dNOPAUSE -dBATCH -sPageList=%s -sOutputFile=%s %s 2>&1', $this->safeShellArg($pages), $this->safeShellArg($dest), $this->safeShellArg($src))
+                : sprintf('gs -dSAFER -sDEVICE=pdfwrite -dPDFA=1 -dPDFACompatibilityPolicy=1 -dNoOutputFonts -dPrinted=false -dNOPAUSE -dBATCH -sPageList=%s -sOutputFile=%s %s 2>&1', $this->safeShellArg($pages), $this->safeShellArg($dest), $this->safeShellArg($src));
             shell_exec($cmd2);
         }
         
@@ -3102,11 +3134,12 @@ class MyCloudServer {
         shell_exec($cmd);
 
         // Fallback to Ghostscript ONLY as a last resort
+        // SECURITY FIX: Added -dSAFER to prevent PostScript RCE
         if (!file_exists($dest) || filesize($dest) === 0) {
             $ori = $angle == '+90' ? 3 : ($angle == '+180' ? 2 : 1);
             $cmd2 = $hasForms
-                ? sprintf('gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -dPrinted=false -dAutoRotatePages=/None -c "<</Orientation %d>> setpagedevice" -f %s -sOutputFile=%s 2>&1', $ori, $this->safeShellArg($src), $this->safeShellArg($dest))
-                : sprintf('gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -dPDFA=1 -dPDFACompatibilityPolicy=1 -dNoOutputFonts -dPrinted=false -dAutoRotatePages=/None -c "<</Orientation %d>> setpagedevice" -f %s -sOutputFile=%s 2>&1', $ori, $this->safeShellArg($src), $this->safeShellArg($dest));
+                ? sprintf('gs -dSAFER -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -dPrinted=false -dAutoRotatePages=/None -c "<</Orientation %d>> setpagedevice" -f %s -sOutputFile=%s 2>&1', $ori, $this->safeShellArg($src), $this->safeShellArg($dest))
+                : sprintf('gs -dSAFER -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -dPDFA=1 -dPDFACompatibilityPolicy=1 -dNoOutputFonts -dPrinted=false -dAutoRotatePages=/None -c "<</Orientation %d>> setpagedevice" -f %s -sOutputFile=%s 2>&1', $ori, $this->safeShellArg($src), $this->safeShellArg($dest));
             shell_exec($cmd2);
         }
 
@@ -3127,10 +3160,11 @@ class MyCloudServer {
         $cmd = sprintf('qpdf --password=%s --decrypt %s %s 2>&1', $this->safeShellArg($pw), $this->safeShellArg($src), $this->safeShellArg($dest));
         shell_exec($cmd);
 
+        // SECURITY FIX: Added -dSAFER to prevent PostScript RCE
         if (!file_exists($dest)) {
             $cmd2 = $hasForms
-                ? sprintf('gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -dPrinted=false -sPDFPassword=%s -sOutputFile=%s %s 2>&1', $this->safeShellArg($pw), $this->safeShellArg($dest), $this->safeShellArg($src))
-                : sprintf('gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -dPDFA=1 -dPDFACompatibilityPolicy=1 -dNoOutputFonts -dPrinted=false -sPDFPassword=%s -sOutputFile=%s %s 2>&1', $this->safeShellArg($pw), $this->safeShellArg($dest), $this->safeShellArg($src));
+                ? sprintf('gs -dSAFER -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -dPrinted=false -sPDFPassword=%s -sOutputFile=%s %s 2>&1', $this->safeShellArg($pw), $this->safeShellArg($dest), $this->safeShellArg($src))
+                : sprintf('gs -dSAFER -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -dPDFA=1 -dPDFACompatibilityPolicy=1 -dNoOutputFonts -dPrinted=false -sPDFPassword=%s -sOutputFile=%s %s 2>&1', $this->safeShellArg($pw), $this->safeShellArg($dest), $this->safeShellArg($src));
             shell_exec($cmd2);
         }
         if (file_exists($dest)) $this->sendJsonAndExit(['status'=>'OK']);
@@ -3221,10 +3255,11 @@ class MyCloudServer {
         shell_exec($cmd);
         
         // Fallback to Ghostscript ONLY as a last resort if pdftk fails
+        // SECURITY FIX: Added -dSAFER to prevent PostScript RCE
         if (!file_exists($dest) || filesize($dest) === 0) {
             $cmd2 = $hasForms
-                ? sprintf('gs -sDEVICE=pdfwrite -dPrinted=false -dNOPAUSE -dBATCH -sOutputFile=%s %s 2>&1', $this->safeShellArg($dest), $this->safeShellArg($src))
-                : sprintf('gs -sDEVICE=pdfwrite -dPDFA=1 -dPDFACompatibilityPolicy=1 -dNoOutputFonts -dPrinted=false -dNOPAUSE -dBATCH -sOutputFile=%s %s 2>&1', $this->safeShellArg($dest), $this->safeShellArg($src));
+                ? sprintf('gs -dSAFER -sDEVICE=pdfwrite -dPrinted=false -dNOPAUSE -dBATCH -sOutputFile=%s %s 2>&1', $this->safeShellArg($dest), $this->safeShellArg($src))
+                : sprintf('gs -dSAFER -sDEVICE=pdfwrite -dPDFA=1 -dPDFACompatibilityPolicy=1 -dNoOutputFonts -dPrinted=false -dNOPAUSE -dBATCH -sOutputFile=%s %s 2>&1', $this->safeShellArg($dest), $this->safeShellArg($src));
             shell_exec($cmd2);
         }
         
@@ -3276,7 +3311,8 @@ class MyCloudServer {
 
         // 3. Fallback Repair: If pdftk fails, the PDF is severely mangled. 
         // We fall back to Ghostscript as a last resort (WARNING: This WILL strip forms, but saves the visual data).
-        $gsCmd = sprintf('gs -o %s -sDEVICE=pdfwrite -dPDFSETTINGS=/prepress %s 2>&1', $this->safeShellArg($dest), $this->safeShellArg($src));
+        // SECURITY FIX: Added -dSAFER to prevent PostScript RCE
+        $gsCmd = sprintf('gs -dSAFER -o %s -sDEVICE=pdfwrite -dPDFSETTINGS=/prepress %s 2>&1', $this->safeShellArg($dest), $this->safeShellArg($src));
         $gsOutput = shell_exec($gsCmd);
 
         if (file_exists($dest) && filesize($dest) > 0) {
@@ -3879,7 +3915,15 @@ class MyCloudServer {
         if (isset($exif['COMPUTED']['Width'], $exif['COMPUTED']['Height'])) $data['Dimensions'] = $exif['COMPUTED']['Width'] . ' x ' . $exif['COMPUTED']['Height'] . ' px';
         if (isset($exif['IFD0']['Make'])) $data['Camera'] = trim($exif['IFD0']['Make'] . ' ' . ($exif['IFD0']['Model'] ?? ''));
         if (isset($exif['EXIF']['ExposureTime'])) $data['Exposure'] = $exif['EXIF']['ExposureTime'] . 's';
-        if (isset($exif['EXIF']['FNumber'])) $data['Aperture'] = 'f/' . eval('return ' . $exif['EXIF']['FNumber'] . ';');
+        if (isset($exif['EXIF']['FNumber'])) {
+            $fnum = $exif['EXIF']['FNumber'];
+            if (strpos($fnum, '/') !== false) {
+                list($num, $den) = explode('/', $fnum);
+                if ((float)$den !== 0.0) $data['Aperture'] = 'f/' . round((float)$num / (float)$den, 1);
+            } elseif (is_numeric($fnum)) {
+                $data['Aperture'] = 'f/' . round((float)$fnum, 1);
+            }
+        }
         if (isset($exif['EXIF']['ISOSpeedRatings'])) $data['ISO'] = $exif['EXIF']['ISOSpeedRatings'];
         if (isset($exif['EXIF']['DateTimeOriginal'])) $data['Date Taken'] = $exif['EXIF']['DateTimeOriginal'];
         if (isset($exif['EXIF']['ColorSpace'])) {
@@ -4240,7 +4284,7 @@ class MyCloudServer {
                         $dom = new DOMDocument();
                         libxml_use_internal_errors(true);
                         // Load XML securely, preserving the heavy Word formatting
-                        if ($dom->loadXML($content, LIBXML_PARSEHUGE)) {
+                        if ($dom->loadXML($content, LIBXML_PARSEHUGE | LIBXML_NONET)) {
                             $xpath = new DOMXPath($dom);
                             $xpath->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
                             
@@ -4329,7 +4373,7 @@ class MyCloudServer {
         return false;
     }
 	
-	private function actionCheckOfficeState() {
+		private function actionCheckOfficeState() {
         $docKey = preg_replace('/[^a-zA-Z0-9]/', '', $_POST['docKey'] ?? '');
         $tempDir = $GLOBALS['temp_dir'] ?? sys_get_temp_dir();
         // The callback deletes this tracking file the exact millisecond the save finishes

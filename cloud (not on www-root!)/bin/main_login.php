@@ -813,7 +813,14 @@ class Login {
 			// SECURITY: To allow a stale tab to login without opening a "Login CSRF" vulnerability,
 			// we strictly verify the Origin/Referer matches our host if the token is invalid.
 			$host = $_SERVER['HTTP_HOST'];
-			$is_same_origin = (strpos($_SERVER['HTTP_ORIGIN'] ?? '', $host) !== false) || (strpos($_SERVER['HTTP_REFERER'] ?? '', $host) !== false);
+			$origin = $_SERVER['HTTP_ORIGIN'] ?? $_SERVER['HTTP_REFERER'] ?? '';
+			$is_same_origin = false;
+			if (!empty($origin)) {
+				$parsed_host = parse_url($origin, PHP_URL_HOST);
+				if ($parsed_host === $host) {
+					$is_same_origin = true;
+				}
+			}
 
 			if (!$csrf_present || (!$csrf_valid && (!$is_first_login_attempt || !$is_same_origin))) {
 				if ($this->language === 'de') { $this->login_error = "Sitzung abgelaufen. Bitte die Seite neu laden."; } 
@@ -849,7 +856,9 @@ class Login {
 								$content = stream_get_contents($handle);
 								$pattern = "/(['\"]" . preg_quote($username, '/') . "['\"]\s*=>\s*)(['\"][^'\"]+['\"])/";
 								if (preg_match($pattern, $content)) {
-									$new_content = preg_replace($pattern, "$1'$new_secure_hash'", $content);
+									$new_content = preg_replace_callback($pattern, function($m) use ($new_secure_hash) {
+										return $m[1] . "'" . $new_secure_hash . "'";
+									}, $content);
 									if ($new_content && $new_content !== $content) {
 										rewind($handle); fwrite($handle, $new_content); ftruncate($handle, ftell($handle));
 										WriteLogLine($this->log_file, "info", "MainLogin: 🔒 Automatically migrated password to Argon2id for user: $username");
@@ -1492,9 +1501,10 @@ class Login {
 
 		// --- HOME NAS AUTOLOGIN ---
 		// Enforces strict internal-IP validation before evaluating config flags
-		$server_ip = $_SERVER['SERVER_ADDR'] ?? '';
-		if (function_exists('isPrivateIp') && isPrivateIp($server_ip) && isset($GLOBALS['home_NAS_network']) && $GLOBALS['home_NAS_network'] === true) {
-			if (isset($GLOBALS['home_NAS_autologin']) && $GLOBALS['home_NAS_autologin'] === true && (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true)) {
+		// Enforces strict internal-IP validation on the client IP before evaluating config flags
+		$client_ip = $_SERVER['REMOTE_ADDR'] ?? '';
+		if (function_exists('isPrivateIp') && isPrivateIp($client_ip) && isset($GLOBALS['home_NAS_network']) && $GLOBALS['home_NAS_network'] === true) {
+            if (isset($GLOBALS['home_NAS_autologin']) && $GLOBALS['home_NAS_autologin'] === true && (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true)) {
 				if (!empty($this->users) && is_array($this->users)) {
 					$first_user = array_key_first($this->users); 
 					if ($first_user) {

@@ -1,3 +1,15 @@
+4.2.291
+	Security: Critical Authentication Bypass in Home NAS Auto-Login allows remote IPs to autologin
+	Security: Arbitrary File &amp; Directory Deletion / Permission Bypass
+	Security: Subfolder Restriction &amp; Permission Bypass in Direct GET Handlers
+	Security: Persistent Denial of Service / user_db.php Corruption via Regex Backreferences
+	Security: Predictable Token &amp; Unauthenticated File Fetch in OnlyOffice Bridge
+	Security: Critical Remote Code Execution (RCE)
+	Security: High Login CSRF / Session Forgery
+	Security: High XML External Entity (XXE) Injection
+	Security: High Cross-Site Scripting (XSS) in Modals
+	Security: Critical Arbitrary File Read / Local File Inclusion (LFI)
+
 4.2.290
 	Security: Webmail: SSRF via Localhost Port Pivoting
 	Security: Webmail: Untrusted SSRF Fallback in PDF Generator
