@@ -936,4 +936,11 @@ return [
     'sec_tls' => 'Transport über Standard-TLS gesischert',
     'sec_none' => 'Nachricht wurd unverschlüsselt übers Internet transportiert',
     'unencrypted' => 'Unverschlüsselt',
+    'templates' => 'Vorlaache',
+    'add_template' => 'Neie Vorlaach',
+    'no_templates' => 'Kaa Vorlaache gefunne.',
+    'insert' => 'Einfieche',
+    'edit_template' => 'Vorlaach beawwede',
+    'template_body' => 'Text',
+    'enter_name' => 'Bidde en Name oigewwe',
 ];

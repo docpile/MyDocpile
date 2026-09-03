@@ -934,4 +934,11 @@ return [
     'sec_tls' => 'Transport secured via Standard TLS',
     'sec_none' => 'Message transported unencrypted over the internet',
     'unencrypted' => 'Unencrypted',
+    'templates' => 'Templates',
+    'add_template' => 'New Template',
+    'no_templates' => 'No templates found.',
+    'insert' => 'Insert',
+    'edit_template' => 'Edit Template',
+    'template_body' => 'Body',
+    'enter_name' => 'Please enter a name',
 ];

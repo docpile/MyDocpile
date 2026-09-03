@@ -934,5 +934,12 @@ return [
     'sec_tls' => '표준 TLS를 통해 보안된  송',
     'sec_none' => '메시지가 인터넷을 통해 암호화되지 않은 상태로  송됨',
     'unencrypted' => '암호화되지 않음',
+    'templates' => '템플릿',
+    'add_template' => '새 템플릿',
+    'no_templates' => '템플릿을 찾을 수 없습니다.',
+    'insert' => '삽입',
+    'edit_template' => '템플릿 편집',
+    'template_body' => '본문',
+    'enter_name' => '이름을 입 하세요',
 ];
 ?>

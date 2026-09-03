@@ -934,5 +934,12 @@ return [
     'sec_tls' => '標準 TLS で保護された通信',
     'sec_none' => 'メッセージはインターネット上で暗号化されずに転送されました',
     'unencrypted' => '暗号化なし',
+    'templates' => 'テンプレート',
+    'add_template' => '新しいテンプレート',
+    'no_templates' => 'テンプレートが見つかりません。',
+    'insert' => '挿入',
+    'edit_template' => 'テンプレートを編集',
+    'template_body' => '本文',
+    'enter_name' => '名前を入力してく さい',
 ];
 ?>

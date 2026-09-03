@@ -933,4 +933,11 @@ return [
     'sec_tls' => 'Transport über Standard-TLS gsichad',
     'sec_none' => 'Nochricht is unvaschlüsselt übers Internet dransportiert worn',
     'unencrypted' => 'Unvaschlüsselt',
+    'templates' => 'Vorlagn',
+    'add_template' => 'Neie Vorlog',
+    'no_templates' => 'Koane Vorlagn gfundn.',
+    'insert' => 'Einfügn',
+    'edit_template' => 'Vorlog beorbatn',
+    'template_body' => 'Text',
+    'enter_name' => 'Bitte an Nåma eigm',
 ];

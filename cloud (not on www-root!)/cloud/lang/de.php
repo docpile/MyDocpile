@@ -938,4 +938,11 @@ return [
     'sec_tls' => 'Transport über Standard-TLS gesichert',
     'sec_none' => 'Nachricht wurde unverschlüsselt über das Internet transportiert',
     'unencrypted' => 'Unverschlüsselt',
+    'templates' => 'Vorlagen',
+    'add_template' => 'Neue Vorlage',
+    'no_templates' => 'Keine Vorlagen gefunden.',
+    'insert' => 'Einfügen',
+    'edit_template' => 'Vorlage bearbeiten',
+    'template_body' => 'Textkörper',
+    'enter_name' => 'Bitte einen Namen eingeben',
 ];

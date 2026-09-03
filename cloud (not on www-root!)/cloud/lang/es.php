@@ -938,4 +938,11 @@ return [
     'sec_tls' => 'Transporte seguro vía TLS estándar',
     'sec_none' => 'Mensaje transportado sin cifrar por internet',
     'unencrypted' => 'No cifrado',
+    'templates' => 'Plantillas',
+    'add_template' => 'Nueva plantilla',
+    'no_templates' => 'No se encontraron plantillas.',
+    'insert' => 'Insertar',
+    'edit_template' => 'Editar plantilla',
+    'template_body' => 'Cuerpo',
+    'enter_name' => 'Por favor, introduzca un nombre',
 ];

@@ -934,4 +934,11 @@ return [
     'sec_tls' => 'Transport sécurisé via TLS standard',
     'sec_none' => 'Message transporté en clair sur internet',
     'unencrypted' => 'Non chiffré',
+    'templates' => 'Modèles',
+    'add_template' => 'Nouveau modèle',
+    'no_templates' => 'Aucun modèle trouvé.',
+    'insert' => 'Insérer',
+    'edit_template' => 'Modifier le modèle',
+    'template_body' => 'Corps',
+    'enter_name' => 'Veuillez entrer un nom',
 ];

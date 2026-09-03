@@ -5,7 +5,7 @@
 # CONFIGURATION
 # ==============================================================================
 
-TARGET_ANCHOR="toggle_folders"
+TARGET_ANCHOR="unencrypted"
 
 # ==============================================================================
 # ARRAYS
@@ -13,38 +13,37 @@ TARGET_ANCHOR="toggle_folders"
 
 # 2. The Keys
 KEYS=(
-	"btn_bulk_zip"
-	"btn_bulk_files"
-	"sel_items"
-	"err_no_files"
-	"btn_select_all"
-	"btn_deselect_all"
-	"msg_prep_zip"
+	"templates"
+	"add_template"
+	"no_templates"
+	"insert"
+	"edit_template"
+	"template_body"
+	"enter_name"
 )
 
 declare -A TRANSLATIONS
 
-TRANSLATIONS[en]="Download ZIP|Download Files|%s selected|No files selected|Select All|Deselect All|Preparing ZIP file... Please wait."
-TRANSLATIONS[de]="Als ZIP laden|Dateien laden|%s ausgewählt|Keine Dateien ausgewählt|Alle auswählen|Auswahl aufheben|ZIP-Datei wird vorbereitet... Bitte warten."
-TRANSLATIONS[es]="Descargar ZIP|Descargar archivos|%s seleccionado|No se seleccionaron archivos|Seleccionar todo|Deseleccionar todo|Preparando archivo ZIP... Por favor espere."
-TRANSLATIONS[fr]="Télécharger le ZIP|Télécharger les fichiers|%s sélectionné|Aucun fichier sélectionné|Tout sélectionner|Tout désélectionner|Préparation du fichier ZIP... Veuillez patienter."
-TRANSLATIONS[it]="Scarica ZIP|Scarica file|%s selezionato|Nessun file selezionato|Seleziona tutto|Deseleziona tutto|Preparazione file ZIP... Attendi prego."
-TRANSLATIONS[pt]="Baixar ZIP|Baixar arquivos|%s selecionado|Nenhum arquivo selecionado|Selecionar tudo|Desmarcar tudo|Preparando arquivo ZIP... Por favor, aguarde."
-TRANSLATIONS[ru]="Скачать ZIP|Скачать файлы|%s выбрано|Файлы не выбраны|Выбрать все|Отменить выбор|Подготовка ZIP-файла... Пожалуйста, подождите."
-TRANSLATIONS[tr]="ZIP İndir|Dosyaları İndir|%s seçildi|Dosya seçilmedi|Tümünü Seç|Seçimi Kaldır|ZIP dosyası hazırlanıyor... Lütfen bekleyin."
-TRANSLATIONS[zh-cn]="下载 ZIP|下载文件|已选择 %s 个|未选择文件|全选|取消全选|正在准备 ZIP 文件... 请稍候。"
-TRANSLATIONS[ja]="ZIPをダウンロード|ファイルをダウンロード|%s 個選択|ファイルが選択されていません|すべて選択|選択解除|ZIPファイルを準備中... お待ちく さい。"
-TRANSLATIONS[ko]="ZIP 다운로드|파일 다운로드|%s  택됨| 택된 파일 없음|모두  택| 택 해 |ZIP 파일 준비 중... 기다  주세요."
-TRANSLATIONS[ar]="تنزيل ZIP|تنزيل الملفات|%s محدد|لم يتم تحديد ملفات|تحديد الكل|إلغاء التحديد|جاري تحضير ملف ZIP... يرجى الانتظار."
-TRANSLATIONS[fa]="دانلود ZIP|دانلود فایل‌ها|%s انتخاب شد|فایلی انتخاب نشده|انتخاب همه|لغو انتخاب|در حال آماده‌سازی فایل ZIP... لطفاً صبر کنید."
-TRANSLATIONS[hi]="ZIP डाउनलोड करें|फाइलें डाउनलोड करें|%s चयनित|कोई फाइल नहीं चुनी गई|सभी चुनें|चयन हटाएं|ZIP फाइल तैयार की जा रही है... कृपया प्रतीक्षा करें।"
-TRANSLATIONS[vi]="Tải xuống ZIP|Tải xuống tệp|%s đã chọn|Không có tệp n o được chọn|Chọn tất cả|Bỏ chọn tất cả|Đang chuẩn bị tệp ZIP... Vui lòng chờ."
-TRANSLATIONS[uk]="Завантажити ZIP|Завантажити файли|%s вибрано|Файли не вибрано|Вибрати всі|Скасувати вибір|Підготовка ZIP-файлу... Будь ласка, зачекайте."
-TRANSLATIONS[bar]="ZIP oabruafa|Dateien oabruafa|%s ausgwählt|Koane Datein ausgwählt|Olloe auswähln|Auswahl aufhebn|ZIP-Datei wiad vorberait... Bitte wortn."
-TRANSLATIONS[hes]="ZIP lade|Dateie lade|%s ausgewählt|Kei Dateie ausgewählt|Alles auswähle|Auswahl aufhewe|ZIP-Datei wird vorberait... Bitte warte."
-TRANSLATIONS[lb]="ZIP eroflueden|Dateien eroflueden|%s ausgewielt|Keng Dateie ausgewielt|Alles auswielen|Auswiel ophiewen|ZIP-Datei gëtt virbereet... W.e.g. waarden."
-TRANSLATIONS[pcm]="Download ZIP|Download Files|%s selected|No files selected|Select All|Deselect All|Preparing ZIP file... Please wait."
-#
+TRANSLATIONS[en]="Templates|New Template|No templates found.|Insert|Edit Template|Body|Please enter a name"
+TRANSLATIONS[de]="Vorlagen|Neue Vorlage|Keine Vorlagen gefunden.|Einfügen|Vorlage bearbeiten|Textkörper|Bitte einen Namen eingeben"
+TRANSLATIONS[es]="Plantillas|Nueva plantilla|No se encontraron plantillas.|Insertar|Editar plantilla|Cuerpo|Por favor, introduzca un nombre"
+TRANSLATIONS[fr]="Modèles|Nouveau modèle|Aucun modèle trouvé.|Insérer|Modifier le modèle|Corps|Veuillez entrer un nom"
+TRANSLATIONS[it]="Modelli|Nuovo modello|Nessun modello trovato.|Inserisci|Modifica modello|Corpo|Inserisci un nome"
+TRANSLATIONS[pt]="Modelos|Novo modelo|Nenhum modelo encontrado.|Inserir|Editar modelo|Corpo|Por favor, insira um nome"
+TRANSLATIONS[ru]="Шаблоны|Новый шаблон|Шаблоны не найдены.|Вставить| едактировать шаблон|Тело|Пожалуйста, введите имя"
+TRANSLATIONS[tr]="Şablonlar|Yeni Şablon|Şablon bulunamadı.|Ekle|Şablonu Düzenle|Gövde|Lütfen bir isim girin"
+TRANSLATIONS[zh-cn]="模板|新模板|未找到模板。|插入|编辑模板|正文|请输入名称"
+TRANSLATIONS[ja]="テンプレート|新しいテンプレート|テンプレートが見つかりません。|挿入|テンプレートを編集|本文|名前を入力してく さい"
+TRANSLATIONS[ko]="템플릿|새 템플릿|템플릿을 찾을 수 없습니다.|삽입|템플릿 편집|본문|이름을 입 하세요"
+TRANSLATIONS[ar]="القوالب|قالب جديد|لم يتم العثور على قوالب.|إدراج|تعديل القالب|النص|الرجاء إدخال اسم"
+TRANSLATIONS[fa]="الگوها|الگوی جدید|هیچ الگویی یافت نشد.|درج|ویرایش الگو|بدنه|لطفاً یک نام وارد کنید"
+TRANSLATIONS[hi]="टेम्प्लेट|नया टेम्प्लेट|कोई टेम्प्लेट नहीं मिला।|डालें|टेम्प्लेट संपादित करें|बॉडी|कृपया एक नाम दर्ज करें"
+TRANSLATIONS[vi]="Mẫu|Mẫu mới|Không tìm thấy mẫu n o.|Chèn|Chỉnh sửa mẫu|Nội dung|Vui lòng nhập tên"
+TRANSLATIONS[uk]="Шаблони|Новий шаблон|Шаблонів не знайдено.|Вставити| едагувати шаблон|Тіло|Будь ласка, введіть ім'я"
+TRANSLATIONS[bar]="Vorlagn|Neie Vorlog|Koane Vorlagn gfundn.|Einfügn|Vorlog beorbatn|Text|Bitte an Nåma eigm"
+TRANSLATIONS[hes]="Vorlaache|Neie Vorlaach|Kaa Vorlaache gefunne.|Einfieche|Vorlaach beawwede|Text|Bidde en Name oigewwe"
+TRANSLATIONS[lb]="Virlagen|Nei Virlag|Keng Virlagen fonnt.|Afügen|Virlag änneren|Text|Gitt w.e.g. en Numm an"
+TRANSLATIONS[pcm]="Templates|New Template|No templates found.|Insert|Edit Template|Body|Abeg enter name"#
 #
 # ==============================================================================
 # EXECUTION ENGINE

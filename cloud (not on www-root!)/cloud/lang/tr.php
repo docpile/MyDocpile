@@ -934,5 +934,12 @@ return [
     'sec_tls' => 'Aktarım Standart TLS ile korundu',
     'sec_none' => 'Mesaj internet üzerinden şifresiz aktarıldı',
     'unencrypted' => 'Şifresiz',
+    'templates' => 'Şablonlar',
+    'add_template' => 'Yeni Şablon',
+    'no_templates' => 'Şablon bulunamadı.',
+    'insert' => 'Ekle',
+    'edit_template' => 'Şablonu Düzenle',
+    'template_body' => 'Gövde',
+    'enter_name' => 'Lütfen bir isim girin',
 ];
 ?>

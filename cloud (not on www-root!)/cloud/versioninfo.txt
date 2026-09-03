@@ -1,3 +1,15 @@
+4.2.289
+	Fix: Webmail: Encryption migration hotfix
+
+4.2.288
+	Improvement: Webmail: More performance in cache reading/writing by using a less CPU intensive cipher suite
+
+4.2.287
+	Improvement: Webmail: Support for emojis in text
+	Fix: Webmail: Saving attachments to the cloud brings &quot;variable not defined&quot; error
+	Feature: Webmail: Add mail templates
+	Feature: Webmail: Add saving to cloud/disk for multiple selected files (each in its own file)
+
 4.2.286
 	Improvement: Hover bar design polish, more modern icons
 

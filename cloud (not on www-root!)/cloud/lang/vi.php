@@ -934,5 +934,12 @@ return [
     'sec_tls' => 'Vận chuyển an to n qua TLS tiêu chuẩn',
     'sec_none' => 'Tin nhắn được vận chuyển không mã hóa trên internet',
     'unencrypted' => 'Không mã hóa',
+    'templates' => 'Mẫu',
+    'add_template' => 'Mẫu mới',
+    'no_templates' => 'Không tìm thấy mẫu n o.',
+    'insert' => 'Chèn',
+    'edit_template' => 'Chỉnh sửa mẫu',
+    'template_body' => 'Nội dung',
+    'enter_name' => 'Vui lòng nhập tên',
 ];
 ?>

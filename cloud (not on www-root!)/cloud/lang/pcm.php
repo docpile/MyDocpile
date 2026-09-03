@@ -934,5 +934,12 @@ return [
     'sec_tls' => 'Transport safe with Standard TLS',
     'sec_none' => 'Message waka open without lock for internet',
     'unencrypted' => 'Unencrypted',
+    'templates' => 'Templates',
+    'add_template' => 'New Template',
+    'no_templates' => 'No templates found.',
+    'insert' => 'Insert',
+    'edit_template' => 'Edit Template',
+    'template_body' => 'Body',
+    'enter_name' => 'Abeg enter name#',
 ];
 ?>

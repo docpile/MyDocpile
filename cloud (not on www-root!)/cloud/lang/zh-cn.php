@@ -934,4 +934,11 @@ return [
     'sec_tls' => ' 输通过 准 TLS 保护',
     'sec_none' => '消息在互联网上未 密 输',
     'unencrypted' => '未 密',
+    'templates' => '模板',
+    'add_template' => '新模板',
+    'no_templates' => '未找到模板。',
+    'insert' => '插入',
+    'edit_template' => '编辑模板',
+    'template_body' => '正文',
+    'enter_name' => '请输入名称',
 ];

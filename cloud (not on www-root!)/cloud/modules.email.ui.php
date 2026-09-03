@@ -407,9 +407,10 @@ window.myCloudShowEmailContextMenu = function(e, type, data) {
         }
         
         actions.push(
+            { label: L.save || 'Save...', icon: '<svg viewBox="0 0 24 24" style="fill:none; stroke:currentColor; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>', act: () => { if (typeof window._emailShowSaveOptions === 'function') window._emailShowSaveOptions(data); } },
             { label: L.move_to || 'Move to...', icon: '<svg viewBox="0 0 24 24" style="fill:none; stroke:currentColor; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path><polyline points="10 14 14 14 14 18"></polyline><line x1="14" y1="14" x2="21" y2="7"></line></svg>', act: () => window._emailPromptMoveCopy('move', data) },
             { label: L.copy_to || 'Copy to...', icon: '<svg viewBox="0 0 24 24" style="fill:none; stroke:currentColor; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>', act: () => window._emailPromptMoveCopy('copy', data) },
-            { sep: true },
+			{ sep: true },
             { label: L.mark_spam || 'Send to Spam', icon: '<svg viewBox="0 0 24 24" style="fill:none; stroke:currentColor; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>', act: () => window._emailExecMoveSpam(targetKeys, srcAcc), danger: true },
             { sep: true },
             { label: data.is_read ? (L.mark_unread || 'Mark as Unread') : (L.mark_read || 'Mark as Read'), icon: data.is_read ? '<svg viewBox="0 0 24 24" style="fill:none; stroke:currentColor; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>' : '<svg viewBox="0 0 24 24" style="fill:none; stroke:currentColor; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><path d="M22 6l-10 7L2 6"></path></svg>', act: () => _emailToggleReadStatus(data.id, !data.is_read) },
@@ -2983,12 +2984,12 @@ window._emailHighlightRawSource = function(raw) {
         return headers + body;
 };
 
-window._emailDownloadResource = async function(action, payload, fallbackFilename, loadingMsg) {
+window._emailDownloadResource = async function(action, payload, fallbackFilename, loadingMsg, forceFallback = false) {
     let fileHandle = null;
     
     // ZERO TRUST: Acquire File Picker handle IMMEDIATELY while the transient user activation (click gesture) is still valid.
     // Awaiting the network fetch first causes the browser's security token to expire, throwing a NotAllowedError.
-    if (window.showSaveFilePicker) {
+    if (!forceFallback && window.showSaveFilePicker) {
         try {
             fileHandle = await window.showSaveFilePicker({ suggestedName: fallbackFilename });
         } catch(e) {
@@ -3064,7 +3065,7 @@ window._emailDownloadResource = async function(action, payload, fallbackFilename
 };
 
 
-window._emailDownloadEml = function(accId, folder, msgId) {
+window._emailDownloadEml = function(accId, folder, msgId, forceFallback = false) {
     let fallback = 'email_' + msgId + '.eml';
     const msg = (window.myCloudEmailState.currentMessages || []).find(m => String(m.id) === String(msgId));
     if (msg) {
@@ -3079,10 +3080,10 @@ window._emailDownloadEml = function(accId, folder, msgId) {
         account_id: accId,
         folder: folder,
         message_id: msgId
-   }, fallback, 'Preparing EML...');
+   }, fallback, 'Preparing EML...', forceFallback);
 };
 
-window._emailDownloadPdf = function(accId, folder, msgId) {
+window._emailDownloadPdf = function(accId, folder, msgId, forceFallback = false) {
     let loadImg = '1';
     if (document.getElementById('ceLoadEmailImgBtn')) loadImg = '0';
     let fallback = 'email_' + msgId + '.pdf';
@@ -3101,7 +3102,7 @@ window._emailDownloadPdf = function(accId, folder, msgId) {
         folder: folder,
         message_id: msgId,
         load_images: loadImg
-    }, fallback, 'Generating PDF...');
+    }, fallback, 'Generating PDF...', forceFallback);
 };
 
 window._emailDownloadAttachment = function(accId, folder, msgId, part, filename) {
@@ -3114,7 +3115,15 @@ window._emailDownloadAttachment = function(accId, folder, msgId, part, filename)
     }, filename, 'Downloading ' + filename + '...');
 };
 
-window._emailShowSaveOptions = function(accId, folder, msgId) {
+window._emailShowSaveOptions = function(msgDataOrAccId, legacyFolder, legacyId) {
+
+    let msgData;
+    if (arguments.length >= 3 && typeof legacyFolder === 'string') {
+        msgData = { account_id: msgDataOrAccId, folder: legacyFolder, id: legacyId };
+    } else {
+        msgData = msgDataOrAccId;
+    }
+
     const overlay = document.getElementById('myCloudModalOverlay');
     const modal = document.getElementById('myCloudModal');
     const L = typeof myCloud_LANG !== 'undefined' ? myCloud_LANG : {};
@@ -3123,6 +3132,27 @@ window._emailShowSaveOptions = function(accId, folder, msgId) {
     overlay.style.display = 'flex';
     modal.className = 'myCloudModal ce-email-app-root';
     modal.style.maxWidth = '450px';
+
+    const srcAcc = msgData.account_id || myCloudEmailState.activeAccount;
+    const srcFolder = msgData.folder || myCloudEmailState.activeFolder;
+    const msgKey = srcAcc + '|' + srcFolder + '|' + msgData.id;
+
+    let baseTargetKeys = [msgKey];
+    if (myCloudEmailState.selectedMessages && myCloudEmailState.selectedMessages.includes(msgKey)) {
+        baseTargetKeys = [...myCloudEmailState.selectedMessages];
+    }
+
+    // Expand Thread Parent to all of its children if selected
+    let targetKeys = [];
+    baseTargetKeys.forEach(k => {
+        targetKeys.push(k);
+        const parts = k.split('|');
+        const renderedMsg = (window.myCloudEmailState.renderedMessages || []).find(m => String(m.id) === String(parts[2]) && (m.account_id || myCloudEmailState.activeAccount) === parts[0] && (m.folder || myCloudEmailState.activeFolder) === parts[1]);
+        if (renderedMsg && renderedMsg.is_thread_parent && renderedMsg.children) {
+            renderedMsg.children.forEach(child => targetKeys.push(parts[0] + '|' + parts[1] + '|' + child.id));
+        }
+    });
+    targetKeys = [...new Set(targetKeys)];
 
     let lastFmt = 'pdf';
     const match = document.cookie.match(/(^| )myCloudEmlSaveFmt=([^;]+)/);
@@ -3203,28 +3233,35 @@ window._emailShowSaveOptions = function(accId, folder, msgId) {
         myCloudCloseModal();
 
         if (target === 'local') {
-            try {
-                let dlSuccess = false;
-                if (fmt === 'pdf') {
-                    dlSuccess = await window._emailDownloadPdf(accId, folder, msgId);
-                } else {
-                    dlSuccess = await window._emailDownloadEml(accId, folder, msgId);
-                }
-                if (delAfter && dlSuccess) {
-                    const metaSafe = encodeURIComponent(JSON.stringify({id: msgId, account_id: accId, folder: folder})).replace(/'/g, "%27");
-                    if (dlSuccess === 'fallback') {
-                        if (typeof myCloudShowAlert === 'function') {
-                            myCloudShowAlert(L.confirm_delete || 'Confirm Deletion', L.confirm_del_after_save || 'Please confirm the file downloaded successfully before deleting the email.', () => {
-                                window.myCloudEmailAction('delete', msgId, metaSafe);
-                            });
-                        }
+            const forceFallback = targetKeys.length > 1;
+            for (let i = 0; i < targetKeys.length; i++) {
+                const parts = targetKeys[i].split('|');
+                const aId = parts[0], fld = parts[1], mId = parts[2];
+               try {
+                    let dlSuccess = false;
+                    if (fmt === 'pdf') {
+                        dlSuccess = await window._emailDownloadPdf(aId, fld, mId, forceFallback);
                     } else {
-                        window.myCloudEmailAction('delete', msgId, metaSafe);
+                        dlSuccess = await window._emailDownloadEml(aId, fld, mId, forceFallback);
                     }
-                }
-            } catch(e) {}
+                    if (delAfter && dlSuccess) {
+                        const metaSafe = encodeURIComponent(JSON.stringify({id: mId, account_id: aId, folder: fld})).replace(/'/g, "%27");
+                        if (dlSuccess === 'fallback' && targetKeys.length === 1) {
+                            if (typeof myCloudShowAlert === 'function') {
+                                myCloudShowAlert(L.confirm_delete || 'Confirm Deletion', L.confirm_del_after_save || 'Please confirm the file downloaded successfully before deleting the email.', () => {
+                                    window.myCloudEmailAction('delete', mId, metaSafe);
+                                });
+                            }
+                        } else {
+                            window.myCloudEmailAction('delete', mId, metaSafe);
+                        }
+                    }
+                } catch(e) {}
+                // Add a small delay between downloads to prevent strict browser rapid-download blocks
+                if (targetKeys.length > 1) await new Promise(r => setTimeout(r, 600));
+            }
         } else {
-            window._emailSaveToCloud(accId, folder, msgId, fmt, writeableClouds, delAfter);
+            window._emailSaveToCloudBulk(targetKeys, fmt, writeableClouds, delAfter);
         }
     };
 };
@@ -3605,7 +3642,7 @@ window._emailShowCloudTreeModal = function(options) {
     };
 };
 
-window._emailSaveToCloud = function(accId, folder, msgId, format, availableClouds, delAfter = false) {
+window._emailSaveToCloudBulk = function(targetKeys, format, availableClouds, delAfter = false) {
     const L = typeof myCloud_LANG !== 'undefined' ? myCloud_LANG : {};
     window._emailShowCloudTreeModal({
         mode: 'folder',
@@ -3614,80 +3651,92 @@ window._emailSaveToCloud = function(accId, folder, msgId, format, availableCloud
         requireWrite: true,
         onConfirm: async (currentCloud, currentPath) => {
             if (typeof myCloudCreateProgressUI === 'function') myCloudCreateProgressUI((L.saving || 'Saving') + '...');
+            let successCount = 0;
+            let errorMsg = null;
             
-            const act = format === 'pdf' ? 'email_dl_pdf' : 'email_dl_eml';
-            let loadImg = '1';
-            if (document.getElementById('ceLoadEmailImgBtn')) loadImg = '0';
-            
-            const fd = new URLSearchParams({
-                myCloud_action: act,
-                myCloud_key: myCloudState.key,
-                myCloud_token: window.myCloudCsrfToken,
-                account_id: accId,
-                folder: folder,
-                message_id: msgId
-            });
-            if (format === 'pdf') fd.append('load_images', loadImg);
-            
-            try {
-                const response = await fetch('', { method: 'POST', body: fd });
-                if (!response.ok) throw new Error("Generation failed");
+            for (let i = 0; i < targetKeys.length; i++) {
+                const parts = targetKeys[i].split('|');
+                const accId = parts[0], folder = parts[1], msgId = parts[2];
                 
-                let finalName = 'Email.' + format;
-                const disposition = response.headers.get('Content-Disposition');
-                if (disposition) {
-                    const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
-                    if (utf8Match && utf8Match[1]) {
-                        finalName = decodeURIComponent(utf8Match[1]);
-                    } else {
-                        const asciiMatch = disposition.match(/filename="([^"]+)"/i);
-                        if (asciiMatch && asciiMatch[1]) {
-                            try { finalName = decodeURIComponent(asciiMatch[1]); } 
-                            catch(e) { finalName = asciiMatch[1]; }
+                try {
+                    const act = format === 'pdf' ? 'email_dl_pdf' : 'email_dl_eml';
+                    let loadImg = '1';
+                    if (document.getElementById('ceLoadEmailImgBtn')) loadImg = '0';
+                    
+                    const fd = new URLSearchParams({
+                        myCloud_action: act,
+                        myCloud_key: myCloudState.key,
+                        myCloud_token: window.myCloudCsrfToken,
+                        account_id: accId,
+                        folder: folder,
+                        message_id: msgId
+                    });
+                    if (format === 'pdf') fd.append('load_images', loadImg);
+                    
+                    const response = await fetch('', { method: 'POST', body: fd });
+                    if (!response.ok) throw new Error("Generation failed");
+                    
+                    let finalName = 'Email.' + format;
+                    const disposition = response.headers.get('Content-Disposition');
+                    if (disposition) {
+                        const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+                        if (utf8Match && utf8Match[1]) {
+                            finalName = decodeURIComponent(utf8Match[1]);
+                        } else {
+                            const asciiMatch = disposition.match(/filename="([^"]+)"/i);
+                            if (asciiMatch && asciiMatch[1]) {
+                                try { finalName = decodeURIComponent(asciiMatch[1]); } 
+                                catch(e) { finalName = asciiMatch[1]; }
+                            }
                         }
                     }
-                }
-                
-                const blob = await response.blob();
-                
-                // THE FIX: Cast raw blob to a native File object immediately
-                const fileObj = new File([blob], finalName, { type: blob.type || (format === 'pdf' ? 'application/pdf' : 'message/rfc822') });
-                let finalBlob = fileObj;
-                
-                if (typeof myCloudCrypto !== 'undefined' && myCloudCrypto.isDirEncrypted(currentPath)) {
-                    const cRoot = myCloudCrypto.getCryptoRoot(currentPath);
-                    if (myCloudCrypto.isDirUnlocked(cRoot)) {
-                        finalBlob = await myCloudCrypto.encryptFile(cRoot, fileObj);
-                        finalName = await myCloudCrypto.encryptName(currentPath, finalName);
+                    
+                    const blob = await response.blob();
+                    const fileObj = new File([blob], finalName, { type: blob.type || (format === 'pdf' ? 'application/pdf' : 'message/rfc822') });
+                    let finalBlob = fileObj;
+                    
+                    if (typeof myCloudCrypto !== 'undefined' && myCloudCrypto.isDirEncrypted(currentPath)) {
+                        const cRoot = myCloudCrypto.getCryptoRoot(currentPath);
+                        if (myCloudCrypto.isDirUnlocked(cRoot)) {
+                            finalBlob = await myCloudCrypto.encryptFile(cRoot, fileObj);
+                            finalName = await myCloudCrypto.encryptName(currentPath, finalName);
+                        } else {
+                            throw new Error(L.target_vault_locked || "Target folder is an encrypted vault and is currently locked.");
+                        }
+                    }
+                    
+                    const upFd = new FormData();
+                    upFd.append('myCloud_action', 'upload');
+                    upFd.append('myCloud_key', currentCloud);
+                    upFd.append('myCloud_token', window.myCloudCsrfToken);
+                    upFd.append('dir', currentPath);
+                    upFd.append('resolution', 'keep_both');
+                    upFd.append('file', finalBlob, finalName);
+                    
+                    const upRes = await fetch('', { method: 'POST', body: upFd }).then(r=>r.json());
+                    
+                    if (upRes.status === 'OK') {
+                        successCount++;
+                        if (delAfter) {
+                            const metaSafe = encodeURIComponent(JSON.stringify({id: msgId, account_id: accId, folder: folder})).replace(/'/g, "%27");
+                            window.myCloudEmailAction('delete', msgId, metaSafe);
+                        }
                     } else {
-                        throw new Error(L.target_vault_locked || "Target folder is an encrypted vault and is currently locked.");
+                        throw new Error(upRes.msg || 'Upload failed');
                     }
+                } catch (err) {
+                    errorMsg = err.message;
                 }
-                
-                const upFd = new FormData();
-                upFd.append('myCloud_action', 'upload');
-                upFd.append('myCloud_key', currentCloud);
-                upFd.append('myCloud_token', window.myCloudCsrfToken);
-                upFd.append('dir', currentPath);
-                upFd.append('resolution', 'keep_both');
-                upFd.append('file', finalBlob, finalName);
-                
-                const upRes = await fetch('', { method: 'POST', body: upFd }).then(r=>r.json());
-                if (typeof myCloudCloseProgressUI === 'function') myCloudCloseProgressUI();
-                
-                if (upRes.status === 'OK') {
-                    if (typeof cxToast === 'function') cxToast(L.save_cloud_success || 'Saved successfully to cloud.', true);
-                    else if (typeof myCloudShowAlert === 'function') myCloudShowAlert(L.success || 'Success', L.save_cloud_success || 'Saved successfully to cloud.');
-                    if (delAfter) {
-                        const metaSafe = encodeURIComponent(JSON.stringify({id: msgId, account_id: accId, folder: folder})).replace(/'/g, "%27");
-                        window.myCloudEmailAction('delete', msgId, metaSafe);
-                    }
-                } else {
-                    throw new Error(upRes.msg || 'Upload failed');
-                }
-            } catch (err) {
-                if (typeof myCloudCloseProgressUI === 'function') myCloudCloseProgressUI();
-                if (typeof myCloudShowAlert === 'function') myCloudShowAlert(L.error_prefix || 'Error', (L.save_cloud_error || 'Failed to save to cloud:') + ' ' + err.message);
+            }
+            
+            if (typeof myCloudCloseProgressUI === 'function') myCloudCloseProgressUI();
+            
+            if (successCount > 0) {
+                const msg = (L.save_cloud_success || 'Saved successfully to cloud.') + (targetKeys.length > 1 ? ` (${successCount}/${targetKeys.length})` : '');
+                if (typeof cxToast === 'function') cxToast(msg, true);
+                else if (typeof myCloudShowAlert === 'function') myCloudShowAlert(L.success || 'Success', msg);
+            } else if (errorMsg) {
+                if (typeof myCloudShowAlert === 'function') myCloudShowAlert(L.error_prefix || 'Error', (L.save_cloud_error || 'Failed to save to cloud:') + ' ' + errorMsg);
             }
         }
     });
@@ -3764,11 +3813,6 @@ window._emailSaveAttachmentToCloud = function(accId, folder, msgId, part, filena
                 if (upRes.status === 'OK') {
                     if (typeof cxToast === 'function') cxToast(L.save_cloud_success || 'Saved successfully to cloud.', true);
                     else if (typeof myCloudShowAlert === 'function') myCloudShowAlert(L.success || 'Success', L.save_cloud_success || 'Saved successfully to cloud.');
-                    
-                    if (delAfter) {
-                        const metaSafe = encodeURIComponent(JSON.stringify({id: msgId, account_id: accId, folder: folder})).replace(/'/g, "%27");
-                        window.myCloudEmailAction('delete', msgId, metaSafe);
-                    }
                 } else {
                     throw new Error(upRes.msg || 'Upload failed');
                 }

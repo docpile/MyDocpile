@@ -48,6 +48,7 @@ class MyCloudEmailServer {
     private $cache_file_cache = [];
     private $body_cache_file_cache = [];
 	private $dirty_caches = [];
+	private $trigger_migration = false;
 
     public function __construct($key, $username) {
         $this->key = $key;
@@ -63,12 +64,14 @@ class MyCloudEmailServer {
             $this->config_file = $profileDir . '/' . $this->username . '_email.json';
             $this->contacts_file = $profileDir . '/' . $this->username . '_contacts.json';
             $this->auto_contacts_file = $profileDir . '/' . $this->username . '_auto_contacts.json';
+			$this->templates_file = $profileDir . '/' . $this->username . '_email_templates.json';
             $this->cache_dir = $profileDir . '/' . $this->username . '_mailcache';
         } else {
             $temp = $this->user_temp_dir;
             $this->config_file = $temp . '/' . $this->username . '_email.json';
             $this->contacts_file = $temp . '/' . $this->username . '_contacts.json';
             $this->auto_contacts_file = $temp . '/' . $this->username . '_auto_contacts.json';
+			$this->templates_file = $temp . '/' . $this->username . '_email_templates.json';
             $this->cache_dir = $temp . '/' . $this->username . '_mailcache';
         }
         
@@ -98,7 +101,7 @@ class MyCloudEmailServer {
         foreach ($configs as &$acc) {
             $keysToMigrate = ['password', 'oauth_token', 'oauth_refresh_token'];
             foreach ($keysToMigrate as $k) {
-                if (!empty($acc[$k]) && strpos($acc[$k], 'v3:') !== 0 && $acc[$k] !== '********') {
+                if (!empty($acc[$k]) && strpos($acc[$k], 'v4:') !== 0 && $acc[$k] !== '********') {
                     $plain = $this->decryptPassword($acc[$k]);
                     if (!empty($plain)) {
                         $acc[$k] = $this->encryptPassword($plain);
@@ -112,6 +115,25 @@ class MyCloudEmailServer {
         if ($changed) {
             $this->saveConfigs($configs);
         }
+
+//        // Proactively trigger single-file datastore upgrades
+//        $filesToCheck = [
+//            'loadContacts' => $this->contacts_file,
+//            'loadAutoContacts' => $this->auto_contacts_file,
+//            'loadTemplates' => $this->templates_file
+//        ];
+//        foreach ($filesToCheck as $method => $file) {
+//            if (file_exists($file)) {
+//                $fp = @fopen($file, 'r');
+//                if ($fp) {
+//                    $header = fread($fp, 4);
+//                    fclose($fp);
+//                    if (strpos($header, 'v4:') !== 0) {
+//                        $this->$method();
+//                    }
+//                }
+//            }
+//        }
     }
 	
     private function sendJsonAndExit($data) {
@@ -192,55 +214,70 @@ class MyCloudEmailServer {
         return hash_pbkdf2('sha256', $this->key, $salt, $iterations, 32, true);
     }
 
-    private function encryptPassword($plain) {
-        if (empty($plain) || $plain === '********') return $plain;
+    private function encryptData($data, $version = 'v4') {
+        if ($data === null || $data === '') return '';
         $salt = openssl_random_pseudo_bytes(16);
-        // V3 Encryption Enforces 600,000 Iterations
-        $key = $this->getPbkdf2Key($salt, 600000);
         $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length('AES-256-GCM'));
         $tag = '';
-        $encrypted = openssl_encrypt($plain, 'AES-256-GCM', $key, OPENSSL_RAW_DATA, $iv, $tag);
-        return 'v3:' . base64_encode($salt) . ':' . base64_encode($iv) . ':' . base64_encode($tag) . ':' . base64_encode($encrypted);
+        if ($version === 'v4' || $version === 'FC' || $version === 'FCB') {
+            $key = hash_hmac('sha256', $salt, $this->key, true);
+        } else if ($version === 'v3') {
+            $key = $this->getPbkdf2Key($salt, 600000);
+        } else if ($version === 'v2') {
+            $key = $this->getPbkdf2Key($salt, 20000);
+        } else {
+            return false;
+        }
+        $encrypted = openssl_encrypt($data, 'AES-256-GCM', $key, OPENSSL_RAW_DATA, $iv, $tag);
+        return $version . ':' . base64_encode($salt) . ':' . base64_encode($iv) . ':' . base64_encode($tag) . ':' . base64_encode($encrypted);
+    }
+
+    private function decryptData($payload, &$detectedVersion = null) {
+        if (empty($payload) || $payload === '********') return null;
+        $parts = explode(':', $payload);
+        $prefix = $parts[0] ?? '';
+        if (in_array($prefix, ['v4', 'v3', 'v2', 'FC', 'FCB']) && count($parts) >= 5) {
+            $detectedVersion = $prefix;
+            if ($prefix !== 'v4') {
+                $this->trigger_migration = true;
+            }
+            $salt = base64_decode($parts[1]);
+            $iv = base64_decode($parts[2]);
+            $tag = base64_decode($parts[3]);
+            $cipher = base64_decode($parts[4]);
+            if ($prefix === 'v4' || $prefix === 'FC' || $prefix === 'FCB') {
+                $key = hash_hmac('sha256', $salt, $this->key, true);
+            } else if ($prefix === 'v3') {
+                $key = $this->getPbkdf2Key($salt, 600000);
+            } else if ($prefix === 'v2') {
+                $key = $this->getPbkdf2Key($salt, 20000);
+            }
+            $decrypted = openssl_decrypt($cipher, 'AES-256-GCM', $key, OPENSSL_RAW_DATA, $iv, $tag);
+            return $decrypted !== false ? $decrypted : null;
+        }
+        if (count($parts) === 2 && !in_array($prefix, ['v2', 'v3', 'v4', 'FC', 'FCB'])) {
+            $detectedVersion = 'legacy_cbc';
+			$this->trigger_migration = true;
+            $key = hash('sha256', $this->key, true);
+            $decrypted = openssl_decrypt(base64_decode($parts[1]), 'AES-256-CBC', $key, OPENSSL_RAW_DATA, base64_decode($parts[0]));
+            return $decrypted !== false ? $decrypted : null;
+        }
+        $detectedVersion = 'legacy_static';
+		$this->trigger_migration = true;
+        $static_iv = substr(hash('sha256', 'mycloud_mail_iv' . $this->username, true), 0, 16);
+        $key = hash('sha256', $this->key, true);
+        $decrypted = openssl_decrypt(base64_decode($payload), 'AES-256-CBC', $key, 0, $static_iv);
+        return $decrypted !== false ? $decrypted : null;
+    }
+
+    private function encryptPassword($plain) {
+        if (empty($plain) || $plain === '********') return $plain;
+        return $this->encryptData($plain, 'v4');
     }
 
     private function decryptPassword($cipher) {
         if (empty($cipher) || $cipher === '********') return '';
-
-        // V3 Encryption (Modern NIST Standard - 600,000 iterations)
-        if (strpos($cipher, 'v3:') === 0) {
-            $parts = explode(':', substr($cipher, 3));
-            if (count($parts) === 4) {
-                $key = $this->getPbkdf2Key(base64_decode($parts[0]), 600000);
-                $decrypted = openssl_decrypt(base64_decode($parts[3]), 'AES-256-GCM', $key, OPENSSL_RAW_DATA, base64_decode($parts[1]), base64_decode($parts[2]));
-                return $decrypted !== false ? $decrypted : null;
-            }
-        }
-
-        // V2 Encryption (Legacy Compatibility - 20,000 iterations)
-        if (strpos($cipher, 'v2:') === 0) {
-            $parts = explode(':', substr($cipher, 3));
-            if (count($parts) === 4) {
-                $key = $this->getPbkdf2Key(base64_decode($parts[0]), 20000);
-                $decrypted = openssl_decrypt(base64_decode($parts[3]), 'AES-256-GCM', $key, OPENSSL_RAW_DATA, base64_decode($parts[1]), base64_decode($parts[2]));
-                return $decrypted !== false ? $decrypted : null;
-            }
-        }
-        
-        $key = hash('sha256', $this->key, true);
-        
-        // Legacy Fallback 1 (Randomized CBC)
-        if (strpos($cipher, ':') !== false && strpos($cipher, 'v2:') === false && strpos($cipher, 'v3:') === false) {
-            list($b64_iv, $b64_cipher) = explode(':', $cipher, 2);
-            $decrypted = openssl_decrypt(base64_decode($b64_cipher), 'AES-256-CBC', $key, OPENSSL_RAW_DATA, base64_decode($b64_iv));
-            return $decrypted !== false ? $decrypted : null;
-        }
-        
-        // --- LEGACY FALLBACK (Static IV) ---
-        $static_iv = substr(hash('sha256', 'mycloud_mail_iv' . $this->username, true), 0, 16);
-        $decrypted = openssl_decrypt(base64_decode($cipher), 'AES-256-CBC', $key, 0, $static_iv);
-        
-        // ZERO TRUST: Fail closed. If cryptographic decryption fails, never assume the input is safe plaintext.
-        return $decrypted !== false ? $decrypted : null;
+        return $this->decryptData($cipher);
     }
 
 // --- PGP WKD HASHING HELPERS ---
@@ -327,66 +364,28 @@ class MyCloudEmailServer {
 
     private function loadContacts() {
         if (!file_exists($this->contacts_file)) return [];
-		$raw = file_get_contents($this->contacts_file);
-        if (strpos($raw, 'v3:') === 0) {
-            $parts = explode(':', substr($raw, 3));
-            $key = $this->getPbkdf2Key(base64_decode($parts[0]), 600000);
-            $decrypted = openssl_decrypt(base64_decode($parts[3]), 'AES-256-GCM', $key, OPENSSL_RAW_DATA, base64_decode($parts[1]), base64_decode($parts[2]));
-            $data = $decrypted ? json_decode($decrypted, true) : [];
-            return is_array($data) ? $data : [];
-        }        
-        if (strpos($raw, 'v2:') === 0) {
-            $parts = explode(':', substr($raw, 3));
-            $key = $this->getPbkdf2Key(base64_decode($parts[0]), 20000);
-            $decrypted = openssl_decrypt(base64_decode($parts[3]), 'AES-256-GCM', $key, OPENSSL_RAW_DATA, base64_decode($parts[1]), base64_decode($parts[2]));
-            $data = $decrypted ? json_decode($decrypted, true) : [];
-            return is_array($data) ? $data : [];
-        }
-        $parts = explode(':', $raw, 2);
-        if (count($parts) !== 2) return [];
-        
-        $key = hash('sha256', $this->key, true);
-        $decrypted = openssl_decrypt(base64_decode($parts[1]), 'AES-256-CBC', $key, OPENSSL_RAW_DATA, base64_decode($parts[0]));
-        if ($decrypted === false) return [];
-        
-        $data = json_decode($decrypted, true);
-        return is_array($data) ? $data : [];
+        $raw = file_get_contents($this->contacts_file);
+        $ver = null;
+        $decrypted = $this->decryptData($raw, $ver);
+        $data = $decrypted ? json_decode($decrypted, true) : [];
+        $res = is_array($data) ? $data : [];
+        if ($ver !== null && $ver !== 'v4' && !empty($res)) $this->saveContacts($res);
+        return $res;
     }
 
     private function saveContacts($contacts) {
-        $json = json_encode($contacts);
-        $salt = openssl_random_pseudo_bytes(16);
-        $key = $this->getPbkdf2Key($salt, 600000);
-        $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length('AES-256-GCM'));
-        $tag = '';
-        $encrypted = openssl_encrypt($json, 'AES-256-GCM', $key, OPENSSL_RAW_DATA, $iv, $tag);
-        file_put_contents($this->contacts_file, 'v3:' . base64_encode($salt) . ':' . base64_encode($iv) . ':' . base64_encode($tag) . ':' . base64_encode($encrypted));
+        file_put_contents($this->contacts_file, $this->encryptData(json_encode($contacts), 'v4'));
     }
 
     private function loadAutoContacts() {
         if (!file_exists($this->auto_contacts_file)) return [];
         $raw = file_get_contents($this->auto_contacts_file);
-        if (strpos($raw, 'v3:') === 0) {
-            $parts = explode(':', substr($raw, 3));
-            $key = $this->getPbkdf2Key(base64_decode($parts[0]), 600000);
-            $decrypted = openssl_decrypt(base64_decode($parts[3]), 'AES-256-GCM', $key, OPENSSL_RAW_DATA, base64_decode($parts[1]), base64_decode($parts[2]));
-            $data = $decrypted ? json_decode($decrypted, true) : [];
-            return is_array($data) ? $data : [];
-        }
-        if (strpos($raw, 'v2:') === 0) {
-            $parts = explode(':', substr($raw, 3));
-            $key = $this->getPbkdf2Key(base64_decode($parts[0]), 20000);
-            $decrypted = openssl_decrypt(base64_decode($parts[3]), 'AES-256-GCM', $key, OPENSSL_RAW_DATA, base64_decode($parts[1]), base64_decode($parts[2]));
-            $data = $decrypted ? json_decode($decrypted, true) : [];
-            return is_array($data) ? $data : [];
-        }
-        $parts = explode(':', $raw, 2);
-        if (count($parts) !== 2) return [];
-        $key = hash('sha256', $this->key, true);
-        $decrypted = openssl_decrypt(base64_decode($parts[1]), 'AES-256-CBC', $key, OPENSSL_RAW_DATA, base64_decode($parts[0]));
-        if ($decrypted === false) return [];
-        $data = json_decode($decrypted, true);
-        return is_array($data) ? $data : [];
+        $ver = null;
+        $decrypted = $this->decryptData($raw, $ver);
+        $data = $decrypted ? json_decode($decrypted, true) : [];
+        $res = is_array($data) ? $data : [];
+        if ($ver !== null && $ver !== 'v4' && !empty($res)) $this->saveAutoContacts($res);
+        return $res;
     }
 
     private function saveAutoContacts($contacts) {
@@ -396,8 +395,8 @@ class MyCloudEmailServer {
         $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length('AES-256-GCM'));
         $tag = '';
         $encrypted = openssl_encrypt($json, 'AES-256-GCM', $key, OPENSSL_RAW_DATA, $iv, $tag);
-        file_put_contents($this->auto_contacts_file, 'v3:' . base64_encode($salt) . ':' . base64_encode($iv) . ':' . base64_encode($tag) . ':' . base64_encode($encrypted));
-    }
+        file_put_contents($this->auto_contacts_file, $this->encryptData(json_encode($contacts), 'v4'));
+ }
 
     private function autoCollectContacts($to, $cc, $bcc) {
         $all = str_replace(';', ',', $to . ',' . $cc . ',' . $bcc);
@@ -441,6 +440,21 @@ class MyCloudEmailServer {
             }
         }
         if ($changed) $this->saveAutoContacts($auto);
+    }
+
+    private function loadTemplates() {
+        if (!file_exists($this->templates_file)) return [];
+        $raw = file_get_contents($this->templates_file);
+        $ver = null;
+        $decrypted = $this->decryptData($raw, $ver);
+        $data = $decrypted ? json_decode($decrypted, true) : [];
+        $res = is_array($data) ? $data : [];
+        if ($ver !== null && $ver !== 'v4' && !empty($res)) $this->saveTemplates($res);
+        return $res;
+    }
+
+    private function saveTemplates($templates) {
+        file_put_contents($this->templates_file, $this->encryptData(json_encode($templates), 'v4'));
     }
 
     // --- SAFE ENCODING HELPERS ---
@@ -1001,29 +1015,26 @@ class MyCloudEmailServer {
             return [];
         }
 
-        $parts = explode(':', $raw);
-        // ZERO TRUST / PERFORMANCE FIX: Use Fast Cache (FC) mechanism.
-        if (count($parts) === 5 && $parts[0] === 'FC') {
-            $key = hash_hmac('sha256', base64_decode($parts[1]), $this->key, true);
-            $decrypted = openssl_decrypt(base64_decode($parts[4]), 'AES-256-GCM', $key, OPENSSL_RAW_DATA, base64_decode($parts[2]), base64_decode($parts[3]));
-            if ($decrypted !== false) {
-                $inflated = @gzinflate($decrypted, 52428800); // 50MB limit to prevent Zip Bomb
-                if ($inflated !== false) {
-                    $data = [];
-                    foreach (explode("\n", trim($inflated)) as $line) {
-                        if (empty($line)) continue;
-                        $msg = json_decode($line, true);
-                        if (isset($msg['id'])) $data[$msg['id']] = $msg;
-                        elseif (isset($msg['__FOLDER_STATE__'])) $data['__FOLDER_STATE__'] = $msg['__FOLDER_STATE__'];
-                    }
-                    $this->cache_file_cache[$filename] = $data;
-                    return $data;
-                }
+        $ver = null;
+        $decrypted = $this->decryptData($raw, $ver);
+        if ($decrypted !== null) {
+            $inflated = @gzinflate($decrypted, 52428800);
+            if ($inflated === false) $inflated = $decrypted; // Fallback for raw JSON
+            $data = [];
+            foreach (explode("\n", trim($inflated)) as $line) {
+                if (empty($line)) continue;
+                $msg = json_decode($line, true);
+                if (isset($msg['id'])) $data[$msg['id']] = $msg;
+                elseif (isset($msg['__FOLDER_STATE__'])) $data['__FOLDER_STATE__'] = $msg['__FOLDER_STATE__'];
             }
-        } else {
-            // Automatically purge legacy slow-hashed cache files so they rebuild instantly
-            @unlink($filename);
+            $this->cache_file_cache[$filename] = $data;
+            if ($ver !== 'FC') {
+                $this->dirty_caches[$filename] = $data;
+            }
+            return $data;
         }
+
+        @unlink($filename);
         $this->cache_file_cache[$filename] = [];
         return [];
     }
@@ -1037,8 +1048,91 @@ class MyCloudEmailServer {
         if (rand(1, 100) <= 2) {
             $this->runGarbageCollection();
         }
+        if ($this->trigger_migration) {
+            @touch($this->cache_dir . '/.migration_pending');
+        }
+        if (file_exists($this->cache_dir . '/.migration_pending')) {
+            $this->runIncrementalMigration();
+        }
     }
 
+private function runIncrementalMigration() {
+        $lockFile = $this->cache_dir . '/.migration.lock';
+        $fp = @fopen($lockFile, 'c');
+        if (!$fp || !flock($fp, LOCK_EX | LOCK_NB)) {
+            if ($fp) fclose($fp);
+            return;
+        }
+
+        @set_time_limit(300);
+        @ignore_user_abort(true);
+
+        $files = array_merge(
+            glob($this->cache_dir . '/*.enc*') ?: [],
+            glob($this->body_cache_dir . '/*.enc*') ?: []
+        );
+        
+        $migrated = 0;
+        $needsMore = false;
+
+        foreach ($files as $file) {
+            if (!is_file($file)) continue;
+            
+            $f = @fopen($file, 'r');
+            if (!$f) continue;
+            $header = fread($f, 4);
+            fclose($f);
+            
+            $isBody = basename(dirname($file)) === 'bodies';
+
+            $targetPrefix = $isBody ? 'FCB:' : 'FC:';
+            
+            // Skip files already successfully migrated to their target format
+            if (strpos($header, $targetPrefix) === 0) continue;
+
+            $raw = @file_get_contents($file);
+            $ver = null;
+            $decrypted = $this->decryptData($raw, $ver);
+            
+            if ($decrypted !== null && $ver !== ($isBody ? 'FCB' : 'FC')) {
+                $inflated = @gzinflate($decrypted, 52428800);
+                if ($inflated === false) $inflated = $decrypted; // Fallback
+                
+                if ($isBody) {
+                    $data = json_decode($inflated, true);
+                    if (is_array($data)) {
+                        $this->saveBodyCacheData($file, $data, true);
+                    }
+                    unset($this->body_cache_file_cache[$file]);
+                } else {
+                    $data = [];
+                    foreach (explode("\n", trim($inflated)) as $line) {
+                        if (empty($line)) continue;
+                        $msg = json_decode($line, true);
+                        if (isset($msg['id'])) $data[$msg['id']] = $msg;
+                        elseif (isset($msg['__FOLDER_STATE__'])) $data['__FOLDER_STATE__'] = $msg['__FOLDER_STATE__'];
+                    }
+                    $this->writeCacheToDisk($file, $data);
+                }
+            } elseif ($decrypted === null) {
+                @unlink($file);
+            }
+            
+            $migrated++;
+            if ($migrated >= 100) {
+                $needsMore = true;
+                break;
+            }
+        }
+
+        if (!$needsMore) {
+            @unlink($this->cache_dir . '/.migration_pending');
+        }
+
+        flock($fp, LOCK_UN);
+        fclose($fp);
+    }
+	
     private function runGarbageCollection() {
         if (!is_dir($this->body_cache_dir)) return;
         $files = glob($this->body_cache_dir . '/*.enc*');
@@ -1069,14 +1163,7 @@ class MyCloudEmailServer {
         }
         $deflated = gzdeflate(implode("\n", $lines), 6);
         
-        $salt = openssl_random_pseudo_bytes(16);
-        // ZERO TRUST / PERFORMANCE: Use blazing-fast HMAC for ephemeral caches instead of 600k rounds
-        $key = hash_hmac('sha256', $salt, $this->key, true);
-        $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length('AES-256-GCM'));
-        $tag = '';
-        $encrypted = openssl_encrypt($deflated, 'AES-256-GCM', $key, OPENSSL_RAW_DATA, $iv, $tag);
-        
-        $payload = 'FC:' . base64_encode($salt) . ':' . base64_encode($iv) . ':' . base64_encode($tag) . ':' . base64_encode($encrypted);
+        $payload = $this->encryptData($deflated, 'FC');
         $tmpFile = $filename . '.' . bin2hex(random_bytes(16)) . '.tmp';
         file_put_contents($tmpFile, $payload);
         rename($tmpFile, $filename); // REFINEMENT 1: Atomic File Swapping
@@ -1105,17 +1192,18 @@ class MyCloudEmailServer {
              return null;
          }
 
-         $parts = explode(':', $raw);
-         if (count($parts) === 5 && $parts[0] === 'FCB') {
-             $key = hash_hmac('sha256', base64_decode($parts[1]), $this->key, true);
-             $decrypted = openssl_decrypt(base64_decode($parts[4]), 'AES-256-GCM', $key, OPENSSL_RAW_DATA, base64_decode($parts[2]), base64_decode($parts[3]));
-             if ($decrypted !== false) {
-                 $inflated = @gzinflate($decrypted, 52428800); // 50MB limit to prevent Zip Bomb
-                 if ($inflated !== false) {
-                     $data = json_decode($inflated, true);
-                     $this->body_cache_file_cache[$filename] = $data;
-                     return $data;
+         $ver = null;
+         $decrypted = $this->decryptData($raw, $ver);
+         if ($decrypted !== null) {
+             $inflated = @gzinflate($decrypted, 52428800);
+             if ($inflated === false) $inflated = $decrypted; // Fallback
+             $data = json_decode($inflated, true);
+             if (is_array($data)) {
+                 $this->body_cache_file_cache[$filename] = $data;
+                 if ($ver !== 'FCB') {
+                     $this->saveBodyCacheData($filename, $data, true);
                  }
+                 return $data;
              }
          }
          @unlink($filename);
@@ -1131,12 +1219,7 @@ class MyCloudEmailServer {
          $encoded = json_encode($data, JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
          if ($encoded === false) return;
          $deflated = gzdeflate($encoded, 6);
-         $salt = openssl_random_pseudo_bytes(16);
-         $key = hash_hmac('sha256', $salt, $this->key, true);
-         $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length('AES-256-GCM'));
-         $tag = '';
-		 $encrypted = openssl_encrypt($deflated, 'AES-256-GCM', $key, OPENSSL_RAW_DATA, $iv, $tag);
-         $payload = 'FCB:' . base64_encode($salt) . ':' . base64_encode($iv) . ':' . base64_encode($tag) . ':' . base64_encode($encrypted);
+         $payload = $this->encryptData($deflated, 'FCB');
          $tmpFile = $filename . '.' . bin2hex(random_bytes(16)) . '.tmp';
          file_put_contents($tmpFile, $payload);
          rename($tmpFile, $filename);
@@ -4455,6 +4538,35 @@ class MyCloudEmailServer {
 
             case 'email_clear_auto_contacts':
                 $this->saveAutoContacts([]);
+                $this->sendJsonAndExit(['status' => 'OK']);
+                break;
+
+            case 'email_get_templates':
+                $templates = $this->loadTemplates();
+                usort($templates, function($a, $b) { return strcasecmp($a['name'], $b['name']); });
+                $this->sendJsonAndExit(['status' => 'OK', 'templates' => $templates]);
+                break;
+
+            case 'email_save_template':
+                $templates = $this->loadTemplates();
+                $id = !empty($_POST['template_id']) ? trim($_POST['template_id']) : 'tpl_' . bin2hex(random_bytes(12));
+                $idx = array_search($id, array_column($templates, 'id'));
+                $template = [
+                    'id' => $id,
+                    'name' => trim($_POST['name'] ?? ''),
+					'subject' => trim($_POST['subject'] ?? ''),
+                    'body' => trim($_POST['body'] ?? '')
+                ];
+                if ($idx !== false) $templates[$idx] = $template; else $templates[] = $template;
+                $this->saveTemplates($templates);
+                $this->sendJsonAndExit(['status' => 'OK', 'template' => $template]);
+                break;
+
+            case 'email_delete_template':
+                $templates = $this->loadTemplates();
+                $id = $_POST['template_id'] ?? '';
+                $templates = array_values(array_filter($templates, function($t) use ($id) { return $t['id'] !== $id; }));
+                $this->saveTemplates($templates);
                 $this->sendJsonAndExit(['status' => 'OK']);
                 break;
 

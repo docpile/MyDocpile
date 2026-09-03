@@ -1044,7 +1044,9 @@ window.myCloudShowEmailComposer = function(prefill = null) {
                    '<button type="button" onclick="document.getElementById(\'emlAttachInput\').click()" style="background:transparent; color:var(--text-primary); border:1px solid var(--border-medium); display:flex; align-items:center; gap:6px;"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5a2.5 2.5 0 0 1 5 0v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5a2.5 2.5 0 0 0 5 0V5c0-2.21-1.79-4-4-4S6 2.79 6 5v11.5c0 3.87 3.13 7 7 7s7-3.13 7-7V6h-1.5z"/></svg> ' + (L.attach_files || 'Attach Files') + '</button>' +
                    ((typeof myCloudCloudConfig !== 'undefined' && Object.values(myCloudCloudConfig).some(c => (c.interface || 'default') !== 'email' && c.interface !== 'hidden' && c.rights !== 'no-access')) ?
                    '<button type="button" onclick="window._emailAttachFromCloud()" style="background:transparent; color:var(--text-primary); border:1px solid var(--border-medium); display:flex; align-items:center; gap:6px;"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg><span class="hide-mobile">' + (L.attach_from_cloud || 'Attach from Cloud') + '</span></button>' : '') +
-                 '</div>' +
+                   '<button type="button" onclick="window._emlShowTemplates()" style="background:transparent; color:var(--text-primary); border:1px solid var(--border-medium); display:flex; align-items:center; gap:6px;">📄 <span class="hide-mobile">' + (L.templates || 'Templates') + '</span></button>' +
+                   '<button type="button" onmousedown="event.preventDefault(); window._emlShowEmojiPicker(this)" style="background:transparent; color:var(--text-primary); border:1px solid var(--border-medium); display:flex; align-items:center; gap:6px; font-size:16px;" title="Emoji">😀</button>' +
+				 '</div>' +
                 '<div style="display:flex; gap:10px; align-items:center;">' +
                      '<label style="font-size:12px; color:var(--text-secondary); display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" id="emlReadReceiptCb" class="myCloudCheckbox" style="margin:0;"> ' + (L.req_read_receipt || 'Request Read Receipt') + '</label>' +
                      '<div style="width:1px; height:20px; background:var(--border-default); margin:0 4px;"></div>' +
@@ -1770,5 +1772,189 @@ window.myCloudShowEmailComposer = function(prefill = null) {
 
 };
 
+window._emlShowEmojiPicker = function(btnEl) {
+    if (document.getElementById('ceEmlEmojiPicker')) {
+        document.getElementById('ceEmlEmojiPicker').remove();
+        return;
+    }
 
+    const picker = document.createElement('div');
+    picker.id = 'ceEmlEmojiPicker';
+    picker.style.cssText = 'position:absolute; z-index:999999; background:var(--gray-00); border:1px solid var(--border-medium); box-shadow:0 4px 15px rgba(0,0,0,0.3); border-radius:6px; padding:10px; width:260px; max-height:200px; overflow-y:auto; display:flex; flex-wrap:wrap; gap:5px;';
+
+    const emojis = ['😀','😃','😄','😁','😆','😅','😂','🤣','🥲','😊','😇','🙂','🙃','😉','😌','😍','🥰','😘','😗','😙','😚','😋','😛','😝','😜','🤪','🤨','🧐','🤓','😎','🥸','🤩','🥳','😏','😒','😞','😔','😟','😕','🙁','☹️','😣','😖','😫','😩','🥺','😢','😭','😤',' ','😡','🤬','🤯','😳','🥵','🥶','😱','😨','😰','😥','😓','🤗','🤔','🤭','🤫','🤥','😶','😐','😑','😬','🙄','😯','😦','😧','😮','😲','🥱','😴','🤤','😪','😵','🤐','🥴','🤢','🤮','🤧','😷','🤒','🤕','🤑',' ','😈','👿','👹','👺','🤡','💩','👻','💀','👽','👾','🤖','🎃','😺','😸','😹','😻','😼','😽','🙀','😿','😾','👋','🤚','🖐','✋','🖖','👌','🤌','🤏','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','🖕','👇','☝️','👍','👎','✊','👊','🤛','🤜','👏','🙌','👐','🤲','🤝','🙏','✍️','💅','🤳','💪','🦾','🦿','🦵','🦶','👂','🦻','👃','🫀',' ','🦷','🦴','👀','👁','👅','👄','💋','🩸','👍','❤️','🔥','✨','🎉','👍🏻','👍🏼','👍🏽','👍🏾','👍🏿'];
+
+    emojis.forEach(e => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.style.cssText = 'background:none; border:none; font-size:20px; cursor:pointer; padding:2px; display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:4px;';
+        btn.textContent = e;
+        btn.onmouseover = () => btn.style.background = 'var(--gray-15)';
+        btn.onmouseout = () => btn.style.background = 'none';
+        btn.onmousedown = (ev) => {
+            ev.preventDefault();
+            if (myCloudEmailEditorInstance) {
+                myCloudEmailEditorInstance.insertHTML(e);
+                window.markDirty();
+            }
+            picker.remove();
+        };
+        picker.appendChild(btn);
+    });
+
+    const rect = btnEl.getBoundingClientRect();
+    document.body.appendChild(picker);
+    
+    const curLang = (typeof myCloudState !== 'undefined' && myCloudState.settings && myCloudState.settings.language) ? myCloudState.settings.language : 'en';
+    const isRtl = ['ar', 'fa', 'he', 'ur'].includes(curLang);
+
+    picker.style.bottom = (window.innerHeight - rect.top + 10) + 'px';
+    if (isRtl) {
+        picker.style.right = (window.innerWidth - rect.right) + 'px';
+    } else {
+        picker.style.left = rect.left + 'px';
+    }
+
+    const closePicker = (ev) => {
+        if (!picker.contains(ev.target) && ev.target !== btnEl && !btnEl.contains(ev.target)) {
+            picker.remove();
+            document.removeEventListener('click', closePicker);
+        }
+    };
+    setTimeout(() => document.addEventListener('click', closePicker), 10);
+};
+
+window._emlShowTemplates = function() {
+    const overlay = document.createElement('div');
+    overlay.className = 'myCloudOverlay';
+    overlay.style.display = 'flex';
+    overlay.style.zIndex = '100010';
+
+    const modal = document.createElement('div');
+    modal.className = 'myCloudModal ce-email-app-root';
+    modal.style.width = '800px';
+	modal.style.maxHeight = '90vh';
+	modal.style.height = '90vh';
+    modal.style.display = 'flex';
+    modal.style.flexDirection = 'column';
+
+    const L = typeof myCloud_LANG !== 'undefined' ? myCloud_LANG : {};
+    const curLang = (typeof myCloudState !== 'undefined' && myCloudState.settings && myCloudState.settings.language) ? myCloudState.settings.language : 'en';
+    const isRtl = ['ar', 'fa', 'he', 'ur'].includes(curLang);
+    modal.setAttribute('dir', isRtl ? 'rtl' : 'ltr');
+
+    const renderMain = (templates) => {
+        let html = '<div class="myCloudModalHeader" style="justify-content:space-between; flex-shrink:0;"><span>' + (typeof myCloudSvgLogo !== 'undefined' ? myCloudSvgLogo : '📄') + ' ' + (L.templates || 'Templates') + '</span><button class="myCloudClose" onclick="this.closest(\'.myCloudOverlay\').remove()">✕</button></div>' +
+                   '<div class="myCloudModalBody" style="padding:20px; display:flex; flex-direction:column; flex:1; min-height:0; overflow-y:auto; background:var(--gray-00);">' +
+                   '<div style="display:flex; justify-content:flex-end; margin-bottom:15px; flex-shrink:0;"><button class="owa-btn owa-primary" onclick="window._emlEditTemplate(null)">+ ' + (L.add_template || 'New Template') + '</button></div>';
+
+        if (templates.length === 0) {
+            html += '<div style="text-align:center; padding:30px; color:var(--text-secondary); background:var(--gray-05); border-radius:6px; border:1px dashed var(--border-medium);">' + (L.no_templates || 'No templates found.') + '</div>';
+        } else {
+            html += '<div style="display:flex; flex-direction:column; gap:10px;">';
+            templates.forEach(t => {
+                html += '<div style="display:flex; justify-content:space-between; align-items:center; background:var(--gray-05); border:1px solid var(--border-default); padding:10px 15px; border-radius:6px;">' +
+                        '<div style="font-weight:bold; cursor:pointer; flex:1; color:var(--text-primary);" onclick="window._emlInsertTemplate(\'' + t.id + '\')">' + myCloudEscapeHtml(t.name) + '</div>' +
+                        '<div style="display:flex; gap:8px;">' +
+                            '<button class="owa-btn" onclick="window._emlInsertTemplate(\'' + t.id + '\')">' + (L.insert || 'Insert') + '</button>' +
+                            '<button class="owa-btn" onclick="window._emlEditTemplate(\'' + t.id + '\')" title="Edit"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a.996.996 0 0 0 0-1.41l-2.34-2.34a.996.996 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>' +
+                            '<button class="owa-btn owa-danger" onclick="window._emlDeleteTemplate(\'' + t.id + '\')" title="Delete"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>' +
+                        '</div>' +
+                        '</div>';
+            });
+            html += '</div>';
+        }
+        html += '</div>';
+        modal.innerHTML = html;
+    };
+
+
+    window._emlInsertTemplate = (id) => {
+        const t = window._emlTemplatesList.find(x => x.id === id);
+        if (t && myCloudEmailEditorInstance) {
+            const subjEl = document.getElementById('emlSubject');
+            if (subjEl && t.subject !== undefined) subjEl.value = t.subject;
+            myCloudEmailEditorInstance.setContents(t.body || '');
+            window.markDirty();
+            overlay.remove();
+        }
+    };
+
+    window._emlDeleteTemplate = (id) => {
+        if (confirm(L.confirm_delete || 'Are you sure you want to delete this template?')) {
+            const fd = new URLSearchParams({ myCloud_action: 'email_delete_template', myCloud_key: myCloudState.key, myCloud_token: window.myCloudCsrfToken, template_id: id });
+            fetch('', {method:'POST', body:fd}).then(r=>r.json()).then(res => {
+                if(res.status === 'OK') window._emlLoadTemplates();
+            });
+        }
+    };
+
+    window._emlEditTemplate = (id) => {
+        const t = id ? window._emlTemplatesList.find(x => x.id === id) : {id:'', name:'', subject:'', body:''};
+        let html = '<div class="myCloudModalHeader" style="justify-content:space-between; flex-shrink:0;"><span>' + (id ? (L.edit_template || 'Edit Template') : (L.add_template || 'New Template')) + '</span><button class="myCloudClose" onclick="window._emlLoadTemplates()">✕</button></div>' +
+                   '<div class="myCloudModalBody" style="display:flex; flex-direction:column; flex:1; min-height:0; padding:0;">' +
+                       '<div style="padding:20px 20px 0 20px; flex-shrink:0;">' +
+                           '<div style="display:flex; gap:15px; margin-bottom:10px;">' +
+                               '<div style="flex:1;"><label style="font-size:12px; font-weight:bold; color:var(--text-secondary); margin-bottom:6px; display:block;">' + (L.name || 'Name') + '</label>' +
+                               '<input type="text" id="tplName" class="myCloudInlineInput" value="' + myCloudEscapeHtml(t.name) + '" style="width:100%; margin:0;"></div>' +
+                               '<div style="flex:2;"><label style="font-size:12px; font-weight:bold; color:var(--text-secondary); margin-bottom:6px; display:block;">' + (L.subj_placeholder || 'Subject') + '</label>' +
+                               '<input type="text" id="tplSubject" class="myCloudInlineInput" value="' + myCloudEscapeHtml(t.subject || '') + '" style="width:100%; margin:0;"></div>' +
+                           '</div>' +
+                       '</div>' +
+                       '<div style="padding: 10px 20px 20px 20px; flex: 1; display: flex; flex-direction: column; min-height:0;">' +
+                           '<label style="font-size:12px; font-weight:bold; color:var(--text-secondary); margin-bottom:6px; flex-shrink:0;">' + (L.template_body || 'Body') + '</label>' +
+                           '<style>#tplEditorWrap .sun-editor{height:100%!important;display:flex!important;flex-direction:column!important;border:none!important;background:transparent!important;} #tplEditorWrap .sun-editor .se-container{flex:1!important;display:flex!important;flex-direction:column!important; min-height:0!important;} #tplEditorWrap .sun-editor .se-wrapper{flex:1!important;height:auto!important; min-height:0!important;} #tplEditorWrap .sun-editor .sun-editor-editable{height:100%!important; overflow-y:auto!important;}</style>' +
+                           '<div id="tplEditorWrap" style="position:relative; border:1px solid var(--border-default); border-radius:4px; overflow:hidden; background:var(--gray-00); flex:1; display:flex; flex-direction:column; min-height:150px;">' +
+                               '<textarea id="tplEditorArea" style="display:none;"></textarea>' +
+                           '</div>' +
+                       '</div>' +
+                   '</div>' +
+                   '<div style="padding:15px 20px; border-top:1px solid var(--border-default); background:var(--gray-05); flex-shrink:0; border-radius:0 0 6px 6px;">' +
+                       '<div class="myCloudButtons" style="justify-content:flex-end; margin:0;">' +
+                           '<button class="owa-btn" onclick="window._emlLoadTemplates()">' + (L.cancel || 'Cancel') + '</button>' +
+                           '<button class="owa-btn owa-primary" onclick="window._emlSaveTemplate(\'' + t.id + '\')">' + (L.save || 'Save') + '</button>' +
+                       '</div>' +
+                   '</div>';
+        modal.innerHTML = html;
+
+        if (typeof myCloudLoadEmailEditor === 'function') {
+            myCloudLoadEmailEditor().then(() => {
+                const sunEditorGlobal = window.SUNEDITOR || window.suneditor;
+                window._tplEditorInstance = sunEditorGlobal.create('tplEditorArea', {
+                    width: '100%', height: '100%', minHeight: '250px',
+                    buttonList: [ ['undo', 'redo'], ['font', 'fontSize', 'formatBlock'], ['paragraphStyle', 'blockquote'], ['bold', 'underline', 'italic', 'strike', 'subscript', 'superscript'], ['fontColor', 'hiliteColor', 'textStyle'], ['removeFormat'], ['outdent', 'indent'], ['align', 'horizontalRule', 'list', 'lineHeight'], ['table', 'link', 'image'] ],
+                    defaultStyle: 'font-family: Arial, Helvetica, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"; font-size: 14px; color: #333333;'
+                });
+                window._tplEditorInstance.setContents(t.body);
+            });
+        }
+    };
+
+    window._emlSaveTemplate = (id) => {
+        const name = document.getElementById('tplName').value.trim();
+		const subject = document.getElementById('tplSubject').value.trim();
+        const body = window._tplEditorInstance ? window._tplEditorInstance.getContents() : '';
+        if (!name) return alert(L.enter_name || 'Please enter a name');
+        
+        const fd = new URLSearchParams({ myCloud_action: 'email_save_template', myCloud_key: myCloudState.key, myCloud_token: window.myCloudCsrfToken, template_id: id, name: name, subject: subject, body: body });
+		fetch('', {method:'POST', body:fd}).then(r=>r.json()).then(res => {
+            if(res.status === 'OK') window._emlLoadTemplates();
+        });
+    };
+
+    window._emlLoadTemplates = () => {
+        modal.innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-secondary);">Loading...</div>';
+        const fd = new URLSearchParams({ myCloud_action: 'email_get_templates', myCloud_key: myCloudState.key, myCloud_token: window.myCloudCsrfToken });
+        fetch('', {method:'POST', body:fd}).then(r=>r.json()).then(res => {
+            if (res.status === 'OK') {
+                window._emlTemplatesList = res.templates;
+                renderMain(res.templates);
+            }
+        });
+    };
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    window._emlLoadTemplates();
+};
 </script>

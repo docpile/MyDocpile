@@ -934,5 +934,12 @@ return [
     'sec_tls' => 'نقل آمن عبر TLS القياسي',
     'sec_none' => 'تم نقل الرسالة غير مشفرة عبر الإنترنت',
     'unencrypted' => 'غير مشفر',
+    'templates' => 'القوالب',
+    'add_template' => 'قالب جديد',
+    'no_templates' => 'لم يتم العثور على قوالب.',
+    'insert' => 'إدراج',
+    'edit_template' => 'تعديل القالب',
+    'template_body' => 'النص',
+    'enter_name' => 'الرجاء إدخال اسم',
 ];
 ?>

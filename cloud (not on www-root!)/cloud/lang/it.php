@@ -938,4 +938,11 @@ return [
     'sec_tls' => 'Trasporto sicuro tramite TLS standard',
     'sec_none' => 'Messaggio trasportato in chiaro su internet',
     'unencrypted' => 'Non crittografato',
+    'templates' => 'Modelli',
+    'add_template' => 'Nuovo modello',
+    'no_templates' => 'Nessun modello trovato.',
+    'insert' => 'Inserisci',
+    'edit_template' => 'Modifica modello',
+    'template_body' => 'Corpo',
+    'enter_name' => 'Inserisci un nome',
 ];
