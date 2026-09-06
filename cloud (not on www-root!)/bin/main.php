@@ -42,11 +42,14 @@ if (file_exists($work_dir.'/cloud/modules.share_public_ui.php')) {
 
 
 // ----------------------------------------------------------------------
+// Determine if operating securely inside a Home NAS environment
+$is_proxy = isset($_SERVER['HTTP_X_FORWARDED_FOR']) || isset($_SERVER['HTTP_X_FORWARDED']) || isset($_SERVER['HTTP_CLIENT_IP']) || isset($_SERVER['HTTP_FORWARDED_FOR']) || isset($_SERVER['HTTP_FORWARDED']);
+$is_home_nas = (!$is_proxy && isset($_SERVER['REMOTE_ADDR']) && function_exists('isPrivateIp') && isPrivateIp($_SERVER['REMOTE_ADDR']) && !empty($GLOBALS['home_NAS_network']));
+
 // Content Security Policy (balanced, production-safe)
 // Bulletproof scope and type check for the NAS flag
-$is_nas_csp = ((isset($home_NAS_network) && $home_NAS_network == true) || (isset($GLOBALS['home_NAS_network']) && $GLOBALS['home_NAS_network'] == true));
-$csp_scheme = $is_nas_csp ? "http: https:" : "https:";
-$csp_ws     = $is_nas_csp ? "ws: wss:" : "wss:";
+$csp_scheme = $is_home_nas ? "http: https:" : "https:";
+$csp_ws     = $is_home_nas ? "ws: wss:" : "wss:";
 
 header(
     "Content-Security-Policy: ".
@@ -75,8 +78,9 @@ header("Cross-Origin-Resource-Policy: same-origin");
 
 
 // Catch OnlyOffice stateless callbacks & fetches here before main_login.php blocks them
-if (strpos($_SERVER['REQUEST_URI'], '/myCloudOfficeFetch/') !== false || 
-    strpos($_SERVER['REQUEST_URI'], '/myCloudOfficeCallback') !== false) {
+$req_path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+if (strpos($req_path, '/myCloudOfficeFetch/') !== false || 
+    strpos($req_path, '/myCloudOfficeCallback') !== false) {
 	define('MYCLOUD_OFFICE_BRIDGE', true);
 
 	// !!!!!!!!!  ------------------------------------------------------------------------------  !!!!!!!!!!!
@@ -89,10 +93,6 @@ if (strpos($_SERVER['REQUEST_URI'], '/myCloudOfficeFetch/') !== false ||
 }
  
 $timeout_duration = $timeout_in_minutes * 60; 
-
-// Determine if operating securely inside a Home NAS environment
-$is_home_nas = (isset($_SERVER['REMOTE_ADDR']) && function_exists('isPrivateIp') && isPrivateIp($_SERVER['REMOTE_ADDR']) && isset($home_NAS_network) && $home_NAS_network === true);
-
 
 // --- LOGGED IN, SESSION AND ROLE CHECKS ---
 session_set_cookie_params([

@@ -136,7 +136,7 @@ class Login {
 		$this->global_login_window = $global_login_window ?? 60;
 
 
-		if (!empty($cloud_beta)) $cloud_path = '/cloud.beta' ?? $cloud_path = '/cloud'; 
+		$cloud_path = !empty($cloud_beta) ? '/cloud.beta' : '/cloud';
 
 		$is_cloud_uri = (isset($_SERVER['REQUEST_URI']) && strpos($_SERVER['REQUEST_URI'], $cloud_path) !== false);
 		$this->isCloudOnly = $isCloudOnly ?? $is_cloud_uri;
@@ -179,7 +179,7 @@ class Login {
 		$script_dir = dirname($_SERVER['SCRIPT_FILENAME']);
 		$processing_exists = file_exists(__DIR__ . '/security.php') || file_exists($script_dir . '/security.php') || file_exists($this->work_dir . '/security.php');
 		$timestamp = time();
-		$ip = $_SERVER['REMOTE_ADDR'];
+		$ip = get_real_ip_address();
 		$payload = $ip . '|' . $timestamp;
 		$sig = hash_hmac('sha256', $payload, $this->api_key);
 
@@ -207,7 +207,7 @@ class Login {
 		if (!isset($_GET['st'], $_GET['sig'])) return false;
 		$provided_time = (int)$_GET['st'];
 		$provided_sig  = $_GET['sig'];
-		$current_ip    = $_SERVER['REMOTE_ADDR'];
+		$current_ip    = get_real_ip_address();
 		if (time() - $provided_time <= 60 && time() >= $provided_time) {
 			$expected_sig = hash_hmac('sha256', $current_ip . '|' . $provided_time, $this->api_key);
 			if (hash_equals($expected_sig, $provided_sig)) return true;
@@ -289,6 +289,60 @@ class Login {
 	public function load_verifications($file) { return json_decode(file_get_contents($file), true) ?: []; }
 	public function save_verifications($file, $data) { file_put_contents($file, json_encode($data)); }
 
+	public function showCaptchaInterstitial() {
+		$lang = $this->language === 'de' ? 'de' : 'en';
+		$title = $lang === 'de' ? 'Sicherheitsüberprüfung<br>' : 'Security Check<br>';
+
+		if (session_status() !== PHP_SESSION_ACTIVE) @session_start();
+		if ($_SERVER['REQUEST_METHOD'] !== 'POST') unset($_SESSION['captcha_code']);
+
+		$msg = $lang === 'de' ? 'Bestätige, dass du ein Mensch bist.<br>Deshalb bitte das folgende CAPTCHA lösen, um fortzufahren.' : 'Confirm that you are a human.<br>So, please solve the following CAPTCHA to continue.';
+		$reason = $lang === 'de' ? 'Grund: Ungewöhnliche Netzwerkaktivität festgestellt.' : 'Reason: Unusual network activity detected.';
+		$btn = $lang === 'de' ? 'Bestätigen' : 'Verify';
+		$refresh = $lang === 'de' ? 'Neu laden' : 'Refresh';
+		$error_html = isset($this->login_error) ? "<p style='color:#c0392b; font-weight:bold; margin-top:10px;'>" . htmlspecialchars($this->login_error) . "</p>" : "";
+		
+		echo "<!DOCTYPE html>
+		<html lang='$lang'>
+		<head>
+			<meta charset='UTF-8'>
+			<meta name='viewport' content='width=device-width, initial-scale=1.0'>
+			<title>$title</title>
+			<style>
+				body { font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif; background: #fcfcfd; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+				.container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center; max-width: 400px; width: 100%; box-sizing: border-box; }
+				img { border: 2px solid #eee; border-radius: 6px; margin: 20px 0; }
+				input[type='text'] { font-size: 1.2rem; padding: 10px; width: 200px; text-align: center; border: 1px solid #ccc; border-radius: 6px; letter-spacing: 2px; }
+				button { margin-top: 20px; padding: 10px 20px; font-size: 1rem; background: #0071e3; color: white; border: none; border-radius: 6px; cursor: pointer; }
+				button:hover { background: #005bb5; }
+			</style>
+		</head>
+		<body>
+			<div class='container'>
+				<div style='margin-bottom: 20px;'>
+					<img src='/cloud/images/cloud-logo-512-square.png' alt='Logo' style='width: 100px; height: auto;'>
+				</div>
+				<h2>🛡️ $title</h2>
+				<p>$msg</p>
+				<p style='font-size: 0.85em; color: #666; margin-top: -10px;'>$reason</p>
+				$error_html
+				<form method='post' action='?captcha=1'>
+					<img src='?captcha_img=1&t=" . uniqid() . "' alt='CAPTCHA'><br>
+					<input type='text' name='waf_captcha_code' required autocomplete='off'><br>
+					<div style='display:flex; justify-content:center; align-items:center; gap: 10px; margin-top: 20px;'>
+						<button type='submit' style='margin-top: 0;'>$btn</button>
+						<a href='?captcha=1&refresh_captcha=1' title='$refresh' style='display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px; background: #e0e0e0; color: #333; text-decoration: none; border-radius: 6px;'>
+							<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\">
+								<path d=\"M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.59-7.59l5.67 5.67\"/>
+							</svg>
+						</a>
+					</div>
+				</form>
+			</div>
+		</body>
+		</html>";
+		exit;
+	}
 
 	// ################################################################
 	// LOGIC METHODS
@@ -311,7 +365,7 @@ class Login {
 				'rate_limit'    => ['enabled' => false],
 				'asn_check'     => ['enabled' => true],
 				'keyword_check' => ['enabled' => true],
-				'blocklists'    => ['enabled' => true],
+				'blocklists'    => ['enabled' => false],
 				'waf_checks'    => ['enabled' => false],
 				'work_dir'      => $this->work_dir
 			];
@@ -320,19 +374,26 @@ class Login {
 			$sec_checker = new ClientSecurity([], $local_log, $input_sec_config);
 			$sec_result  = $sec_checker->runCheck();
 
-			if ($sec_result['status'] === 'BLOCK') {
-				if (function_exists('WriteLogLine') && !empty($local_log)) {
-					WriteLogLine($local_log, "error", "MainLogin: 📛️ WAF 1 block - Score: " . $sec_result['score'] . "  Reasons: " . implode(", ", $sec_result['reasons']));
+			if ($sec_result['status'] === 'BLOCK' && !isCaptchaBypassed()) {
+				$is_logged_in = isset($_SESSION['loggedin']) && $_SESSION['loggedin'] === true;
+				$captcha_locked = (isset($_SESSION['captcha_attempts']) && $_SESSION['captcha_attempts'] >= 3);
+				if (!$is_logged_in && !isCaptchaBypassed() && !$captcha_locked) {
+                    if (function_exists('WriteLogLine') && !empty($local_log)) { WriteLogLine($local_log, "warning", "MainLogin: 📛️ WAF 1 block (CAPTCHA) - Score: " . $sec_result['score'] . "  Reasons: " . implode(", ", $sec_result['reasons'])); }
+					$target = $this->get_secure_processing_url('captcha');
+					echo '<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=' . htmlspecialchars($target, ENT_QUOTES, 'UTF-8') . '"></head><body><script>window.location.replace("' . $target . '");</script></body></html>';
+					exit;
+				} else {
+					if (function_exists('WriteLogLine') && !empty($local_log)) { WriteLogLine($local_log, "error", "MainLogin: 📛️ WAF 1 block - Score: " . $sec_result['score'] . "  Reasons: " . implode(", ", $sec_result['reasons'])); }
+					$target = $this->get_secure_processing_url('blocked');
+					echo '<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=' . htmlspecialchars($target, ENT_QUOTES, 'UTF-8') . '"></head><body><script>window.location.replace("' . $target . '");</script></body></html>';
+					exit;
 				}
-				$target = $this->get_secure_processing_url('blocked');
-				echo '<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=' . htmlspecialchars($target, ENT_QUOTES, 'UTF-8') . '"></head><body><script>window.location.replace("' . $target . '");</script></body></html>';
-				exit;
 			}
 		}
 
 		// IP Binding Check
 		if (isset($GLOBALS['cookie_is_ip_bound']) && $GLOBALS['cookie_is_ip_bound'] === true) {
-			if (isset($_SESSION['ip_address']) && $_SESSION['ip_address'] !== $_SERVER['REMOTE_ADDR']) {
+			if (isset($_SESSION['ip_address']) && $_SESSION['ip_address'] !== get_real_ip_address()) {
 				session_unset(); session_destroy(); header("Location: " . $_SERVER['PHP_SELF']); exit();
 			}
 		}
@@ -346,7 +407,7 @@ class Login {
 		}
 
 		// Brute Force Check
-		$client_ip = $_SERVER['REMOTE_ADDR'];
+		$client_ip = get_real_ip_address();
 		$client_subnet = $this->get_subnet_mask($client_ip);
 		$bf_data = $this->load_brute_force_data($this->login_bruteforce_file);
 
@@ -446,7 +507,7 @@ class Login {
 									
 										// Authentication Bypass via App Mode
 										// Cryptographically bind app mode to the token, IP, and User-Agent
-										$client_env = $_SERVER['REMOTE_ADDR'] . ($_SERVER['HTTP_USER_AGENT'] ?? '');
+										$client_env = get_real_ip_address() . ($_SERVER['HTTP_USER_AGENT'] ?? '');
 										$expected_app_mode = hash_hmac('sha256', $selector . 'app_mode' . $client_env, $this->api_key);
 									if (isset($_GET['app_mode_confirmed']) && hash_equals($expected_app_mode, $_GET['app_mode_confirmed'])) {
 										$username = $token_data['username'];
@@ -455,7 +516,7 @@ class Login {
 										$is_admin_user = false;
 										if (isset($this->user_details) && is_array($this->user_details)) {
 											foreach ($this->user_details as $ud) {
-												if (isset($ud['name']) && $ud['name'] === $username && isset($ud['cloud'])) {
+												if (isset($ud['name']) && strcasecmp($ud['name'], $username) === 0 && isset($ud['cloud'])) {
 													foreach ($ud['cloud'] as $cloud_cfg) {
 														if (($cloud_cfg['rights'] ?? '') === 'admin_mode') {
 															$is_admin_user = true;
@@ -485,9 +546,9 @@ class Login {
 											}
 											session_regenerate_id(true);
 											$_SESSION = []; $_SESSION['loggedin'] = true; $_SESSION['username'] = $username;
-											if (isset($GLOBALS['cookie_is_ip_bound']) && $GLOBALS['cookie_is_ip_bound'] === true) $_SESSION['ip_address'] = $_SERVER['REMOTE_ADDR'];
+											if (isset($GLOBALS['cookie_is_ip_bound']) && $GLOBALS['cookie_is_ip_bound'] === true) $_SESSION['ip_address'] = get_real_ip_address();
 											$_SESSION['fingerprint'] = hash('sha256', ($_SERVER['HTTP_USER_AGENT'] ?? ''));
-											$this->reset_login_failures($_SERVER['REMOTE_ADDR'], $this->login_bruteforce_file);
+											$this->reset_login_failures(get_real_ip_address(), $this->login_bruteforce_file);
 											$_SESSION['app_mode'] = true;
 											WriteLogLine($this->log_file, "success", "MainLogin: ✅ Auto-Login (App Mode) for $username");
 											$target = $this->get_secure_processing_url('login');
@@ -592,7 +653,7 @@ class Login {
 					$verifications[$token]['approved'] = true;
 					$this->save_verifications($this->verify_store_file, $verifications);
 					$_SESSION['fingerprint'] = hash('sha256', ($_SERVER['HTTP_USER_AGENT'] ?? ''));
-					$this->reset_login_failures($_SERVER['REMOTE_ADDR'], $this->login_bruteforce_file);
+					$this->reset_login_failures(get_real_ip_address(), $this->login_bruteforce_file);
 					?>
 				<!DOCTYPE html>
 				<html>
@@ -641,11 +702,11 @@ class Login {
 				$_SESSION['loggedin'] = true;
 				$_SESSION['username'] = $username;
 				if (isset($GLOBALS['cookie_is_ip_bound']) && $GLOBALS['cookie_is_ip_bound'] === true) {
-					$_SESSION['ip_address'] = $_SERVER['REMOTE_ADDR'];
+					$_SESSION['ip_address'] = get_real_ip_address();
 				}
 				
 				$_SESSION['fingerprint'] = hash('sha256', ($_SERVER['HTTP_USER_AGENT'] ?? ''));
-				$this->reset_login_failures($_SERVER['REMOTE_ADDR'], $this->login_bruteforce_file);
+				$this->reset_login_failures(get_real_ip_address(), $this->login_bruteforce_file);
 
 				if ($remember_me) {
 					$selector = bin2hex(random_bytes(16));
@@ -695,10 +756,10 @@ class Login {
 			}
 			$_SESSION['2fa_attempts']++;
 
-			if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+			if (!isset($_POST['csrf_token']) || !is_string($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
 				if ($this->language === 'de') { $this->login_error = "Sitzung abgelaufen. Bitte die Seite neu laden."; } 
 				else { $this->login_error = "Expired session token. Please refresh the page and try again."; }
-				WriteLogLine($this->log_file, "error", "MainLogin: ❌ CSRF token mismatch on 2FA verify. Username: " . $this->sanitize_username($_SESSION['2fa_user'] ?? 'Unknown') . "Session token: " . $_SESSION['csrf_token'] . " Post token: " . $_POST['csrf_token'] );
+				WriteLogLine($this->log_file, "error", "MainLogin: ❌ CSRF token mismatch on 2FA verify. Username: " . $this->sanitize_username($_SESSION['2fa_user'] ?? 'Unknown') . "Session token: " . $_SESSION['csrf_token'] . " Post token: " . (is_string($_POST['csrf_token'] ?? null) ? $_POST['csrf_token'] : json_encode($_POST['csrf_token'] ?? 'none')) );
 				usleep(random_int(1500000, 2700000));
 			} else {
 				if (time() > $_SESSION['2fa_expires']) {
@@ -709,8 +770,8 @@ class Login {
 					usleep(random_int(1500000, 2700000));
 					header("Location: " . $_SERVER['PHP_SELF']);
 					exit();
-				} elseif (hash_equals((string)$_SESSION['2fa_code'], (string)$_POST['code'])) {
-					
+				} elseif (is_string($_POST['code']) && hash_equals((string)$_SESSION['2fa_code'], (string)$_POST['code'])) {
+	
 					$username = $_SESSION['2fa_user'];
 					$remember_me = !empty($_SESSION['2fa_remember_me']);
 
@@ -720,11 +781,11 @@ class Login {
 					$_SESSION['loggedin'] = true;
 					$_SESSION['username'] = $username;
 					if (isset($GLOBALS['cookie_is_ip_bound']) && $GLOBALS['cookie_is_ip_bound'] === true) {
-						$_SESSION['ip_address'] = $_SERVER['REMOTE_ADDR'];
+						$_SESSION['ip_address'] = get_real_ip_address();
 					}
 
 					$_SESSION['fingerprint'] = hash('sha256', ($_SERVER['HTTP_USER_AGENT'] ?? ''));
-					$this->reset_login_failures($_SERVER['REMOTE_ADDR'], $this->login_bruteforce_file);
+					$this->reset_login_failures(get_real_ip_address(), $this->login_bruteforce_file);
 
 					if ($remember_me) {
 						$selector = bin2hex(random_bytes(16));
@@ -750,7 +811,7 @@ class Login {
 					echo '<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=' . htmlspecialchars($target, ENT_QUOTES, 'UTF-8') . '"></head><body><script>window.location.replace("' . $target . '");</script></body></html>';
 					exit();
 				} else {
-					$this->register_login_failure($_SERVER['REMOTE_ADDR'], $this->login_bruteforce_file, $this->login_failures, $this->login_block_seconds, $this->brute_force_window, $this->brute_force_factor, $_SESSION['2fa_user']);
+					$this->register_login_failure(get_real_ip_address(), $this->login_bruteforce_file, $this->login_failures, $this->login_block_seconds, $this->brute_force_window, $this->brute_force_factor, $_SESSION['2fa_user']);
 					WriteLogLine($this->log_file, "error", "MainLogin: ❌ 2FA authentication failed, invalid code");
 					if ($this->language === 'de') { $this->login_error = "Ungültiger Code"; } else { $this->login_error = "Invalid Code."; }
 					usleep(random_int(1500000, 2700000));
@@ -784,7 +845,7 @@ class Login {
 					'rate_limit'    => ['enabled' => true],
 					'asn_check'     => ['enabled' => true],
 					'keyword_check' => ['enabled' => true],
-					'blocklists'    => ['enabled' => true],
+					'blocklists'    => ['enabled' => false],
 					'waf_checks'    => ['enabled' => true],
 					'work_dir'      => $this->work_dir
 				];
@@ -793,12 +854,22 @@ class Login {
 				$sec_checker = new ClientSecurity([], $local_log, $input_sec_config);
 				$sec_result  = $sec_checker->runCheck();
 
-				if ($sec_result['status'] === 'BLOCK') {
-					WriteLogLine($local_log, "error", "MainLogin: 📛️ WAF 2 block - Score: " . $sec_result['score'] . "  Reasons: " . implode(", ", $sec_result['reasons']));
-					if ($this->language === 'de') { $this->login_error = "Benutzername und/oder Passwort falsch"; } 
-					else { $this->login_error = "Invalid username/password or account not configured"; }
-					usleep(random_int(1500000, 2700000));
-					return true; // Simulate goto skip_login_check
+				if ($sec_result['status'] === 'BLOCK' && !isCaptchaBypassed()) {
+					$is_logged_in = isset($_SESSION['loggedin']) && $_SESSION['loggedin'] === true;
+					$captcha_locked = (isset($_SESSION['captcha_attempts']) && $_SESSION['captcha_attempts'] >= 3);
+					if (!$is_logged_in && !isCaptchaBypassed() && !$captcha_locked) {
+                     	WriteLogLine($local_log, "warning", "MainLogin: 📛️ WAF 2 block (CAPTCHA) - Score: " . $sec_result['score'] . "  Reasons: " . implode(", ", $sec_result['reasons']));
+						$target = $this->get_secure_processing_url('captcha');
+						echo '<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=' . htmlspecialchars($target, ENT_QUOTES, 'UTF-8') . '"></head><body><script>window.location.replace("' . $target . '");</script></body></html>';
+						exit;
+					} else {
+						WriteLogLine($local_log, "error", "MainLogin: 📛️ WAF 2 block - Score: " . $sec_result['score'] . "  Reasons: " . implode(", ", $sec_result['reasons']));
+						if ($this->language === 'de') { $this->login_error = "Benutzername und/oder Passwort falsch"; } 
+						else { $this->login_error = "Invalid username/password or account not configured"; }
+						usleep(random_int(1500000, 2700000));
+						return true; // Simulate goto skip_login_check
+					}
+
 				}
 			}
 
@@ -825,17 +896,34 @@ class Login {
 			if (!$csrf_present || (!$csrf_valid && (!$is_first_login_attempt || !$is_same_origin))) {
 				if ($this->language === 'de') { $this->login_error = "Sitzung abgelaufen. Bitte die Seite neu laden."; } 
 				else { $this->login_error = "Expired session token. Please refresh the page and try again."; }
-				WriteLogLine($this->log_file, "error", "MainLogin: ❌ CSRF token mismatch/missing on login. Username: " . $this->sanitize_username($_POST['username'] ?? 'Unknown') . " Session token: " . $_SESSION['csrf_token'] . " Post token: " . ($_POST['csrf_token'] ?? 'none') );
+				WriteLogLine($this->log_file, "error", "MainLogin: ❌ CSRF token mismatch/missing on login. Username: " . $this->sanitize_username($_POST['username'] ?? 'Unknown') . " Session token: " . $_SESSION['csrf_token'] . " Post token: " . (is_string($_POST['csrf_token'] ?? null) ? $_POST['csrf_token'] : json_encode($_POST['csrf_token'] ?? 'none')) );
+				usleep(random_int(1500000, 2700000));
+			} elseif (!is_string($_POST['username']) || !is_string($_POST['password'])) {
+				$this->login_error = ($this->language === 'de') ? "Ungültige Anfrage." : "Invalid request format.";
 				usleep(random_int(1500000, 2700000));
 			} else {
-				$username = filter_var( $_POST['username'], FILTER_UNSAFE_RAW, FILTER_FLAG_STRIP_LOW | FILTER_FLAG_STRIP_HIGH ); 
+	$username = filter_var( $_POST['username'], FILTER_UNSAFE_RAW, FILTER_FLAG_STRIP_LOW | FILTER_FLAG_STRIP_HIGH ); 
 				$username = preg_replace( '/[^a-zA-Z0-9!#$%&+\-=?^_{}|~.@]/', '', $username );
-				$username = strtolower($username);
 				
 				$password = $_POST['password'];
 				$remember_me_flag = !empty($_POST['remember_me']);
-				$stored_hash = $this->users[$username] ?? null;
 				$authenticated = false;
+
+				// Normalize case against the configured users array
+				$matched_username = null;
+				$stored_hash = null;
+				if (is_array($this->users)) {
+					foreach ($this->users as $k => $v) {
+						if (strcasecmp($k, $username) === 0) {
+							$matched_username = $k;
+							$stored_hash = $v;
+							break;
+						}
+					}
+				}
+				if ($matched_username) {
+					$username = $matched_username;
+				}
 				
 				// Dummy hash for timing attack mitigation (Standard Bcrypt format)
 				$dummy_hash = '$2y$10$vI8aWBnTxT.M2L6t.4tB2.2B9uY.Yg2eU/VwH9c0/hQn5hU0nU.mG';
@@ -893,11 +981,11 @@ class Login {
 						WriteLogLine($this->log_file, "warning", "MainLogin:  ️ HIBP breach detected for user $username. Forcing 2FA.");
 					}
 					
-					+					$target_email = null;
+					$target_email = null;
 					$has_admin_mode = false;
 					if (isset($this->user_details) && is_array($this->user_details)) {
 						foreach ($this->user_details as $ud) {
-							if (isset($ud['name']) && $ud['name'] === $username) { 
+							if (isset($ud['name']) && strcasecmp($ud['name'], $username) === 0) {
 								$target_email = $ud['email'] ?? null; 
 								if (isset($ud['cloud']) && is_array($ud['cloud'])) {
 									foreach ($ud['cloud'] as $cloud_cfg) {
@@ -931,9 +1019,9 @@ class Login {
 							session_regenerate_id(true);
 							$_SESSION = [];
 							$_SESSION['loggedin'] = true; $_SESSION['username'] = $username;
-							if (isset($GLOBALS['cookie_is_ip_bound']) && $GLOBALS['cookie_is_ip_bound'] === true) $_SESSION['ip_address'] = $_SERVER['REMOTE_ADDR'];
+							if (isset($GLOBALS['cookie_is_ip_bound']) && $GLOBALS['cookie_is_ip_bound'] === true) $_SESSION['ip_address'] = get_real_ip_address();
 							$_SESSION['fingerprint'] = hash('sha256', ($_SERVER['HTTP_USER_AGENT'] ?? ''));
-							$this->reset_login_failures($_SERVER['REMOTE_ADDR'], $this->login_bruteforce_file);
+							$this->reset_login_failures(get_real_ip_address(), $this->login_bruteforce_file);
 
 							// Respect the checkbox for users bypassing 2FA or renewing an existing token
 							if ($remember_me_flag) {
@@ -993,12 +1081,12 @@ class Login {
 						$target_email = null;
 						if (isset($this->user_details) && is_array($this->user_details)) {
 							foreach ($this->user_details as $ud) {
-								if (isset($ud['name']) && $ud['name'] === $username) { $target_email = $ud['email'] ?? null; break; }
+								if (isset($ud['name']) && strcasecmp($ud['name'], $username) === 0) { $target_email = $ud['email'] ?? null; break; }
 							}
 						}
 						
-						if (!filter_var($target_email, FILTER_VALIDATE_EMAIL) ||  preg_match('/[\r\n]/', $target_email)) {
-							$this->login_error = $L['invalid_email']; // Assumes $L is available or logic fails same as original
+						if ($target_email && (!filter_var($target_email, FILTER_VALIDATE_EMAIL) || preg_match('/[\r\n]/', $target_email))) {
+							$this->login_error = ($this->language === 'de') ? "Ungültige E-Mail-Adresse" : "Invalid email address";
 							WriteLogLine($this->log_file, "error", "MainLogin: Email validation failed");
 							usleep(random_int(1500000, 2700000));
 							$target = $this->get_secure_processing_url('blocked');
@@ -1007,7 +1095,7 @@ class Login {
 						}
 			
 						if (!$target_email) {
-							$this->register_login_failure($_SERVER['REMOTE_ADDR'], $this->login_bruteforce_file, $this->login_failures, $this->login_block_seconds, $this->brute_force_window, $this->brute_force_factor, $this->sanitize_username($_POST['username'] ?? ''));
+							$this->register_login_failure(get_real_ip_address(), $this->login_bruteforce_file, $this->login_failures, $this->login_block_seconds, $this->brute_force_window, $this->brute_force_factor, $this->sanitize_username($_POST['username'] ?? ''));
 							if ($this->language === 'de') { $this->login_error = "Benutzername und/oder Passwort falsch"; } 
 							else { $this->login_error = "Invalid username/password or account not configured"; }
 							WriteLogLine($this->log_file, "error", "MainLogin: ❌ authentication failed (no email address) for user ".$this->sanitize_username($_POST['username'] ?? ''));
@@ -1096,7 +1184,7 @@ class Login {
 						WriteLogLine($this->log_file, "error", "MainLogin: ❌ CSRF token mismatch on failed login. Username: " . $this->sanitize_username($_POST['username'] ?? 'Unknown') );
 						usleep(random_int(1500000, 2700000));
 					} else {
-						$this->register_login_failure($_SERVER['REMOTE_ADDR'], $this->login_bruteforce_file, $this->login_failures, $this->login_block_seconds, $this->brute_force_window, $this->brute_force_factor, $this->sanitize_username($_POST['username'] ?? ''));
+						$this->register_login_failure(get_real_ip_address(), $this->login_bruteforce_file, $this->login_failures, $this->login_block_seconds, $this->brute_force_window, $this->brute_force_factor, $this->sanitize_username($_POST['username'] ?? ''));
 						if ($this->language === 'de') { $this->login_error = "Benutzername und/oder Passwort falsch"; } 
 						else { $this->login_error = "Invalid username/password or account not configured"; }
 						WriteLogLine($this->log_file, "error", "MainLogin: ❌ authentication failed for user ".$this->sanitize_username($_POST['username'] ?? ''));
@@ -1185,7 +1273,7 @@ class Login {
 			if (isset($_COOKIE[$this->cookie_name])) {
 				$parts = explode(':', $_COOKIE[$this->cookie_name]);
 				if (count($parts) === 2) {
-					$client_env = $_SERVER['REMOTE_ADDR'] . ($_SERVER['HTTP_USER_AGENT'] ?? '');
+					$client_env = get_real_ip_address() . ($_SERVER['HTTP_USER_AGENT'] ?? '');
 					$app_mode_sig = hash_hmac('sha256', $parts[0] . 'app_mode' . $client_env, $this->api_key);
 				}
 			}
@@ -1494,6 +1582,39 @@ class Login {
 	// MAIN RUN METHOD
 	// ################################################################
 	public function run() {
+		if (isset($_GET['refresh_captcha'])) {
+			unset($_SESSION['captcha_code']);
+			header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+			header("Location: ?captcha=1&t=" . uniqid());
+			exit;
+		}
+		if (isset($_GET['captcha_img'])) {
+			generateCaptchaImage();
+		}
+
+		if (isset($_POST['waf_captcha_code']) && isset($_GET['captcha'])) {
+			if (verifyCaptchaCode($_POST['waf_captcha_code'])) {
+				header("Location: " . strtok($_SERVER['REQUEST_URI'], '?'));
+				exit;
+			} else {
+				if (isset($_SESSION['captcha_attempts']) && $_SESSION['captcha_attempts'] >= 3) {
+					$target = $this->get_secure_processing_url('blocked');
+					header("Location: " . $target);
+					exit;
+				}
+				$this->login_error = $this->language === 'de' ? 'Falsches CAPTCHA. Bitte erneut versuchen.' : 'Invalid CAPTCHA. Please try again.';
+			}
+		}
+
+		if (isset($_GET['captcha'])) {
+			if (isset($_SESSION['captcha_attempts']) && $_SESSION['captcha_attempts'] >= 3) {
+				$target = $this->get_secure_processing_url('blocked');
+				header("Location: " . $target);
+				exit;
+			}
+			$this->showCaptchaInterstitial();
+		}
+
 		function_exists('checkAndProcessHeartbeat') && checkAndProcessHeartbeat();
 
 		$this->checkGlobalSecurity();
@@ -1502,9 +1623,10 @@ class Login {
 		// --- HOME NAS AUTOLOGIN ---
 		// Enforces strict internal-IP validation before evaluating config flags
 		// Enforces strict internal-IP validation on the client IP before evaluating config flags
-		$client_ip = $_SERVER['REMOTE_ADDR'] ?? '';
-		if (function_exists('isPrivateIp') && isPrivateIp($client_ip) && isset($GLOBALS['home_NAS_network']) && $GLOBALS['home_NAS_network'] === true) {
-            if (isset($GLOBALS['home_NAS_autologin']) && $GLOBALS['home_NAS_autologin'] === true && (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true)) {
+		$client_ip = get_real_ip_address() ?? '';
+		$is_proxy = isset($_SERVER['HTTP_X_FORWARDED_FOR']) || isset($_SERVER['HTTP_X_FORWARDED']) || isset($_SERVER['HTTP_CLIENT_IP']) || isset($_SERVER['HTTP_FORWARDED_FOR']) || isset($_SERVER['HTTP_FORWARDED']);
+		if (!$is_proxy && function_exists('isPrivateIp') && isPrivateIp($client_ip) && !empty($GLOBALS['home_NAS_network'])) {
+            if (!empty($GLOBALS['home_NAS_autologin']) && (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true)) {
 				if (!empty($this->users) && is_array($this->users)) {
 					$first_user = array_key_first($this->users); 
 					if ($first_user) {
@@ -1514,10 +1636,10 @@ class Login {
 						$_SESSION['username'] = $first_user;
 						
 						if (isset($GLOBALS['cookie_is_ip_bound']) && $GLOBALS['cookie_is_ip_bound'] === true) {
-							$_SESSION['ip_address'] = $_SERVER['REMOTE_ADDR'];
+							$_SESSION['ip_address'] = get_real_ip_address();
 						}
 						$_SESSION['fingerprint'] = hash('sha256', ($_SERVER['HTTP_USER_AGENT'] ?? ''));
-						$this->reset_login_failures($_SERVER['REMOTE_ADDR'], $this->login_bruteforce_file);
+						$this->reset_login_failures(get_real_ip_address(), $this->login_bruteforce_file);
 						
 						WriteLogLine($this->log_file, "success", "MainLogin: ✅ Home NAS Auto-Login for $first_user");
 						session_write_close();

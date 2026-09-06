@@ -1,3 +1,9 @@
+4.2.292
+	Security: Replaced hard coded block with captcha (and block after 3 unsolved captchas) in connection with unallowed IP addresses and so on
+	Security: Medium to low severity: Several bugfixes and logic error fixes on login.
+	Fix: Numerous smaller bugs fixed in the login and session code
+	Improvement: Performance enhancements for security check and login
+
 4.2.291
 	Security: Critical Authentication Bypass in Home NAS Auto-Login allows remote IPs to autologin
 	Security: Arbitrary File &amp; Directory Deletion / Permission Bypass

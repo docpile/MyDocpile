@@ -22,13 +22,15 @@ if (!isPrivateIp($_SERVER['REMOTE_ADDR'])) {
 		$geoip_data['region'] = $cityrecord->mostSpecificSubdivision->name;
 		$geoip_data['organization'] = "AS".$asnrecord->autonomousSystemNumber." ".$asnrecord->autonomousSystemOrganization;
 	}
-		$geoip_data['admin_allowed'] = False;
+		$geoip_data['admin_allowed'] = false;
 		foreach ($whitelist_admin_countries as $value) { 
 			if (strtoupper($value) == strtoupper($geoip_data['country_code'])) $geoip_data['admin_allowed'] = True;
 		}
 	
 	$citydb = null;
 	$asndb = null;
+} else {
+	$geoip_data['admin_allowed'] = true;
 }
 
 

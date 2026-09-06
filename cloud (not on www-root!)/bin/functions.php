@@ -99,14 +99,14 @@ function removeEmojis($text) {
 //    Returns the real IP address (needed for the "lock file" at the very beginning, 
 //    which is done before the "My->ip_address" variable is instanciated
 function get_real_ip_address() {
-	if (isset($_SERVER['REMOTE_ADDR'])) $ip_address = $_SERVER['REMOTE_ADDR'];
-	elseif(isset($_SERVER['HTTP_CLIENT_IP'])) $ip_address = $_SERVER['HTTP_CLIENT_IP'];
-	elseif(isset($_SERVER['HTTP_X_FORWARDED_FOR'])) $ip_address = $_SERVER['HTTP_X_FORWARDED_FOR'];
+	if(isset($_SERVER['HTTP_X_FORWARDED_FOR'])) $ip_address = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0];
 	elseif(isset($_SERVER['HTTP_X_FORWARDED'])) $ip_address = $_SERVER['HTTP_X_FORWARDED'];
 	elseif(isset($_SERVER['HTTP_FORWARDED_FOR'])) $ip_address = $_SERVER['HTTP_FORWARDED_FOR'];
 	elseif(isset($_SERVER['HTTP_FORWARDED'])) $ip_address = $_SERVER['HTTP_FORWARDED'];
+	elseif(isset($_SERVER['HTTP_CLIENT_IP'])) $ip_address = $_SERVER['HTTP_CLIENT_IP'];
+	elseif(isset($_SERVER['REMOTE_ADDR'])) $ip_address = $_SERVER['REMOTE_ADDR'];
 	else $ip_address = 'UNKNOWN_IP';
-	return $ip_address;
+	return trim($ip_address);
 }
 
 
@@ -154,7 +154,7 @@ function isAbsolutePath($path): bool {
     if ($result === true) {
         // Heal 2: Reject Windows path spoofing masquerading as absolute Linux paths
         // We cannot safely 'heal' C:\ into a Linux path, so we heal the OUTPUT state to false.
-        if (preg_match('/^[a-zA-Z]:\\\\/', $path) || preg_match('/^[a-zA-Z]:\//', $path)) {
+        if (preg_match('/^\/?[a-zA-Z]:[\\\\\/]/', $path)) {
             $result = false; 
         }
         
@@ -273,10 +273,16 @@ function prependToFile($filePath, $newLine) {
         $newLine .= "\n";
     }
 
-    $fileContents = file_get_contents($filePath);
-    $updatedContents = $newLine . $fileContents;
-    
-    file_put_contents($filePath, $updatedContents);
+	$fp = fopen($filePath, 'c+');
+	if ($fp) {
+		flock($fp, LOCK_EX);
+		$fileContents = stream_get_contents($fp);
+		rewind($fp);
+		fwrite($fp, $newLine . $fileContents);
+		fflush($fp);
+		flock($fp, LOCK_UN);
+		fclose($fp);
+	}
 }
 
 // ``````````````````````````````````````````````````````````````````````````````````````
@@ -320,9 +326,7 @@ function getLines($file)
 function gethostbyaddr_timeout($ip, $dns = "8.8.8.8", $timeout = 1000)
 {
     // random transaction number (for routers etc to get the reply back)
-    $data = rand(0, 99);
-    // trim it to 2 bytes
-    $data = substr($data, 0, 2);
+    $data = random_bytes(2);
     // request header
     $data .= "\1\0\0\1\0\0\0\0\0\0";
     // split IP up
@@ -481,7 +485,7 @@ function getUserRole($username) {
  
      if (isset($user_details) && is_array($user_details)) {
          foreach ($user_details as $ud) {
-             if (isset($ud['name']) && $ud['name'] === $username) {
+             if (isset($ud['name']) && strcasecmp($ud['name'], $username) === 0) {
                  return $ud['role'] ?? "notfound";
              }
          }
@@ -507,7 +511,7 @@ function getServiceUserID($userID, $service) {
 	
 	if (isset($user_details) && is_array($user_details)) {
 		foreach ($user_details as $ud) {
-			if (isset($ud['name']) && $ud['name'] === $userID) {
+			if (isset($ud['name']) && strcasecmp($ud['name'], $userID) === 0) {
 				if (isset($ud['other_users']) && isset($ud['other_users'][$service])) {
 					return $ud['other_users'][$service];
 				}
@@ -627,8 +631,9 @@ function validateFilename($name) {
                 'COM5', 'COM6', 'COM7', 'COM8', 'COM9', 'LPT1', 'LPT2', 
                 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9'];
     
-    if (in_array(strtoupper(explode('.', $name)[0]), $reserved)) {
-        return ['valid' => false, 'error' => 'Reserved system name'];
+    $base_name = trim(explode('.', $name)[0]);
+    if (in_array(strtoupper($base_name), $reserved)) {
+		return ['valid' => false, 'error' => 'Reserved system name'];
     }
     
     // Check for dangerous characters
@@ -711,9 +716,9 @@ function myCloudStripJsComments($str) {
         
         // 1. IF WE ARE IN A COMMENT
         if ($inComment) {
-            if ($inComment === '//' && $char === "\n") {
+            if ($inComment === '//' && ($char === "\n" || $char === "\r")) {
                 $inComment = false; // End of single line comment
-                $output .= "\n";    // Keep the newline!
+                $output .= $char;    // Keep the newline/CR!
             }
             elseif ($inComment === '/*' && $char === '*' && $next === '/') {
                 $inComment = false; // End of multi line comment
@@ -789,10 +794,6 @@ function myCloudStripJsComments($str) {
     
     return $output;
 }
-
-// ======================================================================
-//  MODERN SAFE MINIFIER (Pragmatic Edition)
-// ======================================================================
 
 // ======================================================================
 //  MODERN SAFE MINIFIER (Line-Based Edition)
@@ -1047,4 +1048,269 @@ function obfuscate_html(string $html, int $js_obf_level = 2): string
     $html = preg_replace('/<!--.*?-->/s', '', $html); // remove HTML comments
 
     return $html;
+}
+
+
+
+
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Captcha functions
+function initCaptchaState() {
+	if (session_status() !== PHP_SESSION_ACTIVE) @session_start();
+	if (isset($_SESSION['captcha_code'])) return; // State already initialized
+
+	// Randomly pick one of the 4 CAPTCHA methods
+	$type = random_int(1, 4);
+	$_SESSION['captcha_type'] = $type;
+    $_SESSION['captcha_time'] = time();
+
+	// Crystal Clear Character Sets (No P/p, C/c, S/s, V/v, W/w, X/x, Z/z, K/k, O/o, l/1/I)
+	$upper = 'ABDEFGHNRT'; 
+	$lower = 'abdefghnrt';
+	$numbers = '234678';
+
+	if ($type === 1 || $type === 2) {
+		// TYPE 1 & 2: Standard or Distorted Text
+		$chars = $numbers . $upper . $lower;
+		$code = '';
+		for ($i = 0; $i < 6; $i++) $code .= $chars[random_int(0, strlen($chars) - 1)];
+		
+		$_SESSION['captcha_code'] = $code;
+		$_SESSION['captcha_msg_de'] = 'Bitte die Zeichen aus dem Bild eingeben:';
+		$_SESSION['captcha_msg_en'] = 'Please enter the characters from the image:';
+		
+	} elseif ($type === 3) {
+		// TYPE 3: Case Extraction (WCAG Accessible)
+		$up_count = random_int(3, 4);
+		$low_count = 7 - $up_count;
+		
+		$pool = [];
+		for($i = 0; $i < $up_count; $i++) $pool[] = ['char' => $upper[random_int(0, strlen($upper)-1)], 'is_target' => true];
+		for($i = 0; $i < $low_count; $i++) $pool[] = ['char' => $lower[random_int(0, strlen($lower)-1)], 'is_target' => false];
+		
+		shuffle($pool);
+		
+		$code = ''; 
+		$display = '';
+		foreach($pool as $item) {
+			if ($item['is_target']) $code .= $item['char'];
+			$display .= $item['char'];
+		}
+		
+		$_SESSION['captcha_string_data'] = $display;
+		$_SESSION['captcha_code'] = $code;
+		$_SESSION['captcha_msg_de'] = '<b>NUR die GROSSBUCHSTABEN</b> aus dem Bild eingeben:';
+		$_SESSION['captcha_msg_en'] = 'Enter <b>ONLY the UPPERCASE</b> letters from the image:';
+		
+	} else {
+		// TYPE 4: Extract Numbers
+		$letters = $upper . $lower;
+		
+		$num_count = random_int(3, 4);
+		$let_count = 7 - $num_count;
+		
+		$pool = [];
+		for($i = 0; $i < $num_count; $i++) $pool[] = ['char' => $numbers[random_int(0, strlen($numbers)-1)], 'is_num' => true];
+		for($i = 0; $i < $let_count; $i++) $pool[] = ['char' => $letters[random_int(0, strlen($letters)-1)], 'is_num' => false];
+		
+		shuffle($pool);
+		
+		$code = '';
+		$display = '';
+		foreach($pool as $item) {
+			if ($item['is_num']) $code .= $item['char'];
+			$display .= $item['char'];
+		}
+		
+		$_SESSION['captcha_string_data'] = $display;
+		$_SESSION['captcha_code'] = $code;
+		$_SESSION['captcha_msg_de'] = '<b>NUR die ZAHLEN</b> aus dem Bild eingeben:';
+		$_SESSION['captcha_msg_en'] = 'Enter <b>ONLY the NUMBERS</b> from the image:';
+	}
+}
+
+function generateCaptchaImage() {
+	if (session_status() !== PHP_SESSION_ACTIVE) @session_start();
+	if (isset($_SESSION['captcha_attempts']) && $_SESSION['captcha_attempts'] >= 3) {
+		header('HTTP/1.1 403 Forbidden');
+		exit;
+	}
+	
+	// Failsafe initialization
+	initCaptchaState();
+	$type = $_SESSION['captcha_type'];
+	
+	$final_w = 220;
+	$final_h = 75;
+	$final_img = imagecreatetruecolor($final_w, $final_h);
+	
+	// Ensure final image supports alpha blending for the overlay
+	imagealphablending($final_img, true);
+	
+	$bg_final = imagecolorallocate($final_img, 255, 255, 255);
+	imagefilledrectangle($final_img, 0, 0, $final_w, $final_h, $bg_final);
+	
+	// =========================================================================
+	// LAYER 1: THICK NOISE BACKGROUND (Lines, Circles, Squares)
+	// =========================================================================
+	for ($i = 0; $i < 8; $i++) {
+		imagesetthickness($final_img, random_int(1, 5));
+		$noise = imagecolorallocate($final_img, random_int(140, 210), random_int(140, 210), random_int(140, 210));
+		imageline($final_img, random_int(0, $final_w), random_int(0, $final_h), random_int(0, $final_w), random_int(0, $final_h), $noise);
+	}
+	for ($i = 0; $i < 6; $i++) {
+		imagesetthickness($final_img, random_int(1, 5));
+		$noise = imagecolorallocate($final_img, random_int(140, 210), random_int(140, 210), random_int(140, 210));
+		$size = random_int(10, 50);
+		imageellipse($final_img, random_int(0, $final_w), random_int(0, $final_h), $size, $size, $noise);
+	}
+	for ($i = 0; $i < 6; $i++) {
+		imagesetthickness($final_img, random_int(1, 5));
+		$noise = imagecolorallocate($final_img, random_int(140, 210), random_int(140, 210), random_int(140, 210));
+		$x = random_int(-10, $final_w);
+		$y = random_int(-10, $final_h);
+		$size = random_int(10, 50);
+		imagerectangle($final_img, $x, $y, $x + $size, $y + $size, $noise);
+	}
+	if ($type === 2 || $type === 3 || $type === 4) {
+		for ($i = 0; $i < 3; $i++) {
+			imagesetthickness($final_img, random_int(2, 6));
+			$strike = imagecolorallocate($final_img, random_int(140, 210), random_int(140, 210), random_int(140, 210));
+			imageline($final_img, random_int(0, $final_w), random_int(0, $final_h), random_int(0, $final_w), random_int(0, $final_h), $strike);
+		}
+	}
+
+	// =========================================================================
+	// LAYER 2: TEXT RENDERING
+	// =========================================================================
+	if ($type === 1) {
+		// METHOD 1: STANDARD UPSCALED TEXT
+		$font = 5;
+		$char_w = imagefontwidth($font);
+		$char_h = imagefontheight($font);
+		
+		$code = $_SESSION['captcha_code'];
+		$base_w = ($char_w + 4) * strlen($code) + 10;
+		$base_h = $char_h + 15;
+		
+		$base_img = imagecreatetruecolor($base_w, $base_h);
+		
+		// PROPER ALPHA TRANSPARENCY: Prevents overwriting Layer 1 with white blocks
+		imagealphablending($base_img, false);
+		imagesavealpha($base_img, true);
+		$trans = imagecolorallocatealpha($base_img, 0, 0, 0, 127); // 127 = Fully transparent in GD
+		imagefilledrectangle($base_img, 0, 0, $base_w, $base_h, $trans);
+		imagealphablending($base_img, true);
+		
+		$text_color = imagecolorallocate($base_img, 20, 30, 80); // Dark Navy Blue
+		
+		$x = 5;
+		for ($i = 0; $i < strlen($code); $i++) {
+			$y = random_int(2, $base_h - $char_h - 2);
+			imagechar($base_img, $font, $x, $y, $code[$i], $text_color);
+			$x += $char_w + random_int(2, 5);
+		}
+		
+		imagecopyresampled($final_img, $base_img, 0, 0, 0, 0, $final_w, $final_h, $base_w, $base_h);
+		imagedestroy($base_img);
+		
+	} elseif ($type === 2 || $type === 3 || $type === 4) {
+		// METHOD 2, 3 & 4: SINE-WAVE DISTORTION (Combined rendering logic)
+		$font = 5;
+		$char_w = imagefontwidth($font);
+		$char_h = imagefontheight($font);
+		
+		$display_string = ($type === 2) ? $_SESSION['captcha_code'] : $_SESSION['captcha_string_data'];
+		$code_len = strlen($display_string);
+		
+		$base_w = ($char_w + 4) * $code_len + 10;
+		$base_h = $char_h + 15;
+		
+		$base_img = imagecreatetruecolor($base_w, $base_h);
+		
+		// PROPER ALPHA TRANSPARENCY: Prevents overwriting Layer 1 with white blocks
+		imagealphablending($base_img, false);
+		imagesavealpha($base_img, true);
+		$trans = imagecolorallocatealpha($base_img, 0, 0, 0, 127); // 127 = Fully transparent in GD
+		imagefilledrectangle($base_img, 0, 0, $base_w, $base_h, $trans);
+		imagealphablending($base_img, true);
+		
+		$x = 5;
+		$col = imagecolorallocate($base_img, 20, 30, 80); // Dark Navy Blue
+		for ($i = 0; $i < $code_len; $i++) {
+			$y = random_int(2, $base_h - $char_h - 2);
+			imagechar($base_img, $font, $x, $y, $display_string[$i], $col);
+			$x += $char_w + random_int(2, 5);
+		}
+		
+		// Sine-wave algorithm
+		$drawn_h = $final_h - 20;
+		$scale_x = $final_w / $base_w;
+		$freq = random_int(3, 7) / 100;
+		$amp = random_int(4, 8);
+		
+		for ($dst_x = 0; $dst_x < $final_w; $dst_x++) {
+			$src_x = (int)($dst_x / $scale_x);
+			$offset_y = (int)(sin($dst_x * $freq) * $amp) + 10;
+			imagecopyresampled($final_img, $base_img, $dst_x, $offset_y, $src_x, 0, 1, $drawn_h, 1, $base_h);
+		}
+		imagedestroy($base_img);
+	}
+	
+	// =========================================================================
+	// LAYER 3: THIN FOREGROUND NOISE (Pixels and lines directly over text)
+	// =========================================================================
+	for ($i = 0; $i < 500; $i++) {
+		$noise = imagecolorallocate($final_img, random_int(140, 210), random_int(140, 210), random_int(140, 210));
+		imagesetpixel($final_img, random_int(0, $final_w), random_int(0, $final_h), $noise);
+	}
+	for ($i = 0; $i < 15; $i++) {
+		imagesetthickness($final_img, 1 );
+		$noise = imagecolorallocate($final_img, random_int(140, 210), random_int(140, 210), random_int(140, 210));
+		imageline($final_img, random_int(0, $final_w), random_int(0, $final_h), random_int(0, $final_w), random_int(0, $final_h), $noise);
+	}
+
+	if (ob_get_level()) ob_clean();
+	header('Content-Type: image/png');
+	header('Cache-Control: no-store, no-cache, must-revalidate');
+	imagepng($final_img); 
+	imagedestroy($final_img);
+	exit;
+}
+
+
+function isCaptchaBypassed() {
+	global $api_key;
+	if (session_status() !== PHP_SESSION_ACTIVE) @session_start();
+	return (!empty($_SESSION['waf_captcha_solved']) && !empty($_SESSION['waf_captcha_token']) && isset($_COOKIE['waf_captcha_clear']) && is_string($_COOKIE['waf_captcha_clear']) && hash_equals($_SESSION['waf_captcha_token'], $_COOKIE['waf_captcha_clear']));
+}
+
+function verifyCaptchaCode($code) {
+	if (session_status() !== PHP_SESSION_ACTIVE) @session_start();
+	
+	if (!isset($_SESSION['captcha_attempts'])) $_SESSION['captcha_attempts'] = 0;
+	if ($_SESSION['captcha_attempts'] >= 3) {
+		unset($_SESSION['captcha_code']);
+		return false;
+	}
+	$_SESSION['captcha_attempts']++;
+	
+		$is_timeout = (!isset($_SESSION['captcha_time']) || (time() - $_SESSION['captcha_time'] > 30));
+		
+		if (!$is_timeout && isset($_SESSION['captcha_code']) && strtolower(trim($code)) === strtolower($_SESSION['captcha_code'])) {
+		$_SESSION['waf_captcha_solved'] = true;
+		$_SESSION['captcha_attempts'] = 0;
+		unset($_SESSION['captcha_code']);
+		unset($_SESSION['captcha_time']);
+		global $api_key;
+		$captcha_token = bin2hex(random_bytes(32));
+		$_SESSION['waf_captcha_token'] = $captcha_token;
+		$is_secure = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443);
+		setcookie('waf_captcha_clear', $captcha_token, 0, '/', '', $is_secure, true);
+		return true;
+	}
+	unset($_SESSION['captcha_code']); // Force regeneration on fail
+	unset($_SESSION['captcha_time']);
+	return false;
 }
