@@ -77,6 +77,29 @@ $GLOBALS['mycloud_svg_logo'] = '<svg xmlns="http://www.w3.org/2000/svg" viewBox=
      }
  }
 
+
+// --- PRELOAD USER CONFIGURATION TO ELIMINATE INITIAL AJAX WATERFALL ---
+$__injected_settings = null;
+$__injected_favs = [];
+$__injected_tags = [];
+$__injected_paths = [];
+$__injected_views = [];
+
+if ($currentUser !== '' && !empty($GLOBALS['cloud_user_profiles'])) {
+    $profileDir = rtrim($GLOBALS['cloud_user_profiles'], '/\\');
+    $fSettings = $profileDir . '/' . $currentUser . '.json';
+    $fFavs = $profileDir . '/' . $currentUser . '_favs.json';
+    $fTags = $profileDir . '/' . $currentUser . '_tags.json';
+    $fPaths = $profileDir . '/' . $currentUser . '_paths.json';
+    $fViews = $profileDir . '/' . $currentUser . '_views.json';
+
+    if (file_exists($fSettings)) $__injected_settings = json_decode(file_get_contents($fSettings), true);
+    if (file_exists($fFavs)) $__injected_favs = json_decode(file_get_contents($fFavs), true) ?: [];
+    if (file_exists($fTags)) $__injected_tags = json_decode(file_get_contents($fTags), true) ?: [];
+    if (file_exists($fPaths)) $__injected_paths = json_decode(file_get_contents($fPaths), true) ?: [];
+    if (file_exists($fViews)) $__injected_views = json_decode(file_get_contents($fViews), true) ?: [];
+}
+
 // --- ZERO TRUST: EMAIL CLOUD ATTACHMENT INGESTION ---
 // Prevent bypass of the UI restriction by blocking backend ingestion
 // into non-private clouds.
@@ -212,6 +235,12 @@ window.addEventListener('beforeinstallprompt', (e) => {
 // Inject Full Config map
  const myCloudCloudConfig = <?php echo json_encode($userCloudData); ?>;
 
+// Inject Preloaded Settings to bypass initial HTTP requests
+window.__INJECTED_SETTINGS = <?php echo json_encode($__injected_settings); ?>;
+window.__INJECTED_FAVS = <?php echo json_encode($__injected_favs); ?>;
+window.__INJECTED_TAGS = <?php echo json_encode($__injected_tags); ?>;
+window.__INJECTED_PATHS = <?php echo json_encode($__injected_paths); ?>;
+window.__INJECTED_VIEWS = <?php echo json_encode($__injected_views); ?>;
 
  // Inject Logviewer Status & UI Payload
  window.myCloudLogviewerEnabled = <?php

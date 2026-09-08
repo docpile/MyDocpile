@@ -582,6 +582,7 @@ async function myCloudStartExplorer(key = null) {
 	
     myCloudUserRole = targetRights;
     if (document.getElementById('myCloudToolbar')) document.getElementById('myCloudToolbar').style.display = 'none';
+    if (document.getElementById('myCloudPinnedRibbon')) document.getElementById('myCloudPinnedRibbon').style.display = 'none';
 	
     myCloudState.key = key;
     myCloudState.interface = (conf && conf.interface) ? conf.interface : 'default';
@@ -842,6 +843,12 @@ function myCloudCloseExplorer() {
 
 window.myCloudLoadPaths = async function() {
     try {
+        if (typeof window.__INJECTED_PATHS !== 'undefined') {
+            myCloudState.lastPaths = Array.isArray(window.__INJECTED_PATHS) ? {} : (window.__INJECTED_PATHS || {});
+            window.__INJECTED_PATHS = undefined; // GC
+            myCloudState.pathsLoaded = true;
+            return Promise.resolve();
+        }
         const fd = new URLSearchParams({ myCloud_action: 'load_paths', myCloud_key: myCloudState.key, myCloud_token: myCloudCsrfToken });
         const resp = await fetch('', { method: 'POST', body: fd }).then(r => r.json());
         if (resp.status === 'OK') {
@@ -903,6 +910,8 @@ function myCloudClearSensitiveState() {
     myCloudState.searchResults = []; myCloudState.currentFile = null; myCloudState.previewPath = null; myCloudState.previewCache = {};
     const tree = document.querySelector('.myCloudTree'), details = document.querySelector('.myCloudDetails'), toolbar = document.getElementById('myCloudToolbar');
     if (tree) tree.innerHTML = ''; if (details) details.innerHTML = ''; if (toolbar) toolbar.innerHTML = '';
+    const pinnedRibbon = document.getElementById('myCloudPinnedRibbon');
+    if (pinnedRibbon) { pinnedRibbon.innerHTML = ''; pinnedRibbon.style.display = 'none'; }
     myCloudState.lastSelectedIndex = -1;
 	
 	// [FIX] Remove lingering Symbol Mode Toast and Body Classes on reset/switch

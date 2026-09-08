@@ -20,19 +20,19 @@ const myCloudDefaultSettings = {
         treeOpen: true, darkMode: false, fontSize: 1, hideDisabled: true, singleClick: false,
         stackedToolbar: true, showCheckboxes: true, showHoverMenu: true, clickToPreview: true, showFilmstrip: false,
         rememberLastFolder: false, warnLargePreview: true, sidebarSize: 280, officePreviewWidth: 400, symbolDarkMode: false,
-        showListThumbnails: false, symbolSize: 'medium', commanderSplit: 0.5, startInCommander: {}, isOfficeMode: false
+        showListThumbnails: false, symbolSize: 'medium', commanderSplit: 0.5, startInCommander: {}, isOfficeMode: false, ribbonPinned: false
     },
     tablet: { 
         treeOpen: true, darkMode: false, fontSize: 2, hideDisabled: true, singleClick: false,
         stackedToolbar: true, showCheckboxes: true, showHoverMenu: false, clickToPreview: true, showFilmstrip: false,
         rememberLastFolder: false, warnLargePreview: true, sidebarSize: 250, officePreviewWidth: 350, symbolDarkMode: false,
-        showListThumbnails: false, symbolSize: 'medium', commanderSplit: 0.5, startInCommander: {}, isOfficeMode: false
+        showListThumbnails: false, symbolSize: 'medium', commanderSplit: 0.5, startInCommander: {}, isOfficeMode: false, ribbonPinned: false
     },
     phone: { 
         treeOpen: false, darkMode: false, fontSize: 3, hideDisabled: true, singleClick: false, 
         stackedToolbar: true, showCheckboxes: true, showHoverMenu: false, clickToPreview: true, showFilmstrip: false,
         rememberLastFolder: false, warnLargePreview: true, sidebarSize: 200, officePreviewWidth: 0, symbolDarkMode: false,
-        showListThumbnails: false, symbolSize: 'medium', commanderSplit: 0.5, startInCommander: {}, isOfficeMode: false
+        showListThumbnails: false, symbolSize: 'medium', commanderSplit: 0.5, startInCommander: {}, isOfficeMode: false, ribbonPinned: false
     },
     showHelpOnStart: true,
 	enableRecycleBin: true,
@@ -52,7 +52,49 @@ function myCloudGetCurrentDeviceKey() {
 
 // Fetches user settings from the server.
 // Merges server settings with defaults to ensure compatibility.
+// Fetches user settings from the server or preloaded startup cache.
+// Merges server settings with defaults to ensure compatibility.
 function myCloudLoadSettings(isStartup = false) {
+    const processSettings = function(respSettings) {
+        myCloudState.settings = {
+            desktop: Object.assign({}, myCloudDefaultSettings.desktop, respSettings?.desktop || {}),
+            tablet: Object.assign({}, myCloudDefaultSettings.tablet, respSettings?.tablet || {}),
+            phone: Object.assign({}, myCloudDefaultSettings.phone, respSettings?.phone || {}),
+            showHelpOnStart: (typeof respSettings?.showHelpOnStart !== 'undefined') ? respSettings.showHelpOnStart : myCloudDefaultSettings.showHelpOnStart,
+            language: respSettings?.language || (typeof myCloudDetectedLang !== 'undefined' ? myCloudDetectedLang : 'en'),
+            enableRecycleBin: (typeof respSettings?.enableRecycleBin !== 'undefined') ? respSettings.enableRecycleBin : myCloudDefaultSettings.enableRecycleBin,
+            renameHistory: Array.isArray(respSettings?.renameHistory) ? respSettings.renameHistory : [],
+            fra_completed: (typeof respSettings?.fra_completed !== 'undefined') ? respSettings.fra_completed : false,
+            tagNames: respSettings?.tagNames || {},
+            visibleTags: Array.isArray(respSettings?.visibleTags) ? respSettings.visibleTags : myCloudDefaultSettings.visibleTags,
+            tagOrder: Array.isArray(respSettings?.tagOrder) ? respSettings.tagOrder : myCloudDefaultSettings.tagOrder,
+        };
+
+        // [FIX] Sanitize startInCommander: Convert Array [] to Object {}
+        // PHP json_encode sends [] for empty associative arrays. JS treats this as an Array.
+        // JSON.stringify ignores named properties on Arrays, causing data loss on save.
+        ['desktop', 'tablet', 'phone'].forEach(dev => {
+            let s = myCloudState.settings[dev];
+            if (!s.startInCommander || Array.isArray(s.startInCommander)) {
+                s.startInCommander = {};
+            }
+        });
+
+        myCloudApplySettings(isStartup);
+    };
+
+    // Fast-path: bypass network round-trip on first launch if server pre-injected settings
+    if (isStartup && typeof window.__INJECTED_SETTINGS !== 'undefined') {
+        if (window.__INJECTED_SETTINGS) {
+            processSettings(window.__INJECTED_SETTINGS);
+        } else {
+            myCloudState.settings = JSON.parse(JSON.stringify(myCloudDefaultSettings));
+            myCloudApplySettings(isStartup);
+        }
+        window.__INJECTED_SETTINGS = undefined; // Clear memory reference
+        return Promise.resolve();
+    }
+
     return fetch('', {
         method: 'POST',
         body: new URLSearchParams({
@@ -64,36 +106,12 @@ function myCloudLoadSettings(isStartup = false) {
     })
     .then(function(r) { return r.json(); })
     .then(function(resp) {
-		if (resp.status === 'OK' && resp.settings) {
-            myCloudState.settings = {
-                desktop: Object.assign({}, myCloudDefaultSettings.desktop, resp.settings.desktop),
-                tablet: Object.assign({}, myCloudDefaultSettings.tablet, resp.settings.tablet),
-                phone: Object.assign({}, myCloudDefaultSettings.phone, resp.settings.phone),
-                showHelpOnStart: (typeof resp.settings.showHelpOnStart !== 'undefined') ? resp.settings.showHelpOnStart : myCloudDefaultSettings.showHelpOnStart,
-                language: resp.settings.language || (typeof myCloudDetectedLang !== 'undefined' ? myCloudDetectedLang : 'en'),
-                enableRecycleBin: (typeof resp.settings.enableRecycleBin !== 'undefined') ? resp.settings.enableRecycleBin : myCloudDefaultSettings.enableRecycleBin,
-                renameHistory: Array.isArray(resp.settings.renameHistory) ? resp.settings.renameHistory : [],
-				fra_completed: (typeof resp.settings.fra_completed !== 'undefined') ? resp.settings.fra_completed : false,	
-				tagNames: resp.settings.tagNames || {},	
-				visibleTags: Array.isArray(resp.settings.visibleTags) ? resp.settings.visibleTags : myCloudDefaultSettings.visibleTags,
-				tagOrder: Array.isArray(resp.settings.tagOrder) ? resp.settings.tagOrder : myCloudDefaultSettings.tagOrder,
-            };
-
-            // [FIX] Sanitize startInCommander: Convert Array [] to Object {}
-            // PHP json_encode sends [] for empty associative arrays. JS treats this as an Array.
-            // JSON.stringify ignores named properties on Arrays, causing data loss on save.
-            ['desktop', 'tablet', 'phone'].forEach(dev => {
-                let s = myCloudState.settings[dev];
-                if (!s.startInCommander || Array.isArray(s.startInCommander)) {
-                    s.startInCommander = {};
-                }
-            });
-
- 
+        if (resp.status === 'OK' && resp.settings) {
+            processSettings(resp.settings);
         } else {
             myCloudState.settings = JSON.parse(JSON.stringify(myCloudDefaultSettings));
+            myCloudApplySettings(isStartup);
         }
-        myCloudApplySettings(isStartup);
     })
     .catch(function(e) {
         console.warn("Settings load failed, using defaults", e);

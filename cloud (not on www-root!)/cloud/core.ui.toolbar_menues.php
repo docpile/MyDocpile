@@ -214,13 +214,13 @@ function myCloudUpdateToolbarState() {
     const hideDisabled = config.hideDisabled === true && (!isStacked || devKey === 'phone');
 	
     // Update Standard Buttons
-    document.querySelectorAll('.myCloudToolbar > button[data-action]').forEach(function(btn) {
+    document.querySelectorAll('.myCloudToolbar > button[data-action], #myCloudPinnedRibbon .ce-ribbon-sub-btn').forEach(function(btn) {
         const status = getActionStatus(btn.dataset.action);
         
         btn.disabled = status.disabled;
         btn.style.display = (status.hidden || (hideDisabled && status.disabled)) ? 'none' : 'flex';
 
-        if (status.active) {
+        if (status.active && !status.disabled) {
             btn.classList.add('ce-force-active');
         } else {
             btn.classList.remove('ce-force-active');
@@ -355,15 +355,281 @@ function myCloudUpdateToolbarState() {
 }
 
 
-// Renders the floating ribbon menu for grouped actions.
-// Handles positioning, pinning, and item creation.
-// Expects `tabData` which contains the columns and rows configuration.
-// Renders the floating ribbon menu for grouped actions.
-// Handles positioning, pinning, item creation, and responsive viewport shrinking.
-// Expects `tabData` which contains the columns and rows configuration.
-// Renders the floating ribbon menu for grouped actions.
-// Handles positioning, pinning, item creation, and responsive viewport shrinking.
-// Expects `tabData` which contains the columns and rows configuration.
+window.myCloudGenerateRibbonInnerDOM = function(container, tabData, createBtnFn, hideDisabled) {
+    let visibleCols = 0;
+    tabData.columns.forEach((col) => {
+        const colDiv = document.createElement('div');
+        colDiv.className = 'ce-ribbon-sub-col';
+        colDiv.style.display = 'flex';
+        colDiv.style.flexDirection = 'column';
+        colDiv.style.gap = '2px';
+
+        const header = document.createElement('div');
+        header.className = 'ce-ribbon-sub-header';
+        header.textContent = col.label;
+        colDiv.appendChild(header);
+
+        let visibleRows = 0;
+        col.rows.forEach(row => {
+            const rowDiv = document.createElement('div');
+            rowDiv.className = 'ce-ribbon-sub-row';
+            rowDiv.style.display = 'flex';
+            rowDiv.style.flexDirection = 'row';
+            rowDiv.style.gap = '2px';
+            let visibleItems = 0;
+
+            row.forEach(itemConfig => {
+                if (itemConfig.type === 'divider') {
+                    const hDiv = document.createElement('div');
+                    hDiv.className = 'ce-ribbon-sub-h-divider';
+                    rowDiv.appendChild(hDiv);
+                    visibleItems++;
+                    return;
+                }
+                const act = itemConfig.act;
+                const status = getActionStatus(act);
+                if (status.hidden || (hideDisabled && status.disabled)) return;
+
+                const itemBtn = createBtnFn(act, itemConfig.type);
+                itemBtn.classList.add('ce-ribbon-sub-btn');
+                itemBtn.classList.add('ce-btn-type-' + itemConfig.type);
+                itemBtn.dataset.action = act;
+                itemBtn.dataset.origType = itemConfig.type;
+                itemBtn.disabled = status.disabled;
+                if (status.active && !status.disabled) itemBtn.classList.add('ce-force-active');
+
+                if (itemConfig.type === 'big') {
+                    itemBtn.style.display = 'flex';
+                    itemBtn.style.flexDirection = 'column';
+                    itemBtn.style.alignItems = 'center';
+                    itemBtn.style.justifyContent = 'center';
+                    itemBtn.style.height = '100%';
+                    itemBtn.style.minHeight = '64px';
+                    itemBtn.style.minWidth = '60px';
+                    itemBtn.style.padding = '6px 4px';
+                    const ic = itemBtn.querySelector('.myCloudIcon');
+                    if (ic) { ic.style.width = '28px'; ic.style.height = '28px'; ic.style.marginRight = '0'; }
+                    const txt = itemBtn.querySelector('.ce-btn-text');
+                    if (txt) { txt.style.whiteSpace = 'normal'; txt.style.textAlign = 'center'; txt.style.lineHeight = '1.1'; txt.style.fontSize = '11px'; txt.style.marginTop = '4px'; }
+                    rowDiv.style.flex = '1';
+                } else if (itemConfig.type === 'icon') {
+                    itemBtn.style.display = 'flex';
+                    itemBtn.style.alignItems = 'center';
+                    itemBtn.style.justifyContent = 'center';
+                    itemBtn.style.padding = '4px 6px';
+                    const ic = itemBtn.querySelector('.myCloudIcon');
+                    if (ic) ic.style.marginRight = '0';
+                } else {
+                    itemBtn.style.justifyContent = 'flex-start';
+                    itemBtn.style.padding = '4px 8px';
+                    itemBtn.style.flex = '1';
+                }
+
+                rowDiv.appendChild(itemBtn);
+                visibleItems++;
+            });
+
+            if (visibleItems > 0) {
+                colDiv.appendChild(rowDiv);
+                visibleRows++;
+            }
+        });
+
+        if (visibleRows > 0) {
+            if (visibleCols > 0) {
+                const divider = document.createElement('div');
+                divider.className = 'ce-ribbon-sub-divider';
+                container.appendChild(divider);
+            }
+            container.appendChild(colDiv);
+            visibleCols++;
+        }
+    });
+    return visibleCols;
+};
+
+window.myCloudApplyRibbonShrink = function(menu, container, maxW, maxH) {
+    // Use scrollWidth/scrollHeight to detect true unconstrained size even if container is clamped
+    const checkFit = () => menu.scrollWidth <= maxW && menu.scrollHeight <= maxH;
+    
+    if (!checkFit()) {
+        menu.querySelectorAll('.ce-ribbon-sub-row').forEach(row => {
+            const bigs = row.querySelectorAll('[data-orig-type="big"]');
+            if (bigs.length > 0) {
+                bigs.forEach(b => {
+                    if (b.classList.contains('ce-btn-type-big')) {
+                        b.classList.remove('ce-btn-type-big');
+                        b.classList.add('ce-btn-type-full');
+                        b.style.flexDirection = '';
+                        b.style.alignItems = '';
+                        b.style.justifyContent = '';
+                        b.style.height = '';
+                        b.style.minHeight = '';
+                        b.style.minWidth = '';
+                        b.style.padding = '';
+                        row.style.flex = '';
+                        const ic = b.querySelector('.myCloudIcon');
+                        if (ic) { ic.style.width = ''; ic.style.height = ''; ic.style.marginRight = ''; }
+                        const txt = b.querySelector('.ce-btn-text');
+                        if (txt) { txt.style.whiteSpace = ''; txt.style.textAlign = ''; txt.style.lineHeight = ''; txt.style.fontSize = ''; txt.style.marginTop = ''; }
+                    }
+                });
+            }
+        });
+        void menu.offsetHeight;
+    }
+
+    if (!checkFit()) {
+        container.style.gap = '2px';
+        menu.querySelectorAll('.ce-ribbon-sub-col').forEach(c => { c.style.minWidth = '80px'; c.style.gap = '2px'; });
+        menu.querySelectorAll('.ce-ribbon-sub-btn:not(.ce-btn-type-big)').forEach(b => { b.style.padding = '2px 4px'; });
+        void menu.offsetHeight;
+    }
+
+    if (!checkFit()) {
+        menu.querySelectorAll('.ce-btn-type-normal').forEach(b => {
+            b.classList.remove('ce-btn-type-normal');
+            b.classList.add('ce-btn-type-icon');
+            b.style.width = 'auto';
+            b.style.justifyContent = 'center';
+            const text = b.querySelector('.ce-btn-text');
+            if (text) text.style.display = 'none';
+            const icon = b.querySelector('.myCloudIcon');
+            if (icon) icon.style.marginRight = '0';
+        });
+        void menu.offsetHeight;
+    }
+
+    if (!checkFit()) {
+        menu.querySelectorAll('.ce-btn-type-big').forEach(b => {
+            b.classList.remove('ce-btn-type-big');
+            b.classList.add('ce-btn-type-icon'); 
+            b.style.flexDirection = 'row';
+            b.style.minWidth = '0';
+            b.style.padding = '4px 8px';
+            const text = b.querySelector('.ce-btn-text');
+            if (text) text.style.display = 'none';
+            const icon = b.querySelector('.myCloudIcon');
+            if (icon) {
+                icon.style.width = '20px';
+                icon.style.height = '20px';
+                icon.style.marginRight = '0';
+            }
+        });
+        void menu.offsetHeight;
+    }
+
+    // Step 5: Smart Group Collapsing (Overflow Menus)
+    if (!checkFit()) {
+        const cols = Array.from(menu.querySelectorAll('.ce-ribbon-sub-col')).reverse();
+        for (let col of cols) {
+            if (col.classList.contains('ce-col-collapsed')) continue;
+            
+            col.classList.add('ce-col-collapsed');
+            
+            const header = col.querySelector('.ce-ribbon-sub-header');
+            if (header) header.style.display = 'none';
+            
+            const rows = Array.from(col.querySelectorAll('.ce-ribbon-sub-row'));
+            rows.forEach(r => r.style.display = 'none');
+            
+            const btn = document.createElement('button');
+            btn.className = 'ce-collapsed-group-btn ce-ribbon-sub-btn';
+            btn.innerHTML = (header ? header.textContent : 'More') + ' ▾';
+            btn.style.padding = '4px 8px';
+            btn.style.height = '100%';
+            btn.style.background = 'transparent';
+            btn.style.border = '1px solid transparent';
+            btn.style.cursor = 'pointer';
+            btn.style.color = 'var(--text-primary)';
+            btn.style.minHeight = '64px';
+            
+            btn.onmouseenter = () => btn.style.background = 'var(--hover-bg-medium)';
+            btn.onmouseleave = () => btn.style.background = 'transparent';
+            
+            btn.onclick = (e) => {
+                e.stopPropagation();
+                document.querySelectorAll('.myCloudCollapsedMenu').forEach(m => m.remove());
+                
+                const dropMenu = document.createElement('div');
+                dropMenu.className = 'myCloudCollapsedMenu ce-floating-menu';
+                dropMenu.style.position = 'fixed';
+                dropMenu.style.zIndex = '210000';
+                dropMenu.style.display = 'flex';
+                dropMenu.style.flexDirection = 'column';
+                dropMenu.style.background = 'var(--gray-00)';
+                dropMenu.style.border = '1px solid var(--border-default)';
+                dropMenu.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
+                dropMenu.style.padding = '4px';
+                
+                rows.forEach(r => {
+                    const clonedRow = document.createElement('div');
+                    clonedRow.style.display = 'flex';
+                    clonedRow.style.flexDirection = 'column'; 
+                    
+                    Array.from(r.children).forEach(child => {
+                        if (child.classList.contains('ce-ribbon-sub-h-divider')) {
+                            const d = document.createElement('div');
+                            d.style.height = '1px'; d.style.background = 'var(--border-subtle)'; d.style.margin = '4px 0';
+                            dropMenu.appendChild(d);
+                            return;
+                        }
+                        
+                        const clonedBtn = child.cloneNode(true);
+                        clonedBtn.className = 'ce-ribbon-sub-btn'; 
+                        clonedBtn.style.display = 'flex';
+                        clonedBtn.style.flexDirection = 'row';
+                        clonedBtn.style.alignItems = 'center';
+                        clonedBtn.style.justifyContent = 'flex-start';
+                        clonedBtn.style.padding = '8px 12px';
+                        clonedBtn.style.width = '100%';
+                        clonedBtn.style.minHeight = '0';
+                        clonedBtn.style.height = 'auto';
+                        clonedBtn.style.border = 'none';
+                        clonedBtn.style.background = 'transparent';
+                        clonedBtn.style.color = 'var(--text-primary)';
+                        
+                        const ic = clonedBtn.querySelector('.myCloudIcon');
+                        if (ic) { ic.style.width = '16px'; ic.style.height = '16px'; ic.style.marginRight = '8px'; }
+                        const txt = clonedBtn.querySelector('.ce-btn-text');
+                        if (txt) { txt.style.display = 'inline'; txt.style.fontSize = '13px'; txt.style.textAlign = 'left'; txt.style.whiteSpace = 'nowrap'; txt.style.marginTop = '0'; }
+                        
+                        clonedBtn.onmouseenter = () => clonedBtn.style.background = 'var(--hover-bg-medium)';
+                        clonedBtn.onmouseleave = () => clonedBtn.style.background = 'transparent';
+                        
+                        clonedBtn.onclick = (ev) => {
+                            ev.stopPropagation();
+                            dropMenu.remove();
+                            if (typeof myCloudHandleToolbarClick === 'function') myCloudHandleToolbarClick(child.dataset.action);
+                            if (typeof myCloudCloseFloatingMenu === 'function') myCloudCloseFloatingMenu();
+                        };
+                        clonedRow.appendChild(clonedBtn);
+                    });
+                    if (clonedRow.children.length > 0) dropMenu.appendChild(clonedRow);
+                });
+                
+                document.body.appendChild(dropMenu);
+                if (typeof myCloudApplyTheme === 'function') myCloudApplyTheme();
+                
+                const rect = btn.getBoundingClientRect();
+                dropMenu.style.top = rect.bottom + 'px';
+                let left = rect.left;
+                if (left + dropMenu.offsetWidth > window.innerWidth) left = window.innerWidth - dropMenu.offsetWidth - 5;
+                dropMenu.style.left = left + 'px';
+                
+                setTimeout(() => {
+                    const closer = (ev) => { if (!dropMenu.contains(ev.target)) { dropMenu.remove(); document.removeEventListener('click', closer); } };
+                    document.addEventListener('click', closer);
+                }, 10);
+            };
+            
+            col.appendChild(btn);
+            void menu.offsetHeight;
+            if (checkFit()) break;
+        }
+    }
+};
+
 function myCloudShowFloatingMenu(btn, tabData, createBtnFn, pinned) {
     if (typeof pinned === 'undefined') pinned = false;
     const existing = document.getElementById('myCloudFloatingMenu');
@@ -402,65 +668,21 @@ function myCloudShowFloatingMenu(btn, tabData, createBtnFn, pinned) {
 
     const container = document.createElement('div');
     container.className = 'ce-ribbon-popup-container';
-    let visibleCols = 0;
-
-    tabData.columns.forEach((col) => {
-        const colDiv = document.createElement('div');
-        colDiv.className = 'ce-ribbon-sub-col';
-
-        const header = document.createElement('div');
-        header.className = 'ce-ribbon-sub-header';
-        header.textContent = col.label;
-        colDiv.appendChild(header);
-
-        let visibleRows = 0;
-        col.rows.forEach(row => {
-            const rowDiv = document.createElement('div');
-            rowDiv.className = 'ce-ribbon-sub-row';
-            let visibleItems = 0;
-
-            row.forEach(itemConfig => {
-                if (itemConfig.type === 'divider') {
-                    const hDiv = document.createElement('div');
-                    hDiv.className = 'ce-ribbon-sub-h-divider';
-                    rowDiv.appendChild(hDiv);
-                    visibleItems++;
-                    return;
-                }
-                const act = itemConfig.act;
-                const status = getActionStatus(act);
-                if (status.hidden || (hideDisabled && status.disabled)) return;
-
-                const itemBtn = createBtnFn(act, itemConfig.type);
-                itemBtn.classList.add('ce-ribbon-sub-btn');
-                itemBtn.classList.add('ce-btn-type-' + itemConfig.type);
-                itemBtn.dataset.action = act;
-                itemBtn.dataset.origType = itemConfig.type; // Track original type for responsive reduction
-                itemBtn.disabled = status.disabled;
-                if (status.active && !status.disabled) itemBtn.classList.add('ce-force-active');
-
-                rowDiv.appendChild(itemBtn);
-                visibleItems++;
-            });
-
-            if (visibleItems > 0) {
-                colDiv.appendChild(rowDiv);
-                visibleRows++;
-            }
-        });
-
-        if (visibleRows > 0) {
-            if (visibleCols > 0) {
-                const divider = document.createElement('div');
-                divider.className = 'ce-ribbon-sub-divider';
-                container.appendChild(divider);
-            }
-            container.appendChild(colDiv);
-            visibleCols++;
-        }
-    });
-
+    
+    // --- HORIZONTAL SCROLLING LAYOUT ---
+    container.style.display = 'flex';
+    container.style.flexDirection = 'row';
+    container.style.flexWrap = 'nowrap';
+    container.style.overflowX = 'auto';
+    container.style.scrollbarWidth = 'none'; // Hide scrollbar for a cleaner look
+    container.style.WebkitOverflowScrolling = 'touch';
+    container.addEventListener('wheel', (e) => {
+        if (e.deltaY !== 0 && !e.shiftKey) { e.preventDefault(); container.scrollLeft += e.deltaY; }
+    }, { passive: false });
+    
+    const visibleCols = window.myCloudGenerateRibbonInnerDOM(container, tabData, createBtnFn, hideDisabled);
     if (visibleCols === 0) return;
+
     menu.appendChild(container);
 
     const handle = document.createElement('div');
@@ -471,16 +693,13 @@ function myCloudShowFloatingMenu(btn, tabData, createBtnFn, pinned) {
 
     document.body.appendChild(menu);
 
-    // --- POSITIONING & RESPONSIVE SHRINK LOGIC ---
-    
-    // 1. Force the browser to render the element fully so we can measure it
+    // Positioning setup
     menu.style.position = 'fixed';
     menu.style.visibility = 'hidden';
     menu.style.display = 'block'; 
     menu.style.maxHeight = 'none';
     menu.style.overflowY = 'visible';
     
-    // 2. Strip animations temporarily to prevent scaled/shrunk height miscalculations
     const oldTrans = menu.style.transition;
     const oldTransform = menu.style.transform;
     const oldAnim = menu.style.animation;
@@ -488,78 +707,16 @@ function myCloudShowFloatingMenu(btn, tabData, createBtnFn, pinned) {
     menu.style.transform = 'none';
     menu.style.animation = 'none';
     
-    // Force a synchronous DOM reflow
     void menu.offsetHeight;
     
     const maxW = window.innerWidth - 10;
     const maxH = window.innerHeight - 30; // 30px safety margin
     
-    const checkFit = () => menu.offsetWidth <= maxW && menu.offsetHeight <= maxH;
-
-    // Step 1: Make columns smaller
-    if (!checkFit()) {
-        container.style.gap = '2px';
-        menu.querySelectorAll('.ce-ribbon-sub-col').forEach(c => { c.style.minWidth = '90px'; c.style.gap = '2px'; });
-        menu.querySelectorAll('.ce-ribbon-sub-btn').forEach(b => { b.style.padding = '2px 4px'; b.style.minHeight = 'auto'; });
-        menu.querySelectorAll('.myCloudIcon').forEach(i => i.style.marginRight = '4px');
-        void menu.offsetHeight;
-    }
-
-    // Step 2: Make "half" buttons appear as "full" (vertical alignment)
-    if (!checkFit()) {
-        menu.querySelectorAll('.ce-ribbon-sub-row').forEach(row => {
-            if (row.querySelector('[data-orig-type="half"]')) {
-                row.style.flexDirection = 'column';
-                row.querySelectorAll('.ce-ribbon-sub-btn').forEach(b => {
-                    b.classList.remove('ce-btn-type-half');
-                    b.classList.add('ce-btn-type-full');
-                    b.style.width = '100%';
-                });
-            }
-        });
-        void menu.offsetHeight;
-    }
-
-    // Step 3: Reduce the original "half" buttons to icons
-    if (!checkFit()) {
-        menu.querySelectorAll('.ce-ribbon-sub-row').forEach(row => {
-            const originalHalves = row.querySelectorAll('[data-orig-type="half"]');
-            if (originalHalves.length > 0) {
-                row.style.flexDirection = 'row'; // restore horizontal
-                originalHalves.forEach(b => {
-                    b.classList.remove('ce-btn-type-full', 'ce-btn-type-half');
-                    b.classList.add('ce-btn-type-icon');
-                    b.style.width = 'auto';
-                    const text = b.querySelector('.ce-btn-text');
-                    if (text) text.style.display = 'none';
-                    const icon = b.querySelector('.myCloudIcon');
-                    if (icon) icon.style.marginRight = '0';
-                });
-            }
-        });
-        void menu.offsetHeight;
-    }
-
-    // Step 4: Reduce more buttons to icons (start from the lower buttons)
-    if (!checkFit()) {
-        const allFulls = Array.from(menu.querySelectorAll('.ce-btn-type-full')).reverse();
-        for (let b of allFulls) {
-            b.classList.remove('ce-btn-type-full');
-            b.classList.add('ce-btn-type-icon');
-            const text = b.querySelector('.ce-btn-text');
-            if (text) text.style.display = 'none';
-            const icon = b.querySelector('.myCloudIcon');
-            if (icon) icon.style.marginRight = '0';
-            
-            void menu.offsetHeight;
-            if (checkFit()) break;
-        }
-    }
+    window.myCloudApplyRibbonShrink(menu, container, maxW, maxH);
 
     const menuHeight = menu.offsetHeight;
     const menuWidth = menu.offsetWidth;
 
-    // Restore animations
     menu.style.transition = oldTrans;
     menu.style.transform = oldTransform;
     menu.style.animation = oldAnim;
@@ -573,14 +730,15 @@ function myCloudShowFloatingMenu(btn, tabData, createBtnFn, pinned) {
     if (leftPos < 5) leftPos = 5;
     menu.style.left = leftPos + 'px';
 
+    // Enforce max width to trigger overflow scrolling if shrink limits are reached
+    menu.style.maxWidth = (window.innerWidth - 10) + 'px';
+
     let topPos = rect.bottom + 1;
     
-    // Bottom Collision with safety margin
     if (topPos + menuHeight > window.innerHeight - 25) {
         menu.style.top = 'auto';
         menu.style.bottom = '15px'; 
         
-        // Failsafe if the screen is physically shorter than the heavily reduced menu
         if (menuHeight > window.innerHeight - 30) {
             menu.style.maxHeight = (window.innerHeight - 30) + 'px';
             menu.style.overflowY = 'auto';
@@ -597,7 +755,6 @@ function myCloudShowFloatingMenu(btn, tabData, createBtnFn, pinned) {
         const closer = function(e) {
             const m = document.getElementById('myCloudFloatingMenu');
             if (m && !m.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
-                // Ignore clicks if a modal is currently open
                 const modalOverlay = document.getElementById('myCloudModalOverlay');
                 if (modalOverlay && modalOverlay.style.display !== 'none') return;
                 myCloudCloseFloatingMenu();
@@ -608,11 +765,14 @@ function myCloudShowFloatingMenu(btn, tabData, createBtnFn, pinned) {
     }, 0);
 }
 
-// Closes any open floating menu or settings panel.
-// Supports immediate removal or animated fade-out.
 function myCloudCloseFloatingMenu(immediate, force) {
     if (typeof immediate === 'undefined') immediate = false;
 	if (typeof force === 'undefined') force = false;
+
+    // Clean up KeyTips if the menu vanishes (e.g. via mouseleave timeout)
+    if (typeof window.myCloudHideKeyTips === 'function' && window.myCloudKeyTipsActive) {
+        window.myCloudHideKeyTips();
+    }
 
     // 1. Ribbons
     const ribbon = document.getElementById('myCloudFloatingMenu');
@@ -625,7 +785,7 @@ function myCloudCloseFloatingMenu(immediate, force) {
     }
 
 
-    // 3. Favorites Panel (CRITICAL FIX: Added this block)
+    // 3. Favorites Panel
     const favPanel = document.getElementById('myCloudFavoritesPanel');
     if (favPanel) {
         if (!immediate && favPanel.dataset.pinned === 'true') { /* skip */ }
@@ -650,6 +810,8 @@ function myCloudRenderToolbar() {
     if (toolbar.parentElement && !toolbar.parentElement.classList.contains('myCloudToolbar-wrapper')) {
         const wrapper = document.createElement('div');
         wrapper.className = 'myCloudToolbar-wrapper';
+        wrapper.style.display = 'flex';
+        wrapper.style.flexDirection = 'column'; // Ensure vertical stacking
         toolbar.parentNode.insertBefore(wrapper, toolbar);
         wrapper.appendChild(toolbar);
         
@@ -660,6 +822,20 @@ function myCloudRenderToolbar() {
         const endInd = document.createElement('div');
         endInd.className = 'toolbar-indicator-end';
         wrapper.appendChild(endInd);
+
+        const pinnedRibbon = document.createElement('div');
+        pinnedRibbon.id = 'myCloudPinnedRibbon';
+        pinnedRibbon.style.display = 'none';
+        pinnedRibbon.style.borderBottom = '1px solid var(--border-subtle)';
+        pinnedRibbon.style.backgroundColor = 'var(--gray-00)';
+        pinnedRibbon.style.overflowX = 'auto';
+        pinnedRibbon.style.scrollbarWidth = 'none';
+        pinnedRibbon.style.WebkitOverflowScrolling = 'touch';
+        pinnedRibbon.addEventListener('wheel', (e) => {
+            if (e.deltaY !== 0 && !e.shiftKey) { e.preventDefault(); pinnedRibbon.scrollLeft += e.deltaY; }
+        }, { passive: false });
+
+        wrapper.appendChild(pinnedRibbon);
         
         const checkScroll = () => {
             if (toolbar.scrollWidth > toolbar.clientWidth) {
@@ -683,6 +859,8 @@ function myCloudRenderToolbar() {
 
     const devKey = myCloudGetCurrentDeviceKey();
     const config = myCloudState.settings ? myCloudState.settings[devKey] : myCloudDefaultSettings[devKey];
+
+    let isStacked = config.stackedToolbar;
     
     toolbar.style.display = 'none';
 
@@ -808,37 +986,60 @@ function myCloudRenderToolbar() {
         })));
         btn.dataset.children = JSON.stringify(flatActions);
 
-        btn.onmouseenter = function() {
-            if (btn.disabled) return;
-            if (window.myCloudMenuTimer) clearTimeout(window.myCloudMenuTimer);
-            
-            const existing = document.getElementById('myCloudFloatingMenu');
-            if (existing && existing.dataset.owner === btn.innerHTML && existing.dataset.pinned === 'true') return;
-            
-            myCloudShowFloatingMenu(btn, window.myCloudRibbonData[btn.dataset.tabId], customRenderer || createBtn, false);
-    };
+            btn.ondblclick = function(e) {
+                e.stopPropagation();
+                myCloudState.settings[devKey].ribbonPinned = !myCloudState.settings[devKey].ribbonPinned;
+                myCloudState.activeRibbonTabId = tabData.id;
+                myCloudSaveSettings();
+                myCloudCloseFloatingMenu(true);
+                myCloudRenderToolbar();
+            };
 
-        btn.onmouseleave = function() {
-            const m = document.getElementById('myCloudFloatingMenu');
-            if (m && m.dataset.pinned === 'true') return;
-            window.myCloudMenuTimer = setTimeout(function() { myCloudCloseFloatingMenu(); }, 300);
-        };
-        
-        btn.onclick = function(e) {
-            e.stopPropagation();
-            if (btn.disabled) return;
-            if (window.myCloudMenuTimer) clearTimeout(window.myCloudMenuTimer);
-
-            const existing = document.getElementById('myCloudFloatingMenu');
-            const isMyMenu = existing && existing.dataset.owner === btn.innerHTML;
-
-            if (isMyMenu) {
-                if (existing.dataset.pinned === 'true') myCloudCloseFloatingMenu();
-                else existing.dataset.pinned = 'true';
+            if (isPinned) {
+                if (myCloudState.activeRibbonTabId === tabData.id) {
+                    btn.classList.add('active-tab');
+                    btn.style.setProperty('background-color', 'var(--gray-00)', 'important');
+                    btn.style.setProperty('border-bottom', '3px solid var(--accent-primary)', 'important');
+                    btn.style.setProperty('color', 'var(--accent-primary)', 'important');
+                } else {
+                    btn.classList.remove('active-tab');
+                    btn.style.backgroundColor = '';
+                    btn.style.borderBottom = '';
+                    btn.style.color = '';
+                }
+                btn.onclick = function(e) {
+                    e.stopPropagation();
+                    if (btn.disabled) return;
+                    myCloudState.activeRibbonTabId = tabData.id;
+                    myCloudRenderToolbar(); 
+                };
             } else {
-                myCloudShowFloatingMenu(btn, window.myCloudRibbonData[btn.dataset.tabId], customRenderer || createBtn, true);
+                btn.onmouseenter = function() {
+                    if (btn.disabled) return;
+                    if (window.myCloudMenuTimer) clearTimeout(window.myCloudMenuTimer);
+                    const existing = document.getElementById('myCloudFloatingMenu');
+                    if (existing && existing.dataset.owner === btn.innerHTML && existing.dataset.pinned === 'true') return;
+                    myCloudShowFloatingMenu(btn, window.myCloudRibbonData[btn.dataset.tabId], customRenderer || createBtn, false);
+                };
+                btn.onmouseleave = function() {
+                    const m = document.getElementById('myCloudFloatingMenu');
+                    if (m && m.dataset.pinned === 'true') return;
+                    window.myCloudMenuTimer = setTimeout(function() { myCloudCloseFloatingMenu(); }, 300);
+                };
+                btn.onclick = function(e) {
+                    e.stopPropagation();
+                    if (btn.disabled) return;
+                    if (window.myCloudMenuTimer) clearTimeout(window.myCloudMenuTimer);
+                    const existing = document.getElementById('myCloudFloatingMenu');
+                    if (existing && existing.dataset.owner === btn.innerHTML) {
+                        if (existing.dataset.pinned === 'true') myCloudCloseFloatingMenu();
+                        else existing.dataset.pinned = 'true';
+                    } else {
+                        myCloudShowFloatingMenu(btn, window.myCloudRibbonData[btn.dataset.tabId], customRenderer || createBtn, true);
+                    }
+                };
             }
-        };
+
         return btn;
     };
 
@@ -851,23 +1052,39 @@ function myCloudRenderToolbar() {
             tooltip: myCloud_LANG.ribbon_edit_tooltip || 'Actions',
             columns: [
                 {
+                    label: myCloud_LANG.search || 'Search',
+                    rows: [
+                        [{ act: 'search', type: 'big' }],
+                    ]
+                },
+                {
+                    label: myCloud_LANG.actions || 'Actions',
+                    rows: [
+						[{ act: 'rename', type: 'half' }, { act: 'copy', type: 'half' }],
+                        [{ act: 'move', type: 'half' }, { act: 'delete', type: 'half' }],
+                        [{ act: 'duplicate', type: 'full' }]
+                    ]
+                },
+                {
+                    label: myCloud_LANG.selection || 'Selection',
+                    rows: [
+                        [{ act: 'select_all', type: 'full' }],
+                        [{ act: 'clear_selection', type: 'full' }], 
+                        [{ act: 'invert_selection', type: 'full' }]
+                    ]
+                },
+                {
                     label: myCloud_LANG.open || 'Open',
                     rows: [
                         [{ act: 'preview', type: 'full' }], 
                         [{ act: 'edit_file', type: 'full' }],
                         [{ act: 'print', type: 'full' }], 
-                        [{ type: 'divider' }],
-                        [{ act: 'pdf_stack_menu', type: 'full' }]
                     ]
                 },
                 {
-                    label: myCloud_LANG.file_actions || 'File Actions',
+                    label: myCloud_LANG.pdf_tools || 'PDF Tools...',
                     rows: [
-                        [{ act: 'search', type: 'full' }],
-                        [{ type: 'divider' }],
-                        [{ act: 'rename', type: 'half' }, { act: 'copy', type: 'half' }],
-                        [{ act: 'move', type: 'half' }, { act: 'delete', type: 'half' }],
-                        [{ act: 'duplicate', type: 'full' }]
+                        [{ act: 'pdf_stack_menu', type: 'full' }]
                     ]
                 },
                 {
@@ -891,14 +1108,6 @@ function myCloudRenderToolbar() {
             label: myCloud_LANG.view || 'View',
             tooltip: myCloud_LANG.ribbon_view_tooltip || 'View',
             columns: [
-                {
-                    label: myCloud_LANG.selection || 'Selection',
-                    rows: [
-                        [{ act: 'select_all', type: 'full' }],
-                        [{ act: 'clear_selection', type: 'full' }], 
-                        [{ act: 'invert_selection', type: 'full' }]
-                    ]
-                },
                 {
                     label: myCloud_LANG.layout || 'Layout',
                     rows: [
@@ -1009,9 +1218,13 @@ function myCloudRenderToolbar() {
     if (window.myCloudActionAllowed('fav_toggle', currentDirRole)) totalAllowedButtons++;
     if (window.myCloudActionAllowed('settings', currentDirRole)) totalAllowedButtons++;
 
-    let isStacked = config.stackedToolbar;
     if (totalAllowedButtons < ribbonThreshold) isStacked = false;
     const hideDisabled = config.hideDisabled === true && (!isStacked || devKey === 'phone');
+
+    const isPinned = isStacked && config.ribbonPinned === true;
+    if (isPinned && !myCloudState.activeRibbonTabId) {
+        myCloudState.activeRibbonTabId = 'tab_home';
+    }
 
     if (isStacked) {
         toolbar.classList.add('ce-stacked-toolbar');
@@ -1068,6 +1281,11 @@ function myCloudRenderToolbar() {
         
     } else {
         toolbar.classList.remove('ce-stacked-toolbar');
+        const pinnedRibbon = document.getElementById('myCloudPinnedRibbon');
+        if (pinnedRibbon) {
+            pinnedRibbon.style.display = 'none';
+            pinnedRibbon.innerHTML = '';
+        }
 		let needsDivider = false;
         ribbonTabs.forEach(tab => {
             let tabHasItems = false;
@@ -1206,11 +1424,47 @@ function myCloudRenderToolbar() {
 	delete window._ceTempSettingsBtn;
     delete window._ceTempHelpBtn;
 
+
+    if (isStacked) {
+        const pinnedRibbon = document.getElementById('myCloudPinnedRibbon');
+        if (isPinned && pinnedRibbon) {
+            pinnedRibbon.style.display = 'block';
+            pinnedRibbon.innerHTML = '';
+            
+            const tabData = window.myCloudRibbonData[myCloudState.activeRibbonTabId];
+            if (tabData) {
+                const container = document.createElement('div');
+                container.className = 'ce-ribbon-popup-container';
+                container.style.boxShadow = 'none';
+                container.style.border = 'none';
+                container.style.padding = '4px 8px';
+                container.style.display = 'flex';
+                container.style.flexDirection = 'row';
+                container.style.flexWrap = 'nowrap';
+                container.style.width = 'max-content';
+                
+                const visibleCols = window.myCloudGenerateRibbonInnerDOM(container, tabData, createBtn, hideDisabled);
+                if (visibleCols > 0) {
+                    pinnedRibbon.appendChild(container);
+                    const wrapper = document.querySelector('.myCloudToolbar-wrapper');
+                    const maxW = wrapper ? wrapper.offsetWidth : window.innerWidth;
+                    window.myCloudApplyRibbonShrink(pinnedRibbon, container, maxW, 9999);
+                }
+            }
+        } else if (pinnedRibbon) {
+            pinnedRibbon.style.display = 'none';
+            pinnedRibbon.innerHTML = '';
+        }
+    }
+
+
     myCloudUpdateToolbarState();
     // Show toolbar only after building is fully complete and state is updated
     if (myCloudState.interface === 'gallery') {
         toolbar.classList.add('gallery-hidden');
         toolbar.style.display = 'none'; 
+        const pinnedRibbon = document.getElementById('myCloudPinnedRibbon');
+        if (pinnedRibbon) pinnedRibbon.style.display = 'none';
     } else {
         toolbar.classList.remove('gallery-hidden');
         toolbar.style.display = 'flex';
@@ -3161,6 +3415,12 @@ function myCloudCloseContextMenus() {
 
 // API: Load
 function myCloudLoadFavorites() {
+    if (typeof window.__INJECTED_FAVS !== 'undefined') {
+        const favs = window.__INJECTED_FAVS;
+        myCloudState.favorites = Array.isArray(favs) ? {} : (favs || {});
+        window.__INJECTED_FAVS = undefined; // GC
+        return Promise.resolve();
+    }
     return fetch('', {
         method: 'POST',
         body: new URLSearchParams({
@@ -3194,6 +3454,15 @@ function myCloudSaveFavorites() {
 
 // API: Load Tags
 function myCloudLoadTags() {
+    if (typeof window.__INJECTED_TAGS !== 'undefined') {
+        const tags = window.__INJECTED_TAGS;
+        myCloudState.tags = Array.isArray(tags) ? {} : (tags || {});
+        Object.keys(myCloudState.tags).forEach(k => {
+            if (Array.isArray(myCloudState.tags[k])) myCloudState.tags[k] = {};
+        });
+        window.__INJECTED_TAGS = undefined; // GC
+        return Promise.resolve();
+    }
     return fetch('', {
         method: 'POST',
         body: new URLSearchParams({
@@ -4078,5 +4347,177 @@ setTimeout(function() {
         };
     }
 }, 100);
+
+
+
+// ============================================================
+// KEYTIPS (ALT-KEY NAVIGATION) - MICROSOFT OFFICE STYLE
+// ============================================================
+window.myCloudKeyTipsActive = false;
+window.myCloudKeyTipNodes = {};
+
+window.myCloudToggleKeyTips = function() {
+    if (window.myCloudKeyTipsActive) myCloudHideKeyTips();
+    else myCloudShowKeyTips();
+};
+
+window.myCloudHideKeyTips = function() {
+    window.myCloudKeyTipsActive = false;
+    document.querySelectorAll('.ce-keytip').forEach(el => el.remove());
+    window.myCloudKeyTipNodes = {};
+};
+
+window.myCloudShowKeyTips = function() {
+    myCloudHideKeyTips();
+    window.myCloudKeyTipsActive = true;
+    window.myCloudKeyTipNodes = {};
+    
+    const floating = document.getElementById('myCloudFloatingMenu');
+    const collapsed = document.querySelector('.myCloudCollapsedMenu');
+    
+    let targets = [];
+    
+    // Priority Scope: Collapsed Dropdown -> Floating Ribbon -> Top Level (Tabs)
+    if (collapsed && collapsed.style.display !== 'none') {
+        targets = Array.from(collapsed.querySelectorAll('button:not([disabled])'));
+    } else if (floating && floating.style.display !== 'none') {
+        targets = Array.from(floating.querySelectorAll('button:not([disabled])'));
+    } else {
+        targets = Array.from(document.querySelectorAll(`
+            .myCloudCloudSwitcher > .ce-cloud-btn,
+            .myCloudToolbar > button:not([disabled]):not([style*="display: none"]),
+            #myCloudPinnedRibbon button:not([disabled]):not([style*="display: none"])
+        `));
+    }
+    
+    const usedKeys = new Set();
+    const assignments = new Map();
+    
+    // 1. Establish strong bindings ONLY for widely spread standard action shortcuts
+    const standardKeys = {
+        'search': 'S', 'copy': 'C', 'move': 'M', 'delete': 'D', 'rename': 'R', 'newfolder': 'N', 
+        'upload': 'U', 'download': 'W', 'print': 'P'
+    };
+    
+    // 2. First Pass: Reserve standard keys for currently visible elements
+    targets.forEach(el => {
+        if (el.offsetWidth === 0 || el.offsetHeight === 0) return;
+        const action = el.dataset.action || el.id; // Excluded dataset.tabId to prevent arbitrary tab mapping
+        
+        if (action && standardKeys[action] && !usedKeys.has(standardKeys[action])) {
+            // Extra safety: Verify the standard key actually exists in the localized word (except for universally recognized shortcuts)
+            let titleText = (el.textContent || el.title || '').toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            if (titleText.includes(standardKeys[action]) || ['copy', 'print', 'search'].includes(action)) {
+                assignments.set(el, standardKeys[action]);
+                usedKeys.add(standardKeys[action]);
+            }
+        }
+    });
+    
+    // 3. Second Pass: Dynamically assign STRICTLY from localized titles
+    targets.forEach(el => {
+        if (el.offsetWidth === 0 || el.offsetHeight === 0) return;
+        
+        let k = assignments.get(el);
+        
+        if (!k) {
+            // Extract text, normalize accents (e.g. 'é' -> 'e'), keep only Latin A-Z
+            let title = (el.textContent || el.title || '').toUpperCase()
+                            .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+                            .replace(/[^A-Z]/g, '');
+                            
+            // Fallback to internal action name ONLY if localized text contains no Latin characters (e.g., Arabic, Chinese)
+            if (!title) {
+                const action = el.dataset.action || el.dataset.tabId || el.id || '';
+                title = action.toUpperCase().replace(/[^A-Z]/g, '');
+            }
+            
+            // Try to assign the first available letter strictly FROM THE TITLE
+            for (let i = 0; i < title.length; i++) {
+                if (!usedKeys.has(title[i])) {
+                    k = title[i];
+                    usedKeys.add(k);
+                    break;
+                }
+            }
+            
+            // Absolute fallback: Numbers 1-9 if every single letter in the word is already taken
+            if (!k) {
+                for (let i = 1; i <= 9; i++) {
+                    let char = i.toString();
+                    if (!usedKeys.has(char)) {
+                        k = char;
+                        usedKeys.add(char);
+                        break;
+                    }
+                }
+            }
+        }
+        
+        if (!k) return;
+        
+        window.myCloudKeyTipNodes[k] = el;
+        
+        const badge = document.createElement('div');
+        badge.className = 'ce-keytip';
+        badge.textContent = k;
+        badge.style.cssText = 'position:fixed; background:#2b579a; color:#fff; font-size:11px; font-weight:bold; padding:2px 6px; border-radius:2px; box-shadow:1px 1px 4px rgba(0,0,0,0.6); z-index:2500000; pointer-events:none; border:1px solid #fff; text-align:center; min-width:18px; box-sizing:border-box; font-family:sans-serif; letter-spacing:0.5px;';
+        
+        const rect = el.getBoundingClientRect();
+        badge.style.left = (rect.left + (rect.width / 2) - 10) + 'px';
+        badge.style.top = (rect.top + (rect.height / 2) - 10) + 'px';
+        
+        // Align neatly below tabs
+        if (el.classList.contains('ce-ribbon-btn') || el.classList.contains('ce-cloud-btn')) {
+            badge.style.top = (rect.bottom - 12) + 'px';
+        }
+        
+        document.body.appendChild(badge);
+    });
+};
+
+let altPressedAlone = false;
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Alt') { 
+        altPressedAlone = true; 
+        return; 
+    }
+    altPressedAlone = false;
+    
+    const isAltComb = e.altKey && !e.ctrlKey && !e.metaKey && /^[A-Z0-9]$/i.test(e.key);
+    const isTipActive = window.myCloudKeyTipsActive && !e.ctrlKey && !e.metaKey && /^[A-Z0-9]$/i.test(e.key);
+    
+    if (isAltComb || isTipActive) {
+        e.preventDefault(); 
+        e.stopPropagation();
+        
+        if (!window.myCloudKeyTipsActive) myCloudShowKeyTips();
+        
+        const k = e.key.toUpperCase();
+        if (window.myCloudKeyTipNodes && window.myCloudKeyTipNodes[k]) {
+            const el = window.myCloudKeyTipNodes[k];
+            myCloudHideKeyTips();
+            el.click();
+            if (el.dataset.tabId || el.classList.contains('ce-collapsed-group-btn') || el.classList.contains('ce-cloud-btn')) setTimeout(myCloudShowKeyTips, 150);
+        } else {
+            myCloudHideKeyTips();
+        }
+
+    } else if (window.myCloudKeyTipsActive && e.key === 'Escape') {
+        myCloudHideKeyTips();
+    }
+}, true);
+
+document.addEventListener('keyup', (e) => {
+    if (e.key === 'Alt' && altPressedAlone) {
+        e.preventDefault();
+        myCloudToggleKeyTips();
+    }
+    altPressedAlone = false;
+}, true);
+
+document.addEventListener('mousedown', () => {
+    if (window.myCloudKeyTipsActive) myCloudHideKeyTips();
+}, true);
 
 </script>

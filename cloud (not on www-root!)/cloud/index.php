@@ -176,13 +176,13 @@ foreach ($activeModules as $mod) {
 // ============================================================================
 
 
-$cssMtimes = array_map(function($f) use ($cloud_dir) { return file_exists($cloud_dir . $f) ? filemtime($cloud_dir . $f) : 0; }, $cssFiles);
+$cssMtimes = array_map(function($f) use ($cloud_dir) { return (int)@filemtime($cloud_dir . $f); }, $cssFiles);
 $cssMtime = max($cssMtimes);
 if ($cssMtime === 0) $cssMtime = time();
 echo '<link rel="stylesheet" href="?myCloud_css=1&v=' . $cssMtime . '">';
 echo '<script src="?myCloud_dynamic_js=core.bootstrap.php&t=' . microtime(true) . '"></script>';
 // ============================================================================
-$jsMtimes = array_map(function($f) use ($cloud_dir) { return file_exists($cloud_dir . $f) ? filemtime($cloud_dir . $f) : 0; }, $jsBundleFiles);
+$jsMtimes = array_map(function($f) use ($cloud_dir) { return (int)@filemtime($cloud_dir . $f); }, $jsBundleFiles);
 $jsMtime = max($jsMtimes);
 echo '<script src="?myCloud_js=1&v=' . $jsMtime . '"></script>';
 echo '<script src="?myCloud_dynamic_js=core.heartbeat.php&t=' . microtime(true) . '"></script>';

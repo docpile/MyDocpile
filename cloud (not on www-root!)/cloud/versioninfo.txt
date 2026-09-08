@@ -1,3 +1,13 @@
+4.3.295
+	Improvement: Menu alt key management
+
+4.3.294
+	Feature: Cloud menu: Double mouse click for fixed menu
+	Feature: Cloud menu: Slight redesign to allow for &quot;big icons&quot;
+
+4.2.293
+	Improvement: Main cloud loading time reduced
+
 4.2.292
 	Security: Replaced hard coded block with captcha (and block after 3 unsolved captchas) in connection with unallowed IP addresses and so on
 	Security: Medium to low severity: Several bugfixes and logic error fixes on login.

@@ -3865,6 +3865,11 @@ function myCloudNotify(message) {
 
 // [NEW] API Call to load the separate _views.json
 function myCloudLoadViewSettings() {
+    if (typeof window.__INJECTED_VIEWS !== 'undefined') {
+        myCloudState.viewSettings = window.__INJECTED_VIEWS || {};
+        window.__INJECTED_VIEWS = undefined; // GC
+        return Promise.resolve();
+    }
     const fd = new URLSearchParams();
     fd.append('myCloud_action', 'load_views');
     fd.append('myCloud_key', myCloudState.key);

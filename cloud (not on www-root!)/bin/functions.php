@@ -1287,6 +1287,9 @@ function isCaptchaBypassed() {
 }
 
 function verifyCaptchaCode($code) {
+	// Prevent Array TypeErrors and Memory Exhaustion (DoS) from massive payloads
+	if (!is_string($code) || strlen($code) > 20) return false;
+
 	if (session_status() !== PHP_SESSION_ACTIVE) @session_start();
 	
 	if (!isset($_SESSION['captcha_attempts'])) $_SESSION['captcha_attempts'] = 0;

@@ -163,8 +163,10 @@ class Login {
 			$subnet = inet_ntop(substr($packed, 0, 8) . str_repeat("\0", 8));
 			return $subnet . '/64';
 		} else {
-			$parts = explode('.', $ip);
-			if(count($parts) === 4) { array_pop($parts); return implode('.', $parts) . '.0/24'; }
+			if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+				$lastDot = strrpos($ip, '.');
+				return substr($ip, 0, $lastDot) . '.0/24';
+			}
 			return $ip;
 		}
 	}
@@ -235,8 +237,11 @@ class Login {
 		$tokens = json_decode($contents, true) ?: [];
 		$now = time(); $dirty = false;
 		if ($action === 'write' || $action === 'delete') {
-			foreach ($tokens as $key => $val) {
-				if (isset($val['expires']) && $val['expires'] < $now) { unset($tokens[$key]); $dirty = true; }
+			// Probabilistic Global GC (5% chance) to prevent massive CPU overhead under concurrency
+			if (random_int(1, 100) <= 5) {
+				foreach ($tokens as $key => $val) {
+					if (isset($val['expires']) && $val['expires'] < $now) { unset($tokens[$key]); $dirty = true; }
+				}
 			}
 		}
 		$return_val = null;
@@ -267,10 +272,19 @@ class Login {
 		$fp = @fopen($file, 'c+'); if (!$fp) return;
 		flock($fp, LOCK_EX);
 		$fstat = fstat($fp); $contents = ($fstat['size'] > 0) ? fread($fp, $fstat['size']) : '[]'; $data = json_decode($contents, true) ?: [];
-		foreach ($data as $key => $val) {
-			$level = $val['level'] ?? 0; $current_block_duration = $block_time * pow($factor, $level);
-			if ($val['last_attempt'] + $current_block_duration + $window < time()) unset($data[$key]);
+		
+		// Probabilistic Global GC (10% chance) to prevent CPU spiking under heavy brute-force
+		if (random_int(1, 100) <= 10) {
+			foreach ($data as $key => $val) {
+				$level = $val['level'] ?? 0; $current_block_duration = $block_time * pow($factor, $level);
+				if ($val['last_attempt'] + $current_block_duration + $window < time()) unset($data[$key]);
+			}
+		} elseif (isset($data[$subnet])) {
+			// Guaranteed Targeted GC: Always evaluate the current subnet so it is never falsely penalized
+			$level = $data[$subnet]['level'] ?? 0; $current_block_duration = $block_time * pow($factor, $level);
+			if ($data[$subnet]['last_attempt'] + $current_block_duration + $window < time()) unset($data[$subnet]);
 		}
+
 		if (!isset($data[$subnet])) $data[$subnet] = ['count' => 0, 'last_attempt' => time(), 'level' => 0, 'usernames' => [], 'user_agent' => ''];
 		if ($data[$subnet]['count'] < $limit) {
 			$data[$subnet]['count']++; $data[$subnet]['last_attempt'] = time();
@@ -286,8 +300,23 @@ class Login {
 		if (isset($data[$subnet])) { unset($data[$subnet]); $this->save_brute_force_data($file, $data); }
 	}
 	
-	public function load_verifications($file) { return json_decode(file_get_contents($file), true) ?: []; }
-	public function save_verifications($file, $data) { file_put_contents($file, json_encode($data)); }
+	public function load_verifications($file) {
+		if (!file_exists($file)) return [];
+		$fp = @fopen($file, 'r'); if (!$fp) return [];
+		flock($fp, LOCK_SH);
+		$contents = stream_get_contents($fp);
+		flock($fp, LOCK_UN); fclose($fp);
+		return json_decode($contents, true) ?: [];
+	}
+
+	public function save_verifications($file, $data) {
+		$fp = @fopen($file, 'c+'); if (!$fp) return;
+		flock($fp, LOCK_EX);
+		ftruncate($fp, 0); rewind($fp);
+		fwrite($fp, json_encode($data));
+		fflush($fp);
+		flock($fp, LOCK_UN); fclose($fp);
+	}
 
 	public function showCaptchaInterstitial() {
 		$lang = $this->language === 'de' ? 'de' : 'en';
@@ -900,6 +929,9 @@ class Login {
 				usleep(random_int(1500000, 2700000));
 			} elseif (!is_string($_POST['username']) || !is_string($_POST['password'])) {
 				$this->login_error = ($this->language === 'de') ? "Ungültige Anfrage." : "Invalid request format.";
+				usleep(random_int(1500000, 2700000));
+			} elseif (strlen($_POST['username']) > 128 || strlen($_POST['password']) > 256) {
+				$this->login_error = ($this->language === 'de') ? "Eingabe zu lang." : "Input exceeds maximum length.";
 				usleep(random_int(1500000, 2700000));
 			} else {
 	$username = filter_var( $_POST['username'], FILTER_UNSAFE_RAW, FILTER_FLAG_STRIP_LOW | FILTER_FLAG_STRIP_HIGH ); 
