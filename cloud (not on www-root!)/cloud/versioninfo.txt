@@ -1,3 +1,10 @@
+4.3.297
+	Improvement: Webmail: New context menus for mail view and mail source view
+	Improvement: Webmail: Print mail button
+
+4.3.296
+	Fix: Webmail: Certain malformed MS Outlook mails (two body tags) not displayed
+
 4.3.295
 	Improvement: Menu alt key management
 

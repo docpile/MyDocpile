@@ -3014,32 +3014,21 @@ private function runIncrementalMigration() {
                     $htmlContent = mb_convert_encoding($htmlContent, 'UTF-8', 'UTF-8');
 
                     // 1. OUTLOOK CONDITIONAL COMMENT CLEANER
+                    // Drop entire MSO-only blocks but preserve standard fallbacks (which start with '!')
+                    $htmlContent = preg_replace('/<!--\[if\s*(?!!)[^\]]*\]>.*?<!\[endif\]-->/is', '', $htmlContent);
                     $htmlContent = preg_replace('/<!--\[if[^\]]*\]>(?:<!-->|<!--\s*-->|<!\s*-->|-->)?/i', '', $htmlContent);
                     $htmlContent = preg_replace('/(?:<!--\s*)?<!\[endif\]-->/i', '', $htmlContent);
                     
                     // Clean up any remaining isolated malformed comment artifacts (like <! -->)
                     $htmlContent = preg_replace('/<!\s*-->/', '', $htmlContent);
                     $htmlContent = str_replace('<!-->', '', $htmlContent);
+              
+                    // 2. STRUCTURAL TAG PRE-CLEANER
+                    // Safely remove document wrappers without discarding content or head styles
+                    // Prevents catastrophic extraction failures if the IMAP library already stripped the outer body tag
+                    $htmlContent = preg_replace('/<!DOCTYPE[^>]*>/i', '', $htmlContent);
+                    $htmlContent = preg_replace('/<\/?(?:html|head|body)[^>]*>/i', '', $htmlContent);
 
-                    // 2. STRUCTURAL TAG PRE-CLEANER (No PCRE Backtracking)
-                    $bodyStart = stripos($htmlContent, '<body');
-                    if ($bodyStart !== false) {
-                        $bodyEnd = strripos($htmlContent, '</body>');
-                        if ($bodyEnd !== false) {
-                            $startPos = strpos($htmlContent, '>', $bodyStart) + 1;
-                            $htmlContent = substr($htmlContent, $startPos, $bodyEnd - $startPos);
-                        }
-                    } else {
-                        $htmlContent = preg_replace('/<!DOCTYPE[^>]*>/i', '', $htmlContent);
-                        $htmlContent = preg_replace('/<\/?html[^>]*>/i', '', $htmlContent);
-                        $headStart = stripos($htmlContent, '<head');
-                        if ($headStart !== false) {
-                            $headEnd = stripos($htmlContent, '</head>');
-                            if ($headEnd !== false) {
-                                $htmlContent = substr($htmlContent, 0, $headStart) . substr($htmlContent, $headEnd + 7);
-                            }
-                        }
-                    }
 
                     if (class_exists('HTMLPurifier')) {
                         $config = \HTMLPurifier_Config::createDefault();
@@ -3222,6 +3211,8 @@ private function runIncrementalMigration() {
                     $mailBody = mb_convert_encoding($mailBody, 'UTF-8', 'UTF-8');
 
                     // 1. OUTLOOK CONDITIONAL COMMENT CLEANER
+                    // Drop entire MSO-only blocks but preserve standard fallbacks (which start with '!')
+                    $mailBody = preg_replace('/<!--\[if\s*(?!!)[^\]]*\]>.*?<!\[endif\]-->/is', '', $mailBody);
                     $mailBody = preg_replace('/<!--\[if[^\]]*\]>(?:<!-->|<!--\s*-->|<!\s*-->|-->)?/i', '', $mailBody);
                     $mailBody = preg_replace('/(?:<!--\s*)?<!\[endif\]-->/i', '', $mailBody);
                     
@@ -3230,24 +3221,10 @@ private function runIncrementalMigration() {
                     $mailBody = str_replace('<!-->', '', $mailBody);
 
                     // 2. STRUCTURAL TAG PRE-CLEANER
-                    $bodyStart = stripos($mailBody, '<body');
-                    if ($bodyStart !== false) {
-                        $bodyEnd = strripos($mailBody, '</body>');
-                        if ($bodyEnd !== false) {
-                            $startPos = strpos($mailBody, '>', $bodyStart) + 1;
-                            $mailBody = substr($mailBody, $startPos, $bodyEnd - $startPos);
-                        }
-                    } else {
-                        $mailBody = preg_replace('/<!DOCTYPE[^>]*>/i', '', $mailBody);
-                        $mailBody = preg_replace('/<\/?html[^>]*>/i', '', $mailBody);
-                        $headStart = stripos($mailBody, '<head');
-                        if ($headStart !== false) {
-                            $headEnd = stripos($mailBody, '</head>');
-                            if ($headEnd !== false) {
-                                $mailBody = substr($mailBody, 0, $headStart) . substr($mailBody, $headEnd + 7);
-                            }
-                        }
-                    }
+                    // Safely remove document wrappers without discarding content or head styles
+                    // Prevents catastrophic extraction failures if the IMAP library already stripped the outer body tag
+                    $mailBody = preg_replace('/<!DOCTYPE[^>]*>/i', '', $mailBody);
+                    $mailBody = preg_replace('/<\/?(?:html|head|body)[^>]*>/i', '', $mailBody);
 
                     $dom = new DOMDocument();
                     libxml_use_internal_errors(true);
@@ -3380,8 +3357,8 @@ private function runIncrementalMigration() {
                     }
                     $headerHtml .= "</div>";
 
-                    $printCss = "body { font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #333333; line-height: 1.5; padding: 20px; margin: 0; background: #fff; } .email-header { border-bottom: 1px solid #e1e1e1; padding-bottom: 15px; margin-bottom: 20px; font-size: 13px; } .email-header b { display: inline-block; min-width: 80px; color: #555; } .email-header div { margin-bottom: 4px; } img { max-width: 100%; height: auto; page-break-inside: avoid; } table { border-collapse: collapse; } * { word-wrap: break-word; overflow-wrap: break-word; } p { margin-top: 0; margin-bottom: 1em; }";
-                    
+                    $printCss = "@page { margin: 15mm; } body { font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #333333; line-height: 1.5; padding: 0; margin: 0; background: #fff; } .email-header { border-bottom: 1px solid #e1e1e1; padding-bottom: 15px; margin-bottom: 20px; font-size: 16px; } .email-header b { display: inline-block; min-width: 100px; color: #555; } .email-header div { margin-bottom: 4px; } img { max-width: 100%; height: auto; page-break-inside: avoid; } table { border-collapse: collapse; } * { word-wrap: break-word; overflow-wrap: break-word; } p { margin-top: 0; margin-bottom: 1em; }";
+					
                     $mailBody = preg_replace('/<(script|iframe|object|embed|applet|meta|base|link).*?>.*?<\/\1>/is', '', $mailBody);
                     $mailBody = preg_replace('/<(script|iframe|object|embed|applet|meta|base|link)[^>]*>/is', '', $mailBody);
                     
@@ -3463,8 +3440,8 @@ private function runIncrementalMigration() {
                     }
 
                     if (!$usedOnlyOffice || !file_exists($mainPdf) || filesize($mainPdf) == 0) {
-                        $wkPaths = ['wkhtmltopdf --disable-smart-shrinking', '/usr/bin/wkhtmltopdf --disable-smart-shrinking', '/usr/local/bin/wkhtmltopdf --disable-smart-shrinking'];
-                        foreach ($wkPaths as $wk) {
+                        $wkPaths = ['wkhtmltopdf --disable-smart-shrinking --zoom 1.25 -T 15mm -B 15mm -L 15mm -R 15mm', '/usr/bin/wkhtmltopdf --disable-smart-shrinking -T 15mm -B 15mm -L 15mm -R 15mm', '/usr/local/bin/wkhtmltopdf --disable-smart-shrinking -T 15mm -B 15mm -L 15mm -R 15mm'];
+						foreach ($wkPaths as $wk) {
                             @exec($wk . " --encoding utf-8 " . escapeshellarg($mainHtml) . " " . escapeshellarg($mainPdf) . " 2>&1");
                             if (file_exists($mainPdf) && filesize($mainPdf) > 0) break;
                         }
@@ -3486,7 +3463,7 @@ private function runIncrementalMigration() {
                         
                         $imPaths = ['convert', '/usr/bin/convert', '/usr/local/bin/convert'];
                         foreach ($imPaths as $im) {
-                            @exec($im . " -background white -fill black -pointsize 12 text:" . escapeshellarg($txtFile) . " " . escapeshellarg($mainPdf) . " 2>&1");
+                            @exec($im . " -background white -fill black -pointsize 14 text:" . escapeshellarg($txtFile) . " " . escapeshellarg($mainPdf) . " 2>&1");
                             if (file_exists($mainPdf) && filesize($mainPdf) > 0) break;
                         }
                     }

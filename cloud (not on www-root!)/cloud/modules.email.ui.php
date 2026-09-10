@@ -3105,6 +3105,164 @@ window._emailDownloadPdf = function(accId, folder, msgId, forceFallback = false)
     }, fallback, 'Generating PDF...', forceFallback);
 };
 
+window._emailPrintPdf = async function(accId, folder, msgId) {
+    const L = typeof myCloud_LANG !== 'undefined' ? myCloud_LANG : {};
+	let loadImg = '1';
+    if (document.getElementById('ceLoadEmailImgBtn')) loadImg = '0';
+    
+    if (typeof myCloudCreateProgressUI === 'function') myCloudCreateProgressUI(L.preparing_print || 'Preparing Print...');
+    else if (typeof myCloudShowLoading === 'function') myCloudShowLoading();
+
+
+    const fd = new URLSearchParams({
+        myCloud_action: 'email_dl_pdf',
+        myCloud_key: myCloudState.key,
+        myCloud_token: window.myCloudCsrfToken,
+        account_id: accId,
+        folder: folder,
+        message_id: msgId,
+        load_images: loadImg
+    });
+
+    try {
+        const response = await fetch('', { method: 'POST', body: fd });
+        if (!response.ok) throw new Error("Network error");
+        const blob = await response.blob();
+        
+        if (typeof myCloudCloseProgressUI === 'function') myCloudCloseProgressUI();
+        else if (typeof myCloudHideLoading === 'function') myCloudHideLoading();
+
+        const url = URL.createObjectURL(blob);
+        const iframe = document.createElement('iframe');
+        iframe.style.visibility = 'hidden';
+        iframe.style.position = 'absolute';
+        iframe.style.width = '1px';
+        iframe.style.height = '1px';
+        iframe.src = url;
+        document.body.appendChild(iframe);
+
+        // Chrome PDF Viewer skips the iframe onload event for PDFs, so we use a reliable timeout
+        setTimeout(() => {
+            try {
+                iframe.contentWindow.focus();
+                iframe.contentWindow.print();
+            } catch (e) { console.warn("Background print failed:", e); }
+            
+            // Wait before cleanup to ensure the OS print spooler captures the document
+            setTimeout(() => { document.body.removeChild(iframe); URL.revokeObjectURL(url); }, 120000);
+        }, 1200);
+
+    } catch(err) {
+		if (typeof myCloudCloseProgressUI === 'function') myCloudCloseProgressUI();
+        else if (typeof myCloudHideLoading === 'function') myCloudHideLoading();
+        if (typeof myCloudShowAlert === 'function') myCloudShowAlert(L.error_prefix || 'Error', 'Print failed: ' + err.message);
+    }
+};
+
+window._emailShowReadingContextMenu = function(e, sourceEl, isIframe, accId, folder, msgId) {
+    if (e.preventDefault) e.preventDefault();
+    if (e.stopPropagation) e.stopPropagation();
+    if (typeof myCloudCloseContextMenus === 'function') myCloudCloseContextMenus();
+
+    const menu = document.createElement('div');
+    menu.id = 'myCloudContextMenu';
+    menu.className = 'myCloudContextMenu';
+    menu.style.position = 'fixed';
+    menu.style.zIndex = '2000000';
+    menu.style.visibility = 'hidden';
+
+    const L = typeof myCloud_LANG !== 'undefined' ? myCloud_LANG : {};
+    let doc = isIframe ? (sourceEl.contentDocument || sourceEl.contentWindow.document) : document;
+    
+    let selectedText = '';
+    try { selectedText = doc.getSelection().toString().trim(); } catch(err) {}
+
+    let allText = '';
+    try { allText = isIframe ? doc.body.innerText : sourceEl.innerText; } catch(err) {}
+
+    let actions = [];
+
+    if (selectedText) {
+        actions.push({ 
+            label: L.copy || 'Copy', 
+            icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>', 
+            act: () => { navigator.clipboard.writeText(selectedText); }
+        });
+    }
+    actions.push({ 
+        label: L.copy_all || 'Copy All', 
+        icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>', 
+        act: () => { navigator.clipboard.writeText(allText); }
+    });
+    actions.push({ sep: true });
+    actions.push({ 
+        label: L.print || 'Print', 
+        icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>', 
+        act: () => { window._emailPrintPdf(accId, folder, msgId); }
+    });
+
+    let hasItems = false;
+    actions.forEach(a => {
+        if (a.sep) {
+            const sep = document.createElement('div');
+            sep.className = 'myCloudContextSep';
+            menu.appendChild(sep);
+            return;
+        }
+        hasItems = true;
+        const el = document.createElement('div');
+        el.className = 'myCloudContextItem';
+        el.innerHTML = '<span class="myCloudIcon" style="width:20px; height:20px; margin-right:12px; font-size:18px; display:inline-flex; align-items:center; justify-content:center;">' + a.icon + '</span> <span style="flex:1;">' + a.label + '</span>';
+        el.onclick = function(ev) {
+            ev.stopPropagation();
+            menu.remove();
+            if (a.act) a.act();
+        };
+        menu.appendChild(el);
+    });
+
+    if (!hasItems) return;
+
+    document.body.appendChild(menu);
+    menu.style.display = 'block';
+    void menu.offsetHeight; 
+    
+    const menuRect = menu.getBoundingClientRect();
+    const menuWidth = menuRect.width;
+    const menuHeight = menuRect.height;
+    
+    const sourceEvent = (e.touches && e.touches.length > 0) ? e.touches[0] : ((e.changedTouches && e.changedTouches.length > 0) ? e.changedTouches[0] : e);
+    
+    let leftPos = sourceEvent.clientX || 0;
+    let topPos = sourceEvent.clientY || 0;
+    
+    if (isIframe) {
+        const rect = sourceEl.getBoundingClientRect();
+        leftPos += rect.left;
+        topPos += rect.top;
+    }
+
+    if (leftPos + menuWidth > window.innerWidth - 5) leftPos = window.innerWidth - menuWidth - 5;
+    if (leftPos < 5) leftPos = 5;
+
+    if (topPos + menuHeight > window.innerHeight - 25) {
+        menu.style.top = 'auto';
+        menu.style.bottom = '15px';
+        if (menuHeight > window.innerHeight - 30) {
+            menu.style.maxHeight = (window.innerHeight - 30) + 'px';
+            menu.style.overflowY = 'auto';
+        }
+    } else {
+        menu.style.top = topPos + 'px';
+        menu.style.bottom = 'auto';
+    }
+    menu.style.left = leftPos + 'px';
+
+    if (typeof myCloudApplyTheme === 'function') myCloudApplyTheme();
+    menu.style.visibility = 'visible';
+};
+
+
 window._emailDownloadAttachment = function(accId, folder, msgId, part, filename) {
     window._emailDownloadResource('email_dl_attach', {
         account_id: accId,
@@ -4074,9 +4232,10 @@ window.myCloudEmailReadMessage = function(msgId, meta) {
                 let style = data.attrValue.toLowerCase().replace(/\s+/g, '');
                 if (style.includes('display:none') || 
                     style.includes('visibility:hidden') || 
-                    style.includes('opacity:0') || 
-                    style.includes('font-size:0') || 
+                    /opacity:0(?:;|$)/.test(style) || 
+                    /font-size:0(?:px|em|rem|pt|%|;|$)/.test(style) ||
                     style.includes('color:transparent')) {
+						data.keepAttr = false;
                         node.removeAttribute('style');
                         if (node.tagName && node.tagName.toLowerCase() === 'style') {
                             node.innerHTML = '';
@@ -4242,6 +4401,10 @@ window.myCloudEmailReadMessage = function(msgId, meta) {
                 '<div class="ce-email-tb-left" style="display:flex; align-items:center; flex-shrink:0; gap:4px;">' + mobileBackBtn + prevBtn + nextBtn + mobileDivider + replyBtnHtml + '</div>' +
                 '<div class="ce-email-tb-middle" style="display:flex; align-items:center; justify-content:center; flex-shrink:0; gap:4px;">' + loadImgBtnHtml + '</div>' +
                 '<div class="ce-email-tb-right" style="display:flex; align-items:center; justify-content:flex-end; flex-shrink:0; gap:4px;">' +
+                '<button class="owa-btn" title="' + (L.print || 'Print') + '" onclick="window._emailPrintPdf(\'' + targetAcc + '\', \'' + targetFolder + '\', \'' + msgId + '\')">' +
+                    '<span class="owa-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg></span>' +
+                '<span class="owa-label ce-label-tier-3">' + (L.print || 'Print') + '</span>' +
+                '</button>' +
                 '<button class="owa-btn" title="' + (L.save || 'Save') + '" onclick="window._emailShowSaveOptions(\'' + targetAcc + '\', \'' + targetFolder + '\', \'' + msgId + '\')">' +
                     '<span class="owa-icon"><svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg></span>' +
                 '<span class="owa-label ce-label-tier-3">' + (L.save || 'Save') + '</span>' +
@@ -4390,185 +4553,212 @@ window.myCloudEmailReadMessage = function(msgId, meta) {
             };
         }
 
-        const iframeEl = document.getElementById('ceEmailIframeContent');
-        if (iframeEl) {
-            iframeEl.onload = () => {
-                const iframeDoc = iframeEl.contentDocument || iframeEl.contentWindow.document;
-                if (!iframeDoc) return;
-
-                let iframeScale = 1;
-                let iframeStartDist = 0;
-                
-                iframeDoc.addEventListener("wheel", e => {
-                    if (e.ctrlKey || e.metaKey) {
-                        e.preventDefault();
-                        iframeScale += e.deltaY > 0 ? -0.15 : 0.15;
-                        iframeScale = Math.max(0.3, Math.min(iframeScale, 5));
-                        iframeDoc.body.style.transformOrigin = "top left";
-                        iframeDoc.body.style.transform = "scale(" + iframeScale + ")";
-                        iframeDoc.body.style.width = (100 / iframeScale) + "%";
-                    }
-                }, {passive: false});
-                
-                iframeDoc.addEventListener("touchstart", e => { 
-                    if (e.touches.length === 2) iframeStartDist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY); 
-                }, {passive: false});
-                
-                iframeDoc.addEventListener("touchmove", e => {
-                    if (e.touches.length === 2) {
-                        e.preventDefault();
-                        let dist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
-                        iframeScale += (dist - iframeStartDist) * 0.01; iframeScale = Math.max(0.3, Math.min(iframeScale, 5));
-                        iframeDoc.body.style.transformOrigin = "top left"; iframeDoc.body.style.transform = "scale(" + iframeScale + ")"; iframeDoc.body.style.width = (100 / iframeScale) + "%"; iframeStartDist = dist;
-                    }
-                }, {passive: false});
-
-               iframeDoc.addEventListener('click', (e) => {
-                    const anchor = e.target.closest('a[data-safe-href]');
-                    if (anchor) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        const safeHref = anchor.getAttribute('data-safe-href');
-
-                        if (safeHref.toLowerCase().startsWith('mailto:')) {
-                            const raw = safeHref.substring(7);
-                            const parts = raw.split('?');
-                            const toAddress = decodeURIComponent(parts[0]);
-                            let subject = '', body = '';
-                            if (parts.length > 1) {
-                                const params = new URLSearchParams(parts[1]);
-                                subject = params.get('subject') || '';
-                                body = params.get('body') || '';
-                            }
-                            if (typeof myCloudShowEmailComposer === 'function') {
-                                if (body && window.DOMPurify) {
-                                    body = window.DOMPurify.sanitize(body, { FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'applet', 'meta', 'base'], ALLOW_DATA_ATTR: false });
-                                }
-                                myCloudShowEmailComposer({ to: toAddress, subject: subject, body: body });
-                            }
-                            return;
-                        }
-
-                        try {
-                            const urlObj = new URL(safeHref, window.location.origin);
-                             
-                             // 1. Phishing & Spoofing Heuristics
-                             const senderDomain = (meta.fromEmail || '').includes('@') ? (meta.fromEmail || '').split('@').pop().toLowerCase() : '';
-                             const linkDomain = urlObj.hostname.toLowerCase();
-                             let isHomograph = false;
-                             let isMismatch = false;
-                             
-                             // A. Punycode & Homograph Detection
-                             const rawHrefMatch = safeHref.match(/^https?:\/\/([^/?#]+)/i);
-                             const rawDomain = rawHrefMatch ? decodeURIComponent(rawHrefMatch[1]) : linkDomain;
-                             
-                             if (linkDomain.includes('xn--')) {
-                                 if (/[\u0400-\u04FF\u0370-\u03FF]/.test(rawDomain)) {
-                                     isHomograph = true;
-                                 } else {
-                                     const hasBasicLatin = /[a-zA-Z]/.test(rawDomain);
-                                     const hasNonAllowed = /[^\x00-\x7F\u0080-\u024F\u0600-\u06FF\u0590-\u05FF\u4E00-\u9FFF\u3040-\u30FF\uAC00-\uD7AF\.]/.test(rawDomain);
-                                     if (hasBasicLatin && hasNonAllowed) isHomograph = true;
-                                 }
-                             }
-                             
-                             // B. Cross-Domain Mismatch Detection
-                             if (senderDomain && linkDomain) {
-                                 const getRootDomain = (d) => {
-                                     const p = d.split('.');
-                                     if (p.length <= 2) return d;
-                                     if (p[p.length - 2].length <= 3 && ['co','com','org','net','edu','gov','ac'].includes(p[p.length - 2])) {
-                                         return p.slice(-3).join('.');
-                                     }
-                                     return p.slice(-2).join('.');
-                                 };
-                                 
-                                 const senderRoot = getRootDomain(senderDomain);
-                                 const linkRoot = getRootDomain(linkDomain);
-
-                                 const isSameRoot = senderRoot === linkRoot;
-                                 const globalSafeLinks = window.$cloud_mail_safe_mail_domains || ['mailchimp.com', 'list-manage.com', 'sendgrid.net', 'ct.sendgrid.net', 'constantcontact.com', 'hubspot.com', 'marketo.com', 'click.pstmrk.it', 'links.iterable.com', 'awstrack.me', 'mailgun.org', 'sendinblue.com', 'e.customeriomail.com', 'klaviyomail.com', 'mcsv.net', 'rsys2.com'];
-                                 const isSafeThirdParty = globalSafeLinks.some(d => linkRoot === getRootDomain(d) || linkDomain.endsWith('.' + d));
-                                  
-                                 if (!isSameRoot && !isSafeThirdParty) isMismatch = true;
-                             }
-                             
-                             // 2. Dynamic UI Construction
-                             let warningHtml = (L.link_warning_msg || 'You are about to open an external link to:') + '<br><br><b style="font-size:16px;">' + myCloudEscapeHtml(linkDomain) + '</b><br><br>';
-                             
-                             if (isHomograph || isMismatch) {
-                                 warningHtml += '<div style="background:var(--danger, #e81123); color:#fff; padding:12px; border-radius:6px; text-align:left; margin-bottom:15px; font-size:13px; line-height:1.4;">';
-                                 warningHtml += '<div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; font-weight:bold; font-size:14px;"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>' + (L.sec_warning || 'Security Warning') + '</div>';
-                                 warningHtml += '<ul style="margin:0; padding-inline-start:20px;">';
-                                 if (isHomograph) warningHtml += '<li><b>' + (L.homograph_warn || 'Deceptive Characters:') + '</b> ' + (L.homograph_desc || 'This link uses hidden foreign characters (Punycode) to impersonate a legitimate website.') + '</li>';
-                                 if (isMismatch) warningHtml += '<li style="margin-top:4px;"><b>' + (L.mismatch_warn || 'Domain Mismatch:') + '</b> ' + (L.mismatch_desc || 'The link destination does not match the sender\'s domain (') + myCloudEscapeHtml(senderDomain) + ').</li>';
-                                 warningHtml += '</ul></div>';
-                             }
-                             
-                             warningHtml += (L.proceed_ask || 'Do you want to proceed?');
-
-                            myCloudShowAlert(
-                                L.link_warning || 'External Link', 
-                                warningHtml,
-                                () => { window.open(safeHref, '_blank', 'noopener,noreferrer'); }
-                            );
-                        } catch(err) {
-                            myCloudShowAlert(L.error_prefix || 'Error', L.invalid_link || 'Invalid link.');
-                        }
-                    }
-                });
-
-                if (hasExternalImages && !isTrusted) {
-                    const imgBtn = document.getElementById('ceLoadEmailImgBtn');
-                    const trustBtn = document.getElementById('ceTrustDomainBtn');
-
-                    const useProxy = (typeof window.myCloudEmailProxyEnabled !== 'undefined') ? window.myCloudEmailProxyEnabled : true;
-                    const proxyUrl = (url) => {
-                        if (!useProxy || !url.match(/^https?:\/\//i)) return url;
-                        return '?myCloud_email_proxy_img=' + encodeURIComponent(btoa(url));
-                    };
-
-                    
-                    const triggerImageLoad = () => {
-                        iframeDoc.querySelectorAll('img[data-safe-src]').forEach(img => {
-                            img.setAttribute('src', proxyUrl(img.getAttribute('data-safe-src')));
-                            const origStyle = img.getAttribute('data-orig-style');
-                            if (origStyle !== null) img.setAttribute('style', origStyle);
-                            else img.removeAttribute('style');
-                            const origHeight = img.getAttribute('data-orig-height');
-                            if (origHeight) img.setAttribute('height', origHeight);
-                        });
-                        iframeDoc.querySelectorAll('[data-safe-style]').forEach(el => {
-                            let css = el.getAttribute('data-safe-style');
-                            if (useProxy) {
-                                css = css.replace(/url\(['"]?(https?:\/\/[^)'"]+)['"]?\)/gi, (match, url) => {
-                                    return 'url("' + proxyUrl(url) + '")';
-                                });
-                            }
-                            if (el.tagName.toLowerCase() === 'style') el.innerHTML = css;
-                            else el.setAttribute('style', css);
-                        });
-                        iframeDoc.querySelectorAll('[data-safe-background]').forEach(el => {
-                            el.setAttribute('background', proxyUrl(el.getAttribute('data-safe-background')));
-                        });
-                        if (imgBtn) imgBtn.remove();
-                        if (trustBtn) trustBtn.remove();
-                    };
-
-                    if (imgBtn) imgBtn.onclick = triggerImageLoad;
-                    if (trustBtn) {
-                        trustBtn.onclick = () => {
-                            if (myCloudState.settings && myCloudState.settings[devKey] && myCloudState.settings[devKey].trustedEmailDomains) {
-                                myCloudState.settings[devKey].trustedEmailDomains.push(senderDomain);
-                                if (typeof myCloudSaveSettings === 'function') myCloudSaveSettings();
-                            }
-                            triggerImageLoad();
-                        };
-                    }
-                }
-            };
+        const rawPre = reading.querySelector('.ce-email-back pre');
+        if (rawPre) {
+            rawPre.addEventListener('contextmenu', (e) => {
+                window._emailShowReadingContextMenu(e, rawPre, false, targetAcc, targetFolder, msgId);
+            });
+            window._emailBindLongTouch(rawPre, (e) => {
+                window._emailShowReadingContextMenu(e, rawPre, false, targetAcc, targetFolder, msgId);
+            });
         }
 
+        const iframeEl = document.getElementById('ceEmailIframeContent');
+        if (iframeEl) {
+            const setupIframeEvents = () => {
+                try {
+                    const iframeDoc = iframeEl.contentDocument || (iframeEl.contentWindow ? iframeEl.contentWindow.document : null);
+                    if (!iframeDoc || !iframeDoc.body || (!iframeDoc.body.innerHTML.includes('ce-email-body-content') && !iframeDoc.body.innerText)) {
+                        if ((iframeEl.dataset.retryCount || 0) < 100) {
+                            iframeEl.dataset.retryCount = (parseInt(iframeEl.dataset.retryCount || 0) + 1);
+                            setTimeout(setupIframeEvents, 20);
+                        }
+                        return;
+                    }
+
+                    iframeDoc.addEventListener('contextmenu', (e) => {
+                        window._emailShowReadingContextMenu(e, iframeEl, true, targetAcc, targetFolder, msgId);
+                    });
+                    
+                    window._emailBindLongTouch(iframeDoc.body, (e) => {
+                        window._emailShowReadingContextMenu(e, iframeEl, true, targetAcc, targetFolder, msgId);
+                    });
+
+                    let iframeScale = 1;
+                    let iframeStartDist = 0;
+                    
+                    iframeDoc.addEventListener("wheel", e => {
+                        if (e.ctrlKey || e.metaKey) {
+                            e.preventDefault();
+                            iframeScale += e.deltaY > 0 ? -0.15 : 0.15;
+                            iframeScale = Math.max(0.3, Math.min(iframeScale, 5));
+                            iframeDoc.body.style.transformOrigin = "top left";
+                            iframeDoc.body.style.transform = "scale(" + iframeScale + ")";
+                            iframeDoc.body.style.width = (100 / iframeScale) + "%";
+                        }
+                    }, {passive: false});
+                    
+                    iframeDoc.addEventListener("touchstart", e => { 
+                        if (e.touches.length === 2) iframeStartDist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY); 
+                    }, {passive: false});
+                    
+                    iframeDoc.addEventListener("touchmove", e => {
+                        if (e.touches.length === 2) {
+                            e.preventDefault();
+                            let dist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+                            iframeScale += (dist - iframeStartDist) * 0.01; iframeScale = Math.max(0.3, Math.min(iframeScale, 5));
+                            iframeDoc.body.style.transformOrigin = "top left"; iframeDoc.body.style.transform = "scale(" + iframeScale + ")"; iframeDoc.body.style.width = (100 / iframeScale) + "%"; iframeStartDist = dist;
+                        }
+                    }, {passive: false});
+
+                    iframeDoc.addEventListener('click', (e) => {
+                        const anchor = e.target.closest('a[data-safe-href]');
+                        if (anchor) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const safeHref = anchor.getAttribute('data-safe-href');
+
+                            if (safeHref.toLowerCase().startsWith('mailto:')) {
+                                const raw = safeHref.substring(7);
+                                const parts = raw.split('?');
+                                const toAddress = decodeURIComponent(parts[0]);
+                                let subject = '', body = '';
+                                if (parts.length > 1) {
+                                    const params = new URLSearchParams(parts[1]);
+                                    subject = params.get('subject') || '';
+                                    body = params.get('body') || '';
+                                }
+                                if (typeof myCloudShowEmailComposer === 'function') {
+                                    if (body && window.DOMPurify) {
+                                        body = window.DOMPurify.sanitize(body, { FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'applet', 'meta', 'base'], ALLOW_DATA_ATTR: false });
+                                    }
+                                    myCloudShowEmailComposer({ to: toAddress, subject: subject, body: body });
+                                }
+                                return;
+                            }
+
+                            try {
+                                const urlObj = new URL(safeHref, window.location.origin);
+                                 
+                                 // 1. Phishing & Spoofing Heuristics
+                                 const senderDomain = (meta.fromEmail || '').includes('@') ? (meta.fromEmail || '').split('@').pop().toLowerCase() : '';
+                                 const linkDomain = urlObj.hostname.toLowerCase();
+                                 let isHomograph = false;
+                                 let isMismatch = false;
+                                 
+                                 // A. Punycode & Homograph Detection
+                                 const rawHrefMatch = safeHref.match(/^https?:\/\/([^/?#]+)/i);
+                                 const rawDomain = rawHrefMatch ? decodeURIComponent(rawHrefMatch[1]) : linkDomain;
+                                 
+                                 if (linkDomain.includes('xn--')) {
+                                     if (/[\u0400-\u04FF\u0370-\u03FF]/.test(rawDomain)) {
+                                         isHomograph = true;
+                                     } else {
+                                         const hasBasicLatin = /[a-zA-Z]/.test(rawDomain);
+                                         const hasNonAllowed = /[^\x00-\x7F\u0080-\u024F\u0600-\u06FF\u0590-\u05FF\u4E00-\u9FFF\u3040-\u30FF\uAC00-\uD7AF\.]/.test(rawDomain);
+                                         if (hasBasicLatin && hasNonAllowed) isHomograph = true;
+                                     }
+                                 }
+                                 
+                                 // B. Cross-Domain Mismatch Detection
+                                 if (senderDomain && linkDomain) {
+                                     const getRootDomain = (d) => {
+                                         const p = d.split('.');
+                                         if (p.length <= 2) return d;
+                                         if (p[p.length - 2].length <= 3 && ['co','com','org','net','edu','gov','ac'].includes(p[p.length - 2])) {
+                                             return p.slice(-3).join('.');
+                                         }
+                                         return p.slice(-2).join('.');
+                                     };
+                                     
+                                     const senderRoot = getRootDomain(senderDomain);
+                                     const linkRoot = getRootDomain(linkDomain);
+
+                                     const isSameRoot = senderRoot === linkRoot;
+                                     const globalSafeLinks = window.$cloud_mail_safe_mail_domains || ['mailchimp.com', 'list-manage.com', 'sendgrid.net', 'ct.sendgrid.net', 'constantcontact.com', 'hubspot.com', 'marketo.com', 'click.pstmrk.it', 'links.iterable.com', 'awstrack.me', 'mailgun.org', 'sendinblue.com', 'e.customeriomail.com', 'klaviyomail.com', 'mcsv.net', 'rsys2.com'];
+                                     const isSafeThirdParty = globalSafeLinks.some(d => linkRoot === getRootDomain(d) || linkDomain.endsWith('.' + d));
+                                      
+                                     if (!isSameRoot && !isSafeThirdParty) isMismatch = true;
+                                 }
+                                 
+                                 // 2. Dynamic UI Construction
+                                 let warningHtml = (L.link_warning_msg || 'You are about to open an external link to:') + '<br><br><b style="font-size:16px;">' + myCloudEscapeHtml(linkDomain) + '</b><br><br>';
+                                 
+                                 if (isHomograph || isMismatch) {
+                                     warningHtml += '<div style="background:var(--danger, #e81123); color:#fff; padding:12px; border-radius:6px; text-align:left; margin-bottom:15px; font-size:13px; line-height:1.4;">';
+                                     warningHtml += '<div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; font-weight:bold; font-size:14px;"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>' + (L.sec_warning || 'Security Warning') + '</div>';
+                                     warningHtml += '<ul style="margin:0; padding-inline-start:20px;">';
+                                     if (isHomograph) warningHtml += '<li><b>' + (L.homograph_warn || 'Deceptive Characters:') + '</b> ' + (L.homograph_desc || 'This link uses hidden foreign characters (Punycode) to impersonate a legitimate website.') + '</li>';
+                                     if (isMismatch) warningHtml += '<li style="margin-top:4px;"><b>' + (L.mismatch_warn || 'Domain Mismatch:') + '</b> ' + (L.mismatch_desc || 'The link destination does not match the sender\'s domain (') + myCloudEscapeHtml(senderDomain) + ').</li>';
+                                     warningHtml += '</ul></div>';
+                                 }
+                                 
+                                 warningHtml += (L.proceed_ask || 'Do you want to proceed?');
+
+                                myCloudShowAlert(
+                                    L.link_warning || 'External Link', 
+                                    warningHtml,
+                                    () => { window.open(safeHref, '_blank', 'noopener,noreferrer'); }
+                                );
+                            } catch(err) {
+                                myCloudShowAlert(L.error_prefix || 'Error', L.invalid_link || 'Invalid link.');
+                            }
+                        }
+                    });
+
+                    if (hasExternalImages && !isTrusted) {
+                        const imgBtn = document.getElementById('ceLoadEmailImgBtn');
+                        const trustBtn = document.getElementById('ceTrustDomainBtn');
+
+                        const useProxy = (typeof window.myCloudEmailProxyEnabled !== 'undefined') ? window.myCloudEmailProxyEnabled : true;
+                        const proxyUrl = (url) => {
+                            if (!useProxy || !url.match(/^https?:\/\//i)) return url;
+                            return '?myCloud_email_proxy_img=' + encodeURIComponent(btoa(url)) + '&proxy_token=' + window.myCloudCsrfToken;
+                        };
+
+                        
+                        const triggerImageLoad = () => {
+                            iframeDoc.querySelectorAll('img[data-safe-src]').forEach(img => {
+                                img.setAttribute('src', proxyUrl(img.getAttribute('data-safe-src')));
+                                const origStyle = img.getAttribute('data-orig-style');
+                                if (origStyle !== null) img.setAttribute('style', origStyle);
+                                else img.removeAttribute('style');
+                                const origHeight = img.getAttribute('data-orig-height');
+                                if (origHeight) img.setAttribute('height', origHeight);
+                            });
+                            iframeDoc.querySelectorAll('[data-safe-style]').forEach(el => {
+                                let css = el.getAttribute('data-safe-style');
+                                if (useProxy) {
+                                    css = css.replace(/url\(['"]?(https?:\/\/[^)'"]+)['"]?\)/gi, (match, url) => {
+                                        return 'url("' + proxyUrl(url) + '")';
+                                    });
+                                }
+                                if (el.tagName.toLowerCase() === 'style') el.innerHTML = css;
+                                else el.setAttribute('style', css);
+                            });
+                            iframeDoc.querySelectorAll('[data-safe-background]').forEach(el => {
+                                el.setAttribute('background', proxyUrl(el.getAttribute('data-safe-background')));
+                            });
+                            if (imgBtn) imgBtn.remove();
+                            if (trustBtn) trustBtn.remove();
+                        };
+
+                        if (imgBtn) imgBtn.onclick = triggerImageLoad;
+                        if (trustBtn) {
+                            trustBtn.onclick = () => {
+                                if (myCloudState.settings && myCloudState.settings[devKey] && myCloudState.settings[devKey].trustedEmailDomains) {
+                                    myCloudState.settings[devKey].trustedEmailDomains.push(senderDomain);
+                                    if (typeof myCloudSaveSettings === 'function') myCloudSaveSettings();
+                                }
+                                triggerImageLoad();
+                            };
+                        }
+                    }
+                } catch(e) {}
+            };
+            setupIframeEvents();
+         }
+ 
         if (originalHtml.includes('-----BEGIN PGP MESSAGE-----')) {
             const pgpBanner = document.createElement('div');
             pgpBanner.style.cssText = 'background:var(--accent-primary); color:#fff; padding:10px 20px; display:flex; justify-content:space-between; align-items:center; border-radius:4px; margin: 10px 20px;';
