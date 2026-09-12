@@ -555,37 +555,22 @@ class MyCloudEmailServer {
             $options['authentication'] = "oauth";
         }
 
-        $maxRetries = 2;
-        $attempt = 0;
-        $lastErr = '';
-
-        while ($attempt < $maxRetries) {
-            try {
-                $client = $cm->make($options);
-                $client->connect();
-                
-                $folderObj = null;
-                if ($folder !== '') {
-                    $folderObj = $client->getFolderByPath($folder);
-                    if ($folderObj) {
-                        try { $client->openFolder($folderObj, $readonly); } catch (\Throwable $e) {}
-                    }
+        try {
+            $client = $cm->make($options);
+            $client->connect();
+            
+            $folderObj = null;
+            if ($folder !== '') {
+                $folderObj = $client->getFolderByPath($folder);
+                if ($folderObj) {
+                    try { $client->openFolder($folderObj, $readonly); } catch (\Throwable $e) {}
                 }
-                
-                return [$client, $folderObj, null];
-            } catch (\Throwable $e) {
-                $lastErr = $e->getMessage();
-                if (stripos($lastErr, 'wrong version number') !== false || stripos($lastErr, 'reset by peer') !== false || stripos($lastErr, 'timeout') !== false) {
-                    $attempt++;
-                    if ($attempt < $maxRetries) {
-                        sleep(1);
-                        continue;
-                    }
-                }
-                return [null, null, "IMAP Connection failed: " . $lastErr];
             }
+            
+            return [$client, $folderObj, null];
+        } catch (\Throwable $e) {
+            return [null, null, "IMAP Connection failed: " . $e->getMessage()];
         }
-        return [null, null, "IMAP Connection failed after retries: " . $lastErr];
     }
 
     // --- NATIVE SMTP SOCKET CLIENT ---

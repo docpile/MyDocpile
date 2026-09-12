@@ -1097,9 +1097,7 @@ window.myCloudRenderEmailApp = function(container) {
     window._emailSetMobileView('list');
 
     myCloudEmailLoadAccounts();
-    setTimeout(() => {
-        myCloudEmailLoadContacts();
-    }, 2500);
+    myCloudEmailLoadContacts();
 
     if ("Notification" in window && Notification.permission === "default") {
         Notification.requestPermission();
@@ -1291,53 +1289,36 @@ window.myCloudEmailFetchFolders = function(silent = false, specificAccId = null)
                 folderTasks.push({ accId: accId, fn: () => window.myCloudEmailFetchFolders(true, accId) });
             }
         });
-        // Instantly render inbox from cache
-        if (!silent && !specificAccId) myCloudEmailFetchMessages('SMARTBOX');
-
-        // Delay the heavy IMAP folder polling to prioritize message loading
-        setTimeout(() => {
-            window._emailExecuteSyncTasks(folderTasks).then(() => {
-                myCloudEmailRenderTree();
-            });
-        }, 800);
-        return Promise.resolve();
+        return window._emailExecuteSyncTasks(folderTasks).then(() => {
+            myCloudEmailRenderTree();
+            if (!silent && !specificAccId) myCloudEmailFetchMessages('SMARTBOX');
+        });
     }
 
     if (!silent && tree && !specificAccId) tree.classList.add('ce-pane-loading');
 
-    // Release UI lock instantly before IMAP requests
-    if (!silent && !specificAccId) myCloudEmailFetchMessages(myCloudEmailState.activeFolder);
-
-    return new Promise((resolve) => {
-        const executeFolderFetch = () => {
-            const fd = new URLSearchParams({ myCloud_action: 'email_get_folders', myCloud_key: myCloudState.key, myCloud_token: window.myCloudCsrfToken, account_id: targetAcc });
-            fetch('', { method: 'POST', body: fd }).then(myCloudCheckResponse).then(res => {
-                if (myCloudState.interface !== 'email') return resolve(res);
-                if (tree && !specificAccId) tree.classList.remove('ce-pane-loading');
-                
-                if (res.status === 'OK') {
-                    if (!myCloudEmailState.foldersData) myCloudEmailState.foldersData = {};
-                    myCloudEmailState.foldersData[targetAcc] = res.folders;
-                    
-                    const inbox = res.folders.find(f => f.name.toUpperCase() === 'INBOX' || f.id.toUpperCase() === 'INBOX');
-                    if (inbox) myCloudEmailState.inboxUnreadCounts[targetAcc] = inbox.unread;
-                    
-                    myCloudEmailRenderTree();
-                } else {
-                    if (!silent && tree && !specificAccId) tree.innerHTML = '<div class="ce-email-empty" style="color:var(--danger); font-weight:bold;">Error:<br><br>' + myCloudEscapeHtml(res.msg) + '</div>';
-                }
-                resolve(res);
-            }).catch((err) => {
-                if (err.name === 'AbortError') return resolve(null);
-                if (!silent && tree && !specificAccId) tree.innerHTML = '<div class="ce-email-empty" style="color:var(--danger); font-weight:bold;">Error:<br><br>' + myCloudEscapeHtml(err.message) + '</div>';
-                resolve(null);
-            });
-        };
+    const fd = new URLSearchParams({ myCloud_action: 'email_get_folders', myCloud_key: myCloudState.key, myCloud_token: window.myCloudCsrfToken, account_id: targetAcc });
+    return fetch('', { method: 'POST', body: fd }).then(myCloudCheckResponse).then(res => {
+        if (myCloudState.interface !== 'email') return;
+        if (tree && !specificAccId) tree.classList.remove('ce-pane-loading');
         
-        if (!silent && !specificAccId) setTimeout(executeFolderFetch, 800);
-        else executeFolderFetch();
+        if (res.status === 'OK') {
+            if (!myCloudEmailState.foldersData) myCloudEmailState.foldersData = {};
+            myCloudEmailState.foldersData[targetAcc] = res.folders;
+            
+            const inbox = res.folders.find(f => f.name.toUpperCase() === 'INBOX' || f.id.toUpperCase() === 'INBOX');
+            if (inbox) myCloudEmailState.inboxUnreadCounts[targetAcc] = inbox.unread;
+            
+            myCloudEmailRenderTree();
+            
+            if (!silent && !specificAccId) myCloudEmailFetchMessages(myCloudEmailState.activeFolder);
+        } else {
+            if (!silent && tree && !specificAccId) tree.innerHTML = '<div class="ce-email-empty" style="color:var(--danger); font-weight:bold;">Error:<br><br>' + myCloudEscapeHtml(res.msg) + '</div>';
+        }
+    }).catch((err) => {
+        if (err.name === 'AbortError') return;
+        if (!silent && tree && !specificAccId) tree.innerHTML = '<div class="ce-email-empty" style="color:var(--danger); font-weight:bold;">Error:<br><br>' + myCloudEscapeHtml(err.message) + '</div>';
     });
-
 };
 
 window.myCloudEmailToggleRoot = function(e) {

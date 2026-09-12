@@ -1,3 +1,11 @@
+4.3.298
+	Fix: Webmail: Outlook.com error messages due to plaintext rate-limiting
+	Improvement: Webmail: Drastic performance improvement on initial loading
+	Fix: Webmail: Context menu does not disappear correctly
+	Improvement: Webmail: Save to PDF enhancements fo enable attachments first and mail last, also to exclude attachments
+	Fix: Webmail: Popup pills sometimes dien&#039;t vanish afterwards due to race condition
+	Improvement: Webmail: Save to PDF favorite cloud folders now well structured and displayed in tree view
+
 4.3.297
 	Improvement: Webmail: New context menus for mail view and mail source view
 	Improvement: Webmail: Print mail button
