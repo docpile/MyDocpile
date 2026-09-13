@@ -1,3 +1,6 @@
+4.3.299
+	Security: Seventeen security bugfixes, critical to medium
+
 4.3.298
 	Fix: Webmail: Outlook.com error messages due to plaintext rate-limiting
 	Improvement: Webmail: Drastic performance improvement on initial loading
