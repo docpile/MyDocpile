@@ -81,6 +81,12 @@ if (basename($_SERVER['PHP_SELF']) == basename(__FILE__)) {
 
 	// Rate limit storage db
 	$security_max_requests_file = $work_dir . '/data/security_maxrequests.json';
+	
+	// Proxies you are running and trusting. Default: Empty
+	// Example: The static IPv4 address of an external Nginx/HAProxy VPS, or another external load balancer node:
+	// '203.0.113.50',
+ 	$trusted_proxies = [
+   ];
 		
 // ===============================================================================
 // COOKIE AND SESSION MANAGEMENT
@@ -142,6 +148,54 @@ if (basename($_SERVER['PHP_SELF']) == basename(__FILE__)) {
 // CLOUD MODULE
 // ===============================================================================
 
+
+	// Main app logo 
+	$myDocpileLogo = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+			<defs>
+				<!-- Metallic gold gradient -->
+				<linearGradient id="gold-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+				<stop offset="0%" stop-color="#D4AF37" />
+				<stop offset="35%" stop-color="#AA7C11" />
+				<stop offset="50%" stop-color="#FCEBAF" />
+				<stop offset="65%" stop-color="#AA7C11" />
+				<stop offset="100%" stop-color="#705000" />
+				</linearGradient>
+				
+				<!-- Drop shadow for depth -->
+				<filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+				<feDropShadow dx="0" dy="8" stdDeviation="6" flood-color="#000000" flood-opacity="0.3" />
+				</filter>
+			</defs>
+			
+			<!-- Global styling: stroke-width reduced to 8 -->
+			<g stroke="url(#gold-grad)" stroke-width="8" stroke-linejoin="round" stroke-linecap="round" fill="none" filter="url(#shadow)" transform="translate(-45, -45) scale(1.176)">
+				
+				<!-- LEFT: Envelope Graphic -->
+				<g>
+				<rect x="44" y="145" width="210" height="145" rx="16" />
+				<path d="M 60 145 L 149 225 L 238 145" />
+				<path d="M 44 274 L 115 210" />
+				<path d="M 254 274 L 183 210" />
+				</g>
+			
+				<!-- RIGHT: Screen / Card with Keyhole Graphic -->
+				<g>
+				<rect x="275" y="145" width="193" height="145" rx="16" />
+				<path d="M 360 195 A 16 16 0 1 1 384 195 L 392 250 L 352 250 Z" />
+				</g>
+			
+				<!-- CENTER FRONT: Cloud Graphic (Flat bottom baseline) -->
+				<!-- fill blocks out the lines behind it -->
+				<path d="M 140 375 
+						L 380 375 
+						A 45 45 0 0 0 380 285 
+						A 55 55 0 0 0 290 235 
+						A 75 75 0 0 0 170 250 
+						A 50 50 0 0 0 140 375 Z" 
+					fill="#FFFFFF" />
+			</g>
+			</svg>';
+			
 	// Preview: Warn before preview threshold size 
 	$cloud_max_preview_size = 5242880;
 	

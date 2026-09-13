@@ -887,11 +887,31 @@ window.myCloudSaveCurrentPathState = function() {
     const pathObj = myCloudState.lastPaths[st.key];
     let changed = false;
 
+    // SECURITY & UX: Never save encrypted vault paths to the profile.
+    // If the user is inside a vault, resolve to the vault's parent directory instead.
+    const getSafePath = (p) => {
+        if (!p || p === '/.recycle_bin') return '/';
+        if (typeof myCloudCrypto !== 'undefined' && myCloudCrypto.isDirEncrypted(p)) {
+            const root = myCloudCrypto.getCryptoRoot(p);
+            if (root && root !== '/') {
+                return root.substring(0, root.lastIndexOf('/')) || '/';
+            }
+            return '/';
+        }
+        return p;
+    };
+
     if (st.isCommanderMode) {
-        if (st.commanderLeft && pathObj.cmdLeft !== st.commanderLeft.dir) { pathObj.cmdLeft = st.commanderLeft.dir; changed = true; }
-        if (st.commanderRight && pathObj.cmdRight !== st.commanderRight.dir) { pathObj.cmdRight = st.commanderRight.dir; changed = true; }
+        if (st.commanderLeft) {
+            const safeLeft = getSafePath(st.commanderLeft.dir);
+            if (pathObj.cmdLeft !== safeLeft) { pathObj.cmdLeft = safeLeft; changed = true; }
+        }
+        if (st.commanderRight) {
+            const safeRight = getSafePath(st.commanderRight.dir);
+            if (pathObj.cmdRight !== safeRight) { pathObj.cmdRight = safeRight; changed = true; }
+        }
     } else {
-        const savePath = (st.currentDir === '/.recycle_bin') ? '/' : st.currentDir;
+        const savePath = getSafePath(st.currentDir);
         if (pathObj.std !== savePath) { pathObj.std = savePath; changed = true; }
     }
 

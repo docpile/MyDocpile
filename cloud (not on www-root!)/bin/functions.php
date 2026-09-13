@@ -99,13 +99,23 @@ function removeEmojis($text) {
 //    Returns the real IP address (needed for the "lock file" at the very beginning, 
 //    which is done before the "My->ip_address" variable is instanciated
 function get_real_ip_address() {
-	if(isset($_SERVER['HTTP_X_FORWARDED_FOR'])) $ip_address = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0];
-	elseif(isset($_SERVER['HTTP_X_FORWARDED'])) $ip_address = $_SERVER['HTTP_X_FORWARDED'];
-	elseif(isset($_SERVER['HTTP_FORWARDED_FOR'])) $ip_address = $_SERVER['HTTP_FORWARDED_FOR'];
-	elseif(isset($_SERVER['HTTP_FORWARDED'])) $ip_address = $_SERVER['HTTP_FORWARDED'];
-	elseif(isset($_SERVER['HTTP_CLIENT_IP'])) $ip_address = $_SERVER['HTTP_CLIENT_IP'];
-	elseif(isset($_SERVER['REMOTE_ADDR'])) $ip_address = $_SERVER['REMOTE_ADDR'];
-	else $ip_address = 'UNKNOWN_IP';
+	$ip_address = $_SERVER['REMOTE_ADDR'] ?? 'UNKNOWN_IP';
+
+	// Define conditions where we trust the reverse proxy headers
+	$is_loopback = ($ip_address === '::1' || $ip_address === '127.0.0.1');
+	$is_private = function_exists('isPrivateIp') && isPrivateIp($ip_address);
+	$is_server_ip = isset($_SERVER['SERVER_ADDR']) && $ip_address === $_SERVER['SERVER_ADDR'];
+	$is_trusted_external = isset($GLOBALS['trusted_proxies']) && is_array($GLOBALS['trusted_proxies']) && in_array($ip_address, $GLOBALS['trusted_proxies'], true);
+
+	// SECURITY: Trust X-Forwarded headers ONLY if the connection comes from a known proxy
+	if ($is_loopback || $is_private || $is_server_ip || $is_trusted_external) {
+		if(isset($_SERVER['HTTP_X_FORWARDED_FOR'])) $ip_address = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0];
+		elseif(isset($_SERVER['HTTP_X_FORWARDED'])) $ip_address = $_SERVER['HTTP_X_FORWARDED'];
+		elseif(isset($_SERVER['HTTP_FORWARDED_FOR'])) $ip_address = $_SERVER['HTTP_FORWARDED_FOR'];
+		elseif(isset($_SERVER['HTTP_FORWARDED'])) $ip_address = $_SERVER['HTTP_FORWARDED'];
+		elseif(isset($_SERVER['HTTP_CLIENT_IP'])) $ip_address = $_SERVER['HTTP_CLIENT_IP'];
+	}
+
 	return trim($ip_address);
 }
 
@@ -1287,6 +1297,8 @@ function isCaptchaBypassed() {
 }
 
 function verifyCaptchaCode($code) {
+	global $api_key, $log_file;
+	
 	// Prevent Array TypeErrors and Memory Exhaustion (DoS) from massive payloads
 	if (!is_string($code) || strlen($code) > 20) return false;
 
@@ -1306,13 +1318,19 @@ function verifyCaptchaCode($code) {
 		$_SESSION['captcha_attempts'] = 0;
 		unset($_SESSION['captcha_code']);
 		unset($_SESSION['captcha_time']);
-		global $api_key;
+
+		WriteLogLine($log_file, "success", "MainLogin: ✅ CAPTCHA solved successfully");
+
 		$captcha_token = bin2hex(random_bytes(32));
 		$_SESSION['waf_captcha_token'] = $captcha_token;
 		$is_secure = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443);
 		setcookie('waf_captcha_clear', $captcha_token, 0, '/', '', $is_secure, true);
 		return true;
 	}
+
+	$reason = $is_timeout ? "timeout" : "incorrect code";
+	WriteLogLine($log_file, "warning", "MainLogin: ❌ CAPTCHA failed ($reason). Attempt: " . $_SESSION['captcha_attempts']);
+
 	unset($_SESSION['captcha_code']); // Force regeneration on fail
 	unset($_SESSION['captcha_time']);
 	return false;

@@ -2600,8 +2600,8 @@ function renderCommanderRow(item, tbody, paneState, side) {
         nameStyle = 'color:var(--danger, #e81123); font-weight:bold;';
         safeTitle = (typeof myCloud_LANG !== 'undefined' && myCloud_LANG.broken_enc ? myCloud_LANG.broken_enc : 'Unencrypted file in Vault!') + ' - ' + safeTitle;
     }
-    nameCell.innerHTML = '<div class="ce-row-content"><span class="ce-name-text" style="flex: 0 1 auto; ' + nameStyle + '" title="' + safeTitle + '">' + displayName + '</span>' + tagHtml + '<div style="flex:1; min-width:10px;"></div>' + adminHtml + '</div>';
-
+    nameCell.innerHTML = '<div class="ce-row-content"><span class="ce-name-text" style="flex: 0 1 auto; ' + nameStyle + '" title="' + safeTitle + '">' + safeTitle + '</span>' + tagHtml + '<div style="flex:1; min-width:10px;"></div>' + adminHtml + '</div>';
+	
   
     // Size
     const sizeCell = row.insertCell();

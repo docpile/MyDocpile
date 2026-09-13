@@ -348,8 +348,8 @@ class Login {
 		</head>
 		<body>
 			<div class='container'>
-				<div style='margin-bottom: 20px;'>
-					<img src='/cloud/images/cloud-logo-512-square.png' alt='Logo' style='width: 100px; height: auto;'>
+				<div style='margin-bottom: 20px; width: 300px; height: auto; margin-left: auto; margin-right: auto; transform: scale(1.21);'>
+					" . $GLOBALS['myDocpileLogo'] . "
 				</div>
 				<h2>🛡️ $title</h2>
 				<p>$msg</p>
@@ -1402,8 +1402,8 @@ class Login {
 			$config_skip = (isset($this->isCloudOnly) && $this->isCloudOnly === true);
 			if ($config_skip) { ?>
 				<div style="margin-bottom: 0px;  padding: 0px !important;">
-					<p style="margin-top: 30px;"><img src="/cloud/images/cloud-logo-512-square.png" alt="Logo" class="logolarge"></p>
-					<?php echo (!empty($cloud_beta) ? '<span style="position:relative;"><span style="position:absolute;top:-2.7em;left:50%;transform:translateX(-60%);color:#6d632c;font-size:46px;opacity:0.5;">Beta</span></span>' : ''); ?>
+					<p style="margin-top: 30px; width: 300px;"><span class="logolarge" style="display:inline-block; "><?php echo $GLOBALS['myDocpileLogo']; ?></span></p>
+					<?php echo (!empty($cloud_beta) ? '<span style="position:relative;"><span style="position:absolute;top:-3.6em;left:59%;transform:translateX(-50%);color:#6d632c;font-size:46px;opacity:0.5;">&nbsp;Beta</span></span>' : ''); ?>
 					<h2 style="color: #6d632c; font-size: 32pt; margin-top: -37px; margin-bottom: -20px; padding: 0px !important;">
 						<?php echo $GLOBALS['mycloud_svg_logo'] ; ?>
 					</h2>
@@ -1411,7 +1411,7 @@ class Login {
 			
 			<?php		} else { ?>
 				<div style="margin-bottom: 0px;  padding: 0px !important;">
-					<p style="margin-bottom: 0px;"><img src="/cloud/images/cloud-logo-512-square.png" alt="Logo" class="logolarge"></p>
+					<p style="margin-bottom: 0px; width: 300px;"><span class="logolarge" style="display:inline-block; "><?php echo $GLOBALS['myDocpileLogo']; ?></span></p>
 					<h2 style="font-size: 26pt; margin-top: 0px; margin-bottom: 0px; padding: 0px !important;">
 						<?php echo ($this->language === 'de') ? 'Konfiguration' : 'Configuration'; ?>
 					</h2>

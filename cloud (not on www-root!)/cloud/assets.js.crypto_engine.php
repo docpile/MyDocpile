@@ -39,6 +39,36 @@ const myCloudCrypto = (function() {
         return bytes;
     }
 
+    // Secure IndexedDB Wrapper for Non-Extractable CryptoKey Objects
+    const idbHelper = {
+        db: null,
+        init: function() {
+            return new Promise((resolve, reject) => {
+                if (this.db) return resolve(this.db);
+                const req = indexedDB.open("myCloudCryptoDB", 1);
+                req.onupgradeneeded = e => e.target.result.createObjectStore("keys");
+                req.onsuccess = e => { this.db = e.target.result; resolve(this.db); };
+                req.onerror = e => reject(e);
+            });
+        },
+        get: async function(id) {
+            const db = await this.init();
+            return new Promise(resolve => {
+                const req = db.transaction("keys").objectStore("keys").get(id);
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => resolve(null);
+            });
+        },
+        set: async function(id, val) {
+            const db = await this.init();
+            return new Promise(resolve => {
+                const tx = db.transaction("keys", "readwrite");
+                tx.objectStore("keys").put(val, id);
+                tx.oncomplete = () => resolve(true);
+            });
+        }
+    };
+
     // Restore session keys synchronously to prevent UI flashes on reload
     const savedKeys = sessionStorage.getItem('myCloud_WrappedKeys');
     if (savedKeys) {
@@ -56,15 +86,16 @@ const myCloudCrypto = (function() {
     // Generate a temporary session master key to encrypt the directory keys in memory
     async function initSessionMasterKey() {
         if (sessionMasterKey) return;
-        const stored = sessionStorage.getItem('myCloud_MasterKey');
-        if (stored) {
-            const raw = b642buf(stored);
-            sessionMasterKey = await crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["wrapKey", "unwrapKey"]);
+        // Retrieve non-extractable CryptoKey from IndexedDB
+        const storedKey = await idbHelper.get('sessionMasterKey');
+        if (storedKey) {
+            sessionMasterKey = storedKey;
             return;
         }
-        const raw = crypto.getRandomValues(new Uint8Array(32));
-        sessionStorage.setItem('myCloud_MasterKey', buf2b64(raw));
-        sessionMasterKey = await crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["wrapKey", "unwrapKey"]);
+        
+        // SECURITY: Generate a native WebCrypto object (extractable: false) so raw bytes cannot be stolen via XSS.
+        sessionMasterKey = await crypto.subtle.generateKey({name: "AES-GCM", length: 256}, false, ["wrapKey", "unwrapKey"]);
+        await idbHelper.set('sessionMasterKey', sessionMasterKey);
     }
 
     // Modern V2 Post-Quantum Safe KEK Derivation (SHA-512, 600k Iterations)
@@ -233,10 +264,11 @@ const myCloudCrypto = (function() {
             
             const iv = crypto.getRandomValues(new Uint8Array(12));
             const buffer = await fileBlob.arrayBuffer();
-            const encryptedBuffer = await crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, key, buffer);
-            
-            const emptySalt = new Uint8Array(16);
-            const finalBlob = new Blob([emptySalt, iv, encryptedBuffer], { type: "application/octet-stream" });
+            // V3 Format: [12B IV] [Ciphertext] with Associated Data (AAD)
+            const aad = new TextEncoder().encode(dirPath);
+            const encryptedBuffer = await crypto.subtle.encrypt({ name: "AES-GCM", iv: iv, additionalData: aad }, key, buffer);
+        
+            const finalBlob = new Blob([iv, encryptedBuffer], { type: "application/octet-stream" });
             return finalBlob;
         },
 
@@ -249,16 +281,33 @@ const myCloudCrypto = (function() {
 
             // Guard against 0-byte or corrupted tiny files
             if (buffer.byteLength === 0) return new Blob([]);
-            if (buffer.byteLength < 44) {
-                // Minimum size: 16B Pad + 12B IV + 16B AuthTag = 44 bytes
-                throw new Error("File is corrupted or not properly encrypted (too small).");
+            // Try V3 (New Format: 12B IV + Ciphertext, with AAD binding)
+            if (buffer.byteLength >= 28) {
+                const ivV3 = buffer.slice(0, 12);
+                const ctV3 = buffer.slice(12);
+                try {
+                    const aad = new TextEncoder().encode(dirPath);
+                    const dec = await crypto.subtle.decrypt({ name: "AES-GCM", iv: new Uint8Array(ivV3), additionalData: aad }, key, ctV3);
+                    return new Blob([dec]);
+                } catch (e) {
+                    // Fallthrough to legacy V2 decryption
+                }
             }
+      
+            // Try V2 (Legacy Format: 16B Pad + 12B IV + Ciphertext, NO AAD)
+            if (buffer.byteLength >= 44) {
+                const ivV2 = buffer.slice(16, 28);
+                const ctV2 = buffer.slice(28);
+                try {
+                    const dec = await crypto.subtle.decrypt({ name: "AES-GCM", iv: new Uint8Array(ivV2) }, key, ctV2);
+                    return new Blob([dec]);
+                } catch (e) {
+                    throw new Error("Decryption failed. File corrupted, wrong key, or tampered ciphertext.");
+                }
+            }
+            
+            throw new Error("File is corrupted or not properly encrypted (too small).");
 
-            const iv = buffer.slice(16, 28);
-            const ciphertext = buffer.slice(28);
-
-            const decryptedBuffer = await crypto.subtle.decrypt({ name: "AES-GCM", iv: new Uint8Array(iv) }, key, ciphertext);
-            return new Blob([decryptedBuffer]);
         },
 
         // Encrypt Filename (Base64Url encoded)
@@ -453,5 +502,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (origZip) origZip(mode);
     };
 });
+
+// Automatically annihilate IndexedDB keys on logout
+if (typeof window.myCloudPerformLogout === 'function') {
+    const _origLogout = window.myCloudPerformLogout;
+    window.myCloudPerformLogout = async function() {
+        indexedDB.deleteDatabase("myCloudCryptoDB");
+        return _origLogout.apply(this, arguments);
+    };
+}
 
 </script>

@@ -11,11 +11,13 @@ if(!defined('IPS_Token')) {
 	require_once $work_dir.'/vendor/autoload.php';
 	use GeoIp2\Database\Reader;
 
-if (!isPrivateIp($_SERVER['REMOTE_ADDR'])) {
+$client_ip = get_real_ip_address();
+
+if (!isPrivateIp($client_ip)) {
 	$citydb = new Reader($work_dir.'/geoip/GeoLite2-City.mmdb');
 	$asndb = new Reader($work_dir.'/geoip/GeoLite2-ASN.mmdb');
-	$cityrecord = @$citydb->city(get_real_ip_address());
-	$asnrecord = @$asndb->asn(get_real_ip_address());
+	$cityrecord = @$citydb->city($client_ip);
+	$asnrecord = @$asndb->asn($client_ip);
 	if (@isset($cityrecord->country->isoCode) && @isset($asnrecord->autonomousSystemNumber)) {
 		$geoip_data['country_code'] = $cityrecord->country->isoCode;
 		$geoip_data['city'] = $cityrecord->city->name;
@@ -39,8 +41,11 @@ if (!isPrivateIp($_SERVER['REMOTE_ADDR'])) {
 function geoip_check_admin_status() {
     global $geoip_data, $log_file;
 	if ($geoip_data['admin_allowed'] == False) {
-		WriteLogLine($log_file, "error", "GeoIPErr: ❌ Unauthorized access: Wrong country");
-		header("Location: processing.php?blocked=true");
+		if (function_exists('isCaptchaBypassed') && isCaptchaBypassed()) {
+			return;
+		}
+		WriteLogLine($log_file, "warning", "GeoIPErr: 📛️ Unauthorized access: Wrong country. Challenging with CAPTCHA.");
+		header("Location: processing.php?captcha=true");
 		exit();
 	}
 }

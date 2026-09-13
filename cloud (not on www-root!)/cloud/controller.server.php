@@ -210,6 +210,57 @@ class MyCloudServer {
         return $bestRole;
     }
 
+   // SECURITY: Verify if an absolute path is any user's configured cloud root container
+    private function isAnyCloudRoot($absPath) {
+        global $user_details;
+        $resolvedAbs = realpath($absPath);
+        if (!$resolvedAbs) return false;
+        
+        if (isset($user_details) && is_array($user_details)) {
+            foreach ($user_details as $ud) {
+                if (!empty($ud['cloud']) && is_array($ud['cloud'])) {
+                    foreach ($ud['cloud'] as $c) {
+                        if (!empty($c['path'])) {
+                            $cReal = realpath($c['path']);
+                            if ($cReal && $resolvedAbs === $cReal) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    // SECURITY: Check if a path overlaps with any user's cloud root container (exact, parent, or child)
+    private function overlapsOtherUserRoot($absPath) {
+        global $user_details;
+        $resolvedTarget = realpath($absPath);
+        if (!$resolvedTarget) return false;
+        
+        if (isset($user_details) && is_array($user_details)) {
+            foreach ($user_details as $ud) {
+                if (!empty($ud['cloud']) && is_array($ud['cloud'])) {
+                    foreach ($ud['cloud'] as $c) {
+                        if (!empty($c['path'])) {
+                            $cReal = realpath($c['path']);
+                            if ($cReal) {
+                                // Block if target IS another user's root, 
+                                // or if target is a parent folder containing another user's root.
+                                // (Allowing target to be inside another user's root for shared vaults).
+                                if ($resolvedTarget === $cReal || strpos($cReal . '/', $resolvedTarget . '/') === 0) {
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
     private function healSubfolderPaths($oldAbs, $newAbs = null) {
         global $user_db, $user_details, $users;
         
@@ -292,12 +343,17 @@ class MyCloudServer {
     private function log($action, $src, $tgt = '-', $result = 'OK') {
         global $cloud_logfile;
         if (empty($cloud_logfile)) return;
+
+        // SECURITY: Strip newlines and tabs to prevent log forging and injection
+        $safe_src = str_replace(["\r", "\n", "\t"], " ", $src);
+        $safe_tgt = str_replace(["\r", "\n", "\t"], " ", $tgt);
+
         $entry = date('Y-m-d H:i:s') . "\t" . 
                  $this->username . "\t" . 
                  $this->key . "\t" . 
                  $action . "\t" . 
-                 $src . "\t" . 
-                 $tgt . "\t" . 
+                 $safe_src . "\t" . 
+                 $safe_tgt . "\t" .
                  $result . "\n";
         @file_put_contents($cloud_logfile, $entry, FILE_APPEND | LOCK_EX);
     }
@@ -410,8 +466,8 @@ class MyCloudServer {
 
         // 3. File Extensions to Block (Executable scripts, binaries, and macros)
        $blocked_exts = [
-           // PHP variants (Web Shells)     Removed 'php', for usability reasons
-           'php3', 'php4', 'php5', 'php7', 'php8', 
+           // PHP variants (Web Shells)     Removed certain 'php', for usability reasons
+		   // This is safe as the whole code and the data live outside of www-root
            'pht', 'phtml', 'phar', 'phps', 
            
            // Server-Side Includes (SSI) & Includes
@@ -432,6 +488,14 @@ class MyCloudServer {
            // Binaries and OS executables (Prevent hosting/executing malware)
            'so', 'bin', 'elf', 'app', 'run'
        ];
+	   
+        // Determine if the user has the global admin role
+        $is_global_admin = (function_exists('getUserRole') && strtolower(getUserRole($this->username)) === 'admin');
+
+        // Enforce strict PHP blocking for non-admins
+        if (!$is_global_admin) {
+            $blocked_exts = array_merge($blocked_exts, ['php', 'php3', 'php4', 'php5', 'php7', 'php8']);
+        }
 
         // Merge with any custom extensions defined in your config.php
         global $cloud_upload_blocked_exts;
@@ -526,10 +590,10 @@ class MyCloudServer {
             }
         }
 
-// =========================================================
+		// =========================================================
         // OS NATIVE SHARE TARGET INTERCEPTOR
         // =========================================================
-        if (isset($_GET['shared_from_os']) && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        if (isset($_GET['shared_from_os']) && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SESSION['loggedin']) && $_SESSION['loggedin'] === true) {
             if (!empty($_FILES['shared_files']['name'][0])) {
                 if (session_status() === PHP_SESSION_NONE) session_start();
                 $tempDir = $GLOBALS['temp_dir'] ?? sys_get_temp_dir();
@@ -560,11 +624,6 @@ class MyCloudServer {
             exit;
         }
 		
-
-        // 1. Handle Recursive Stats (GET/POST hybrid in logic, but standard POST)
-        if (isset($_POST['myCloud_action']) && $_POST['myCloud_action'] === 'get_dir_stats') {
-            $this->actionGetDirStats();
-        }
 
         // 2. Handle File Download (GET)
         if (!empty($_GET['myCloud_token'])) {
@@ -755,7 +814,8 @@ class MyCloudServer {
         // ROUTER
         switch ($action) {
             // Read-Only Actions
-            case 'check_office_state': $this->actionCheckOfficeState(); break;
+            case 'get_dir_stats':      $this->actionGetDirStats(); break;
+			case 'check_office_state': $this->actionCheckOfficeState(); break;
 			case 'get_download_token': $this->actionGetDownloadToken(); break;
             case 'list':               $this->actionList(); break;
             case 'search':             $this->actionSearch(); break;
@@ -1200,6 +1260,14 @@ class MyCloudServer {
         if ($path === false) {
             header('HTTP/1.1 400 Bad Request'); exit;
         }
+
+        // Enforce the CSRF check
+        $provided_token = $_GET['t'] ?? '';
+        $session_token = $_SESSION['myCloud_csrf_token'] ?? '';
+        if (empty($provided_token) || empty($session_token) || !hash_equals($session_token, $provided_token)) {
+            header('HTTP/1.1 403 Forbidden');
+            exit;
+        }
         
         // 1. STRICT SECURITY: Must have valid session role AND valid CSRF token
         if ($this->role === 'no-access') {
@@ -1572,6 +1640,11 @@ class MyCloudServer {
             $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($fullPath, RecursiveDirectoryIterator::SKIP_DOTS), RecursiveIteratorIterator::LEAVES_ONLY);
             foreach ($files as $file) {
                 if (!$file->isReadable()) continue;
+
+                // SECURITY: Enforce subfolder rights matrix during recursive packing
+                $fileRole = $this->getEffectiveRoleForAbsPath($file->getRealPath());
+                if ($fileRole === 'no-access' || $fileRole === 'hidden') continue;
+
                 $zip->addFile($file->getRealPath(), substr($file->getRealPath(), strlen($fullPath) + 1));
             }
             $zip->close();
@@ -1688,6 +1761,8 @@ class MyCloudServer {
             foreach ($entries as $e) {
                 if ($e === '.' || $e === '..') continue;
                 if ($e === '.recycle_bin' || $e === '.recoll' || $e === '.mail' || $e === '.mycloud_crypto_salt') continue;
+                // SECURITY: Hide OnlyOffice plaintext temp files from other users
+                if (strpos($e, '.myCloud_temp_') === 0) continue;
                 $fp = $currDir . '/' . $e;
                 if ($this->getEffectiveRoleForAbsPath($fp) === 'hidden') continue;
                 $rp = $currRel === '/' ? '/' . $e : rtrim($currRel, '/') . '/' . $e;
@@ -1921,7 +1996,8 @@ class MyCloudServer {
                     // 2. Security & Directory Filter: Cloud boundary & Existence
                     if (strpos($f, $searchPrefix) !== 0 || strpos($f, $this->recycle_dir) === 0 || !file_exists($f)) continue;
 					if (substr($f, -4) === '.enc') continue;
-                    if ($this->getEffectiveRoleForAbsPath($f) === 'hidden') continue;
+                    $fileRole = $this->getEffectiveRoleForAbsPath($f);
+                    if ($fileRole === 'hidden' || $fileRole === 'no-access') continue;
  
                     // Route through date/size filters
                     $mtime = filemtime($f);
@@ -1966,7 +2042,8 @@ class MyCloudServer {
             if ($realPath === $recollDir || strpos($realPath, $recollDir . DIRECTORY_SEPARATOR) === 0) continue;
 			if ($file->getFilename() === '.mycloud_crypto_salt') continue;
 			if (substr($file->getFilename(), -4) === '.enc') continue;
-            if ($this->getEffectiveRoleForAbsPath($realPath) === 'hidden') continue;
+            $fileRole = $this->getEffectiveRoleForAbsPath($realPath);
+            if ($fileRole === 'hidden' || $fileRole === 'no-access') continue;
             
             $relativePath = '/' . substr($realPath, strlen($this->cloud_path));
             $relativePath = str_replace('\\', '/', $relativePath);
@@ -2306,6 +2383,7 @@ class MyCloudServer {
     private function actionRename() {
         $src = $this->resolve($_POST['src'] ?? '');
         if (!$src || !file_exists($src)) $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Not found']);
+        if ($this->isAnyCloudRoot($src)) $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Cannot rename a cloud root container']);
         if (strpos($src, '.zip/') !== false) $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'ZIP read-only']);
         
         // --- CENTRAL GATEKEEPER ---
@@ -2385,6 +2463,7 @@ class MyCloudServer {
         $src = $this->resolve($_POST['src'] ?? '');
         if (strpos($_POST['src'] ?? '', '.zip/') !== false) $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'ZIP read-only']);
         if (!$src) $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Invalid path']);
+        if ($this->isAnyCloudRoot($src)) $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Cannot delete a cloud root container']);
         
         $inBin = strpos($src, $this->recycle_dir) === 0;
         $isPerm = (isset($_POST['permanent']) && $_POST['permanent'] === 'true') || $inBin;
@@ -2419,6 +2498,8 @@ class MyCloudServer {
     private function actionCopyMove($mode) {
         $src = $this->resolve($_POST['src'] ?? '');
         $destDir = rtrim($this->resolve($_POST['dest'] ?? '/'), '/');
+
+        if ($mode === 'move' && $this->isAnyCloudRoot($src)) $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Cannot move a cloud root container']);
 
         $destRole = $this->getEffectiveRoleForAbsPath($destDir);
         if ($this->isActionBlocked($mode, $destRole)) {
@@ -2555,6 +2636,13 @@ class MyCloudServer {
         
         $rel = isset($_POST['relativePath']) ? trim($_POST['relativePath'], '/') : '';
         if ($rel !== '' && !preg_match('/(?:^|[\/\\\\])\.\.(?:$|[\/\\\\])/', $rel)) $dir .= '/' . $rel;
+
+        // SECURITY: Re-evaluate the permissions of the final target directory 
+        // after the relative path is appended to prevent privilege escalation.
+        $finalDirRole = $this->getEffectiveRoleForAbsPath($dir);
+        if ($this->isActionBlocked('upload', $finalDirRole)) {
+            $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Permission denied for relative target directory.']);
+        }
         
         if (strpos(realpath($dir)?:$dir, $this->recycle_dir) === 0) $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'No upload to bin']);
         if (!file_exists($dir)) @mkdir($dir, 0755, true);
@@ -2641,6 +2729,11 @@ class MyCloudServer {
         $destDirAbs = $this->resolve($destDirRel);
         if (!$destDirAbs || !is_dir($destDirAbs)) {
             $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Invalid destination directory.']);
+        }
+
+        $destRole = $this->getEffectiveRoleForAbsPath($destDirAbs);
+        if ($this->isActionBlocked('upload', $destRole)) {
+            $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Permission denied for destination folder.']);
         }
 
         // 3. E2E Encryption Handling
@@ -2983,6 +3076,11 @@ class MyCloudServer {
         $destAbs = $this->resolve($destRel);
         if (!$destAbs) {
             $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Invalid destination path']);
+        }
+
+        $destRole = $this->getEffectiveRoleForAbsPath($destAbs);
+        if ($this->isActionBlocked('pdf_stack', $destRole)) {
+            $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Permission denied for destination folder.']);
         }
 
         // 1. Resolve and validate all files
@@ -3818,7 +3916,7 @@ class MyCloudServer {
             if (file_exists('/usr/local/bin/ffmpeg')) $ffmpegPath = '/usr/local/bin/ffmpeg';
             elseif (file_exists('/usr/bin/ffmpeg')) $ffmpegPath = '/usr/bin/ffmpeg';
 
-            $tmpFrame = sys_get_temp_dir() . '/vid_' . uniqid() . '.jpg';
+            $tmpFrame = sys_get_temp_dir() . '/vid_' . bin2hex(random_bytes(8)) . '.jpg';
             
             // Try 1 second mark
             $cmd = sprintf('%s -y -ss 00:00:01 -i %s -vframes 1 -q:v 2 %s 2>/dev/null', escapeshellcmd($ffmpegPath), escapeshellarg($source), escapeshellarg($tmpFrame));
@@ -3977,7 +4075,7 @@ class MyCloudServer {
             if (file_exists('/usr/local/bin/ffmpeg')) $ffmpegPath = '/usr/local/bin/ffmpeg';
             elseif (file_exists('/usr/bin/ffmpeg')) $ffmpegPath = '/usr/bin/ffmpeg';
 
-            $tmpFrame = sys_get_temp_dir() . '/vid_' . uniqid() . '.jpg';
+            $tmpFrame = sys_get_temp_dir() . '/vid_' . bin2hex(random_bytes(8)) . '.jpg';
             
             // Try 1 second mark
             $cmd = sprintf('%s -y -ss 00:00:01 -i %s -vframes 1 -q:v 2 %s 2>/dev/null', escapeshellcmd($ffmpegPath), escapeshellarg($source), escapeshellarg($tmpFrame));
@@ -4132,6 +4230,12 @@ class MyCloudServer {
         if (!$path || !is_dir($path) || empty($salt)) {
             $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Invalid path or missing salt']);
         }
+		
+        // SECURITY: Prevent vault initialization over or inside another user's root container
+        if ($this->overlapsOtherUserRoot($path)) {
+            $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Cannot encrypt a directory that overlaps with another user\'s cloud root.']);
+        }		
+		
         $saltFile = rtrim($path, '/\\') . DIRECTORY_SEPARATOR . '.mycloud_crypto_salt';
         if (file_exists($saltFile)) {
             $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Directory is already encrypted.']);
@@ -4385,8 +4489,10 @@ class MyCloudServer {
         $path = $this->resolve($_POST['path'] ?? '');
         if (!$path || is_dir($path)) $this->sendJsonAndExit(['status'=>'ERR','msg'=>'Invalid file']);
 
-        // THE FIX: Use a deterministic key based on the file so OnlyOffice handles sessions correctly
-        $docKey = md5($path . filemtime($path));
+        // SECURITY: Use a deterministic but cryptographically secure key (HMAC).
+        // This ensures collaborative editing works (same file = same key) 
+        // but prevents unauthenticated attackers from guessing the fetch URL.
+        $docKey = substr(hash_hmac('sha256', $path . filemtime($path), $this->officeSecret), 0, 32);
         $tempDir = $GLOBALS['temp_dir'] ?? sys_get_temp_dir();
         $stateFilePath = $tempDir . '/myCloud_office_' . $docKey . '.json';
         file_put_contents($stateFilePath, json_encode(['path' => $path, 'expires' => time() + 86400, 'username' => $this->username, 'key' => $this->key]));
