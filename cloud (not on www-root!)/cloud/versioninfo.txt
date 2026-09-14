@@ -1,3 +1,6 @@
+4.3.300
+	Security: Many security and rights management bugfixes
+
 4.3.299
 	Security: Seventeen security bugfixes, critical to medium
 

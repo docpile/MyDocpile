@@ -680,6 +680,10 @@ class Login {
 				$entry = $verifications[$token];
 				if (time() <= $entry['expires']) {
 					$verifications[$token]['approved'] = true;
+
+                    // Garbage collect expired tokens to prevent infinite file growth
+                    foreach ($verifications as $k => $v) { if (time() > $v['expires']) unset($verifications[$k]); }
+
 					$this->save_verifications($this->verify_store_file, $verifications);
 					$_SESSION['fingerprint'] = hash('sha256', ($_SERVER['HTTP_USER_AGENT'] ?? ''));
 					$this->reset_login_failures(get_real_ip_address(), $this->login_bruteforce_file);
@@ -833,6 +837,13 @@ class Login {
 						
 						setcookie($this->cookie_name, $selector . ':' . $validator, ['expires' => $expires, 'path' => '/', 'secure' => true, 'httponly' => true, 'samesite' => 'Lax']);
 					}
+					
+                    // Clean up the used verification token 
+                    $verifications = $this->load_verifications($this->verify_store_file);
+                    if (isset($_SESSION['2fa_token']) && isset($verifications[$_SESSION['2fa_token']])) {
+                        unset($verifications[$_SESSION['2fa_token']]);
+                        $this->save_verifications($this->verify_store_file, $verifications);
+                    }
 
 					WriteLogLine($this->log_file, "success", "MainLogin: ✅ 2FA Login for ".$_SESSION['username']);
 					session_write_close();

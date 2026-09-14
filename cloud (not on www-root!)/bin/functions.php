@@ -598,16 +598,18 @@ function global_login_rate_limit($file, $max, $window) {
     flock($fp, LOCK_EX);
     $data = json_decode(stream_get_contents($fp), true) ?: [];
 
+    $ip_hash = md5(get_real_ip_address());
+    if (!isset($data[$ip_hash])) $data[$ip_hash] = [];
+
     // Cleanup old entries
-    foreach ($data as $ts => $count) {
+    foreach ($data[$ip_hash] as $ts => $count) {
         if ($ts + $window < $now) {
-            unset($data[$ts]);
+            unset($data[$ip_hash][$ts]);
         }
     }
 
-    $data[$now] = ($data[$now] ?? 0) + 1;
-
-    $total = array_sum($data);
+    $data[$ip_hash][$now] = ($data[$ip_hash][$now] ?? 0) + 1;
+    $total = array_sum($data[$ip_hash]);
 
     ftruncate($fp, 0);
     rewind($fp);

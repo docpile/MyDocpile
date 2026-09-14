@@ -2775,7 +2775,8 @@ function myCloudDrawTreemap(items, container, totalSize, currentPath) {
             div.style.textShadow = '0 1px 2px rgba(0,0,0,0.5)';
             div.title = item.name + ' (' + myCloudFormatBytes(item.size) + ')';
             
-            div.innerHTML = '<span style="pointer-events:none; padding:2px;">' + item.name + '</span>';
+            const safeName = typeof myCloudEscapeHtml === 'function' ? myCloudEscapeHtml(item.name) : item.name.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            div.innerHTML = '<span style="pointer-events:none; padding:2px;">' + safeName + '</span>';
 
             // Drill down
             if (item.type === 'dir') {
