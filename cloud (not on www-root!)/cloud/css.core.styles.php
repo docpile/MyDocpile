@@ -27,18 +27,13 @@
     transform: translateY(-50%);
     height: 44px; 
     padding: 0;
-    
-    
-    background: var(--gray-00); 
-    
+    background: transparent; 
     border: none;
     filter: none;
-    
     opacity: 0;
     pointer-events: none;
     z-index: 5; /* AS REQUESTED: UNTOUCHED */
 	transition: opacity 0.15s ease;
-
 }
 
 

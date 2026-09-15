@@ -601,7 +601,6 @@ function _cloudExRenderSettingsContent(panel, activeTab) {
                 renderHeader(myCloud_LANG.appearance || 'Appearance') +
                 renderToggle(myCloud_LANG.set_dark_mode, 'darkMode', conf.darkMode) +
                 renderToggle(myCloud_LANG.set_symbol_dark, 'symbolDarkMode', conf.symbolDarkMode) +
-                (canEdit ? renderToggle(myCloud_LANG.set_ribbon, 'stackedToolbar', conf.stackedToolbar) : '') +
             '</div>' +
 
             // --- RIGHT COLUMN: Preview & Behavior ---
@@ -889,12 +888,6 @@ function _cloudExRenderSettingsContent(panel, activeTab) {
                
                 const safeKey = (typeof myCloudState.key !== 'undefined') ? myCloudState.key : '';
                 myCloudState.settings[activeTab].startInCommander[safeKey] = val;
-            } else if (key === 'stackedToolbar') {
-                myCloudState.settings[activeTab][key] = val;
-                if (!val) {
-                    myCloudState.settings[activeTab].hideDisabled = true;
-                }
-                _cloudExRenderSettingsContent(panel, activeTab);
             } else if (key === 'singleClick') {
                 myCloudState.settings[activeTab][key] = val;
                 // Enforce checkboxes if Single Click is ON

@@ -137,6 +137,9 @@ function getActionStatus(action) {
 			break;
         case 'preview':
         case 'edit_file':
+             const singleItem = st.selectedFiles.length === 1 ? (st.allItems ? st.allItems.find(i => i.name === st.selectedFiles[0]) : null) : null;
+             disabled = (selCount !== 1) || (singleItem && singleItem.size === 'DIR');
+             break;
         case 'properties':
             disabled = (selCount !== 1);
             break;
@@ -149,11 +152,13 @@ function getActionStatus(action) {
         case 'copy':
         case 'move':
         case 'delete':
-        case 'zip_copy':
             disabled = (selCount === 0);
             break;
         case 'duplicate':
             disabled = (selCount === 0);
+            break;
+        case 'zip_copy':
+            disabled = (selCount !== 1);
             break;
         case 'change_vault_pwd':
             const isVault = st.encryptedDirs && st.selectedFiles.length === 1 && st.encryptedDirs.has(st.selectedFiles[0]);
@@ -173,15 +178,38 @@ function getActionStatus(action) {
         case 'pdf_stack_menu':
             const oExts = ['docx', 'xlsx', 'pptx', 'doc', 'xls', 'ppt', 'odt', 'ods', 'odp', 'rtf', 'csv'];
             const allStack = isMulti && st.selectedFiles.every(f => {
+                 const item = st.allItems ? st.allItems.find(i => i.name === f) : null;
+                 if (item && item.size === 'DIR') return false;
                 const x = f.split('.').pop().toLowerCase();
                 return x === 'pdf' || oExts.includes(x);
             });
             disabled = !allStack;
             active = !disabled;
             break;
+         case 'pdf_combine_images':
+             const allImgs = isMulti && st.selectedFiles.every(f => {
+                 const item = st.allItems ? st.allItems.find(i => i.name === f) : null;
+                 if (item && item.size === 'DIR') return false;
+                 const px = f.split('.').pop().toLowerCase();
+                 return px === 'jpg' || px === 'jpeg' || px === 'png';
+             });
+             disabled = !allImgs;
+             active = !disabled;
+             break;
+         case 'pdf_unstack':
+         case 'pdf_toolkit':
+             const isSinglePdf = selCount === 1 && st.selectedFiles.every(f => {
+                 const item = st.allItems ? st.allItems.find(i => i.name === f) : null;
+                 if (item && item.size === 'DIR') return false;
+                 return f.toLowerCase().endsWith('.pdf');
+             });
+             disabled = !isSinglePdf;
+             break;
         case 'print':
             const printExts = ['docx', 'xlsx', 'pptx', 'doc', 'xls', 'ppt', 'odt', 'ods', 'odp', 'rtf', 'csv', 'pdf'];
             const allPrintable = selCount > 0 && st.selectedFiles.every(f => {
+                 const item = st.allItems ? st.allItems.find(i => i.name === f) : null;
+                 if (item && item.size === 'DIR') return false;
                 return printExts.includes(f.split('.').pop().toLowerCase());
             });
             disabled = !allPrintable;
@@ -195,6 +223,7 @@ function getActionStatus(action) {
     return { disabled, hidden, active };
 }
 
+window.myCloudGetActionStatus = getActionStatus;
 
 // Updates the visual state of all toolbar buttons.
 // Applies disabled/hidden states and active highlights based on current selection.
@@ -4520,4 +4549,169 @@ document.addEventListener('mousedown', () => {
     if (window.myCloudKeyTipsActive) myCloudHideKeyTips();
 }, true);
 
+
+// ============================================================
+// MULTI-SELECT HOVER MENU
+// ============================================================
+window.myCloudShowMultiHoverMenu = function(row, path) {
+    const st = typeof myCloudState !== 'undefined' ? myCloudState : null;
+    if (!st) return;
+
+    const devKey = typeof myCloudGetCurrentDeviceKey === 'function' ? myCloudGetCurrentDeviceKey() : 'desktop';
+    const config = (st.settings && st.settings[devKey]) ? st.settings[devKey] : {};
+    if (config.showHoverMenu === false) return;
+
+    const selCount = st.selectedFiles ? st.selectedFiles.length : 0;
+    if (selCount <= 1) return;
+
+    let mhm = document.getElementById('ce-multi-hover-menu');
+    let contentDiv = row.querySelector('.ce-row-content');
+    if (!contentDiv) contentDiv = row;
+
+    if (mhm && mhm.parentElement === contentDiv && mhm.dataset.selCount == selCount && mhm.style.display !== 'none') {
+        return; // Already showing correctly, avoid DOM rebuilds to allow clicking
+    }
+
+    if (!mhm) {
+        mhm = document.createElement('div');
+        mhm.id = 'ce-multi-hover-menu';
+        mhm.onclick = e => e.stopPropagation();
+        mhm.onmousedown = e => e.stopPropagation();
+        mhm.oncontextmenu = e => { e.stopPropagation(); e.preventDefault(); };
+    }
+    
+    mhm.dataset.selCount = selCount;
+
+    if (mhm.parentElement !== contentDiv) {
+        contentDiv.appendChild(mhm);
+    }
+
+    // Matches the original `.ce-row-actions` wrapper - transparent and holds the pills
+    mhm.style.cssText = 'position: absolute; inset-inline-end: 25px; display: flex !important; gap: 8px; z-index: 100; align-items: center; background: transparent !important; border: none !important; box-shadow: none !important; opacity: 1 !important; pointer-events: auto !important;';
+    
+    if (row.classList.contains('myCloud-symbol-item')) {
+        mhm.style.top = '8px';
+        mhm.style.insetInlineEnd = '8px';
+        mhm.style.transform = 'none';
+    } else {
+        mhm.style.top = '50%';
+        mhm.style.transform = 'translateY(-50%)';
+    }
+    
+    mhm.innerHTML = '';
+    
+    const createGroup = () => {
+        const grp = document.createElement('div');
+        grp.className = 'ce-action-group';
+        // Override default group styles to make it an accent-colored pill and disable entrance animations
+        grp.style.cssText = 'background: var(--accent-primary, #0078d4) !important; border-color: rgba(255,255,255,0.2) !important; opacity: 1 !important; transform: none !important; transition: none !important;';
+        return grp;
+    };
+
+    const grp1 = createGroup();
+    const grp2 = createGroup();
+    const grp3 = createGroup();
+    const grp4 = createGroup();
+    
+    // Add counter to the first pill
+    const countDiv = document.createElement('div');
+    countDiv.style.cssText = 'padding: 0 6px 0 10px; font-size: 13px; font-weight: 700; color: #fff; user-select: none; display: flex; align-items: center; height: 26px;';
+    countDiv.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="width:12px; height:12px; margin-right:6px;"><polyline points="20 6 9 17 4 12"></polyline></svg>' + selCount;
+    grp1.appendChild(countDiv);
+
+    const addAction = (grp, act, svg, title, cb) => {
+        const status = typeof window.myCloudGetActionStatus === 'function' ? window.myCloudGetActionStatus(act) : {disabled: false, hidden: false};
+        if (status.hidden || status.disabled) return false;
+        
+        const btn = document.createElement('div');
+        btn.className = 'ce-action-icon ce-act-' + act;
+        btn.style.cssText = 'color: #fff !important; background: transparent !important; transition: transform 0.2s ease;';
+        
+        // Ensure strokes and fills adapt to the white text requirement
+        btn.innerHTML = svg;
+        
+        // Foolproof DOM manipulation to guarantee white icons
+        const safeSvg = svg.replace(/stroke="currentColor"/g, 'stroke="#fff"').replace(/fill="currentColor"/g, 'fill="#fff"').replace(/fill="var\(--gray-100\)"/g, 'fill="#fff"').replace(/stroke="var\(--gray-100\)"/g, 'stroke="#fff"');
+        btn.innerHTML = safeSvg;
+        
+        btn.title = title;
+        btn.onmouseenter = () => { 
+            if (act === 'delete') btn.style.setProperty('background', 'var(--danger, #e81123)', 'important');
+            else btn.style.setProperty('background', 'rgba(255,255,255,0.2)', 'important');
+            btn.style.setProperty('transform', 'scale(1.1)', 'important'); 
+        };
+        btn.onmouseleave = () => { 
+            btn.style.setProperty('background', 'transparent', 'important'); 
+            btn.style.setProperty('transform', 'scale(1)', 'important'); 
+        };
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            const tip = document.getElementById('myCloudActiveTip');
+            if (tip) tip.remove();
+            if (cb) cb();
+        };
+        grp.appendChild(btn);
+        return true;
+    };
+    
+    const L = typeof myCloud_LANG !== 'undefined' ? myCloud_LANG : {};
+    const S = typeof myCloudSvg !== 'undefined' ? myCloudSvg : {};
+
+    const renameTitle = (selCount > 1) ? (L.multi_rename || 'Multi-Rename') : (L.rename || 'Rename');
+    
+    // Group 1 (Counter + Download)
+    let addedDl = addAction(grp1, 'download', S.download, L.download || 'Download', () => myCloudAction_DownloadBatch());
+    if (addedDl) {
+        const divEnd = document.createElement('div');
+        divEnd.style.cssText = 'width: 1px; height: 16px; background: rgba(255,255,255,0.3); margin: 0 4px 0 2px;';
+        grp1.insertBefore(divEnd, grp1.lastChild); // Insert divider before the download button
+    }
+
+    // Group 2 (Rename, Copy, Move, Duplicate)
+    addAction(grp2, 'rename', S.rename, renameTitle, () => myCloudAction_Rename());
+    addAction(grp2, 'copy', S.copy, L.copy || 'Copy', () => myCloudAction_CopyMove(false));
+    addAction(grp2, 'move', S.move, L.move || 'Move', () => myCloudAction_CopyMove(true));
+    addAction(grp2, 'duplicate', S.duplicate, L.duplicate || 'Duplicate', () => myCloudAction_Duplicate());
+
+    // Group 3 (PDF/Print Tools)
+    addAction(grp3, 'pdf_stack_menu', '<svg viewBox="0 0 24 24" fill="#fff"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z"/></svg>', L.pdf_stack || 'Stack PDFs', () => window.myCloudAction_PdfStackMenu && window.myCloudAction_PdfStackMenu());
+    addAction(grp3, 'pdf_combine_images', '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><circle cx="10" cy="13" r="2"/><polyline points="6 17 11 12 18 19"/></svg>', L.pdf_combine_images || 'Combine to PDF', () => window.myCloudAction_PdfCombineImages && window.myCloudAction_PdfCombineImages());
+    addAction(grp3, 'print', '<svg viewBox="0 0 24 24" fill="#fff"><path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-2-9H7v3h10V3z"/></svg>', L.print || 'Print', () => window.myCloudAction_Print && window.myCloudAction_Print(st.selectedFiles));
+
+    
+    // Group 4 (Delete)
+    addAction(grp4, 'delete', S.delete, L.delete || 'Delete', () => myCloudAction_Delete());
+
+    // Append populated groups
+    mhm.appendChild(grp1); // Always has the counter
+    if (grp2.children.length > 0) mhm.appendChild(grp2);
+    if (grp3.children.length > 0) mhm.appendChild(grp3);
+    if (grp4.children.length > 0) mhm.appendChild(grp4);
+    
+    mhm.style.display = 'flex';
+};
+
+document.addEventListener('mouseover', function(e) {
+    if (e.buttons > 0) return; // Prevent appearing during mouse dragging/marquee
+    const row = e.target.closest('.myCloudRow, .myCloud-symbol-item');
+    const mhm = document.getElementById('ce-multi-hover-menu');
+    const st = typeof myCloudState !== 'undefined' ? myCloudState : null;
+    
+    if (row && st) {
+        const path = row.dataset.fullpath;
+        if (st.selectedFiles && st.selectedFiles.length > 1 && st.selectedFiles.includes(path)) {
+            if (typeof window.myCloudShowMultiHoverMenu === 'function') {
+                window.myCloudShowMultiHoverMenu(row, path);
+            }
+        } else {
+            if (mhm && !mhm.contains(e.target)) {
+                mhm.style.display = 'none';
+            }
+        }
+    } else {
+        if (mhm && !mhm.contains(e.target)) {
+            mhm.style.display = 'none';
+        }
+    }
+});
 </script>
