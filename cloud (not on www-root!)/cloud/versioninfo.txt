@@ -1,3 +1,6 @@
+4.3.302
+	Fix: Wrong recycle bin icon
+
 4.3.301
 	Feature: Hover bar for multiple selection
 	Improvement: Settings dialog: Removed stacked toolbar option
