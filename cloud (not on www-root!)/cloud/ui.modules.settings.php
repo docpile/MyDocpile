@@ -500,6 +500,7 @@ function _cloudExRenderSettingsContent(panel, activeTab) {
                 const currentName = (myCloudState.settings.tagNames && myCloudState.settings.tagNames[c]) ? myCloudState.settings.tagNames[c] : '';
                 const defaultName = window.myCloudGetTagName(c, true);
                 const isVisible = visibleArray.includes(c);
+				const safeCurrentName = typeof myCloudEscapeHtml === 'function' ? myCloudEscapeHtml(currentName) : currentName.replace(/"/g, '&quot;');
                 const hasBottomBorder = idx < colorsChunk.length - 1;
                 let borderStyle = hasBottomBorder ? 'border-bottom: 1px solid var(--border-subtle); ' : '';
                 
@@ -507,7 +508,7 @@ function _cloudExRenderSettingsContent(panel, activeTab) {
                 '<span class="ca-drag-handle" style="cursor:grab; margin-right:2px; color:var(--border-strong); font-size:16px; user-select:none;">☰</span>' +
                 '<label class="ce-toggle-switch" title="Show/Hide"><input type="checkbox" class="ce-tag-vis-cb" data-color="' + c + '" ' + (isVisible ? 'checked' : '') + '><span class="slider round"></span></label>' +
                 '<div class="ce-tag-dot" style="background-color:' + c + '; width:16px; height:16px; margin:0; flex-shrink:0; box-shadow:inset 0 1px 3px rgba(0,0,0,0.2);"></div>' +
-                '<input type="text" class="myCloudInlineInput ce-tag-name-input" data-color="' + c + '" placeholder="' + defaultName + '" value="' + currentName + '" style="flex:1; height:26px; font-size:13px; min-width:0; margin:0;">' +
+                '<input type="text" class="myCloudInlineInput ce-tag-name-input" data-color="' + c + '" placeholder="' + defaultName + '" value="' + safeCurrentName + '" style="flex:1; height:26px; font-size:13px; min-width:0; margin:0;">' +
                 '<button class="ce-tag-clear-btn" data-color="' + c + '" title="' + (myCloud_LANG.clear_tags || 'Remove this tag from all items') + '" style="background:transparent; border:none; cursor:pointer; color:var(--danger); padding:4px; border-radius:4px; display:flex; align-items:center; justify-content:center; transition:background 0.2s;" onmouseenter="this.style.background=\'rgba(232, 17, 35, 0.1)\'" onmouseleave="this.style.background=\'transparent\'">' +
                     '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>' +
                 '</button>' +

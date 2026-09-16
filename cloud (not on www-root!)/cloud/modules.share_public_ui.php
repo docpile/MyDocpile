@@ -155,6 +155,34 @@ function cxLang($key, $arg = null) {
     return $str;
 }
 
+// --- ZERO TRUST: HIDDEN PATH INTERCEPTOR ---
+function cxIsPathHidden($absPath) {
+    global $user_details;
+    if (!isset($user_details) || !is_array($user_details)) return false;
+    $normPath = str_replace('\\', '/', $absPath);
+    foreach ($user_details as $ud) {
+        if (empty($ud['cloud']) || !is_array($ud['cloud'])) continue;
+        foreach ($ud['cloud'] as $c) {
+            if (empty($c['path'])) continue;
+            $root = str_replace('\\', '/', realpath($c['path']));
+            if ($root && ($normPath === $root || strpos($normPath, $root . '/') === 0)) {
+                $relPath = '/' . ltrim(substr($normPath, strlen($root)), '/');
+                if (empty($c['subfolder_rights'])) continue;
+                foreach ($c['subfolder_rights'] as $rule => $role) {
+                    $rule = '/' . ltrim(str_replace('\\', '/', $rule), '/');
+                    $isWildcard = strpos($rule, '*') !== false || strpos($rule, '?') !== false;
+                    if ($isWildcard) {
+                        if (fnmatch($rule, $relPath, FNM_PATHNAME | FNM_CASEFOLD) || fnmatch($rule . '/*', $relPath, FNM_PATHNAME | FNM_CASEFOLD)) { if ($role === 'hidden' || $role === 'no-access') return true; }
+                    } else {
+                        if ($relPath === $rule || ($rule !== '/' && strpos($relPath, $rule . '/') === 0)) { if ($role === 'hidden' || $role === 'no-access') return true; }
+                    }
+                }
+            }
+        }
+    }
+    return false;
+}
+
 // --- HELPERS ---
 function cxParseQuota($str) {
     $str = strtolower(trim($str));
@@ -207,11 +235,18 @@ function cxCheckRateLimit($ip) {
 }
 
 function cxRegisterFail($ip) {
-    $data = cxLoadBlocklist();
-    $now = time();
-    if (!isset($data[$ip])) $data[$ip] = ['count' => 0, 'until' => $now + 900];
-    $data[$ip]['count']++;
-    cxSaveBlocklist($data);
+    global $blocklist_file;
+    $fp = fopen($blocklist_file, 'c+');
+    if ($fp && flock($fp, LOCK_EX)) {
+        $json = stream_get_contents($fp);
+        $data = json_decode($json, true) ?? [];
+        $now = time();
+        if (!isset($data[$ip])) $data[$ip] = ['count' => 0, 'until' => $now + 900];
+        $data[$ip]['count']++;
+        ftruncate($fp, 0); rewind($fp); fwrite($fp, json_encode($data, JSON_PRETTY_PRINT)); fflush($fp);
+        flock($fp, LOCK_UN);
+    }
+    if ($fp) fclose($fp);
 }
 
 function cloudExPublicLoad() {
@@ -240,20 +275,27 @@ function cloudExPublicSave($shares) {
 }
 
 function cxIncrementShareAttempts($guid) {
-    $shares = cloudExPublicLoad();
-    if (!isset($shares[$guid])) return;
-    if (!isset($shares[$guid]['attempts'])) $shares[$guid]['attempts'] = 0;
-    $shares[$guid]['attempts']++;
-    if (!isset($shares[$guid]['attempt_window_start']) || time() > $shares[$guid]['attempt_window_start'] + 3600) {
-        $shares[$guid]['attempt_window_start'] = time();
-        $shares[$guid]['attempts'] = 1;
+    global $cloud_share_db;
+    $fp = fopen($cloud_share_db, 'c+');
+    if ($fp && flock($fp, LOCK_EX)) {
+        $shares = json_decode(stream_get_contents($fp), true) ?? [];
+        if (isset($shares[$guid])) {
+            if (!isset($shares[$guid]['attempts'])) $shares[$guid]['attempts'] = 0;
+            $shares[$guid]['attempts']++;
+            if (!isset($shares[$guid]['attempt_window_start']) || time() > $shares[$guid]['attempt_window_start'] + 3600) {
+                $shares[$guid]['attempt_window_start'] = time();
+                $shares[$guid]['attempts'] = 1;
+            }
+            if ($shares[$guid]['attempts'] >= 15) {
+                $shares[$guid]['locked_until'] = time() + 3600;
+                $shares[$guid]['attempts'] = 0;
+                $shares[$guid]['attempt_window_start'] = time();
+            }
+            ftruncate($fp, 0); rewind($fp); fwrite($fp, json_encode($shares, JSON_PRETTY_PRINT)); fflush($fp);
+        }
+        flock($fp, LOCK_UN);
     }
-    if ($shares[$guid]['attempts'] >= 15) {
-        $shares[$guid]['locked_until'] = time() + 3600;
-        $shares[$guid]['attempts'] = 0;
-        $shares[$guid]['attempt_window_start'] = time();
-    }
-    cloudExPublicSave($shares);
+    if ($fp) fclose($fp);
 }
 
 function cxIsShareLocked($guid) {
@@ -337,8 +379,8 @@ function cxIsSafeFile($name, $tmpPath) {
     $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
     $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'ico', 'tiff', 'tif', 'heic', 'heif', 'avif', 'dng', 'cr2', 'cr3', 'nef', 'arw', 'orf', 'raf', 'rw2', 'pef', 'srw', 'x3f', 'erf', 'iiq', 'psd', 'ai', 'eps', 'indd', 'idml', 'indt', 'afdesign', 'afphoto', 'afpub', 'af', 'qxp', 'qxd', 'cdr', 'cmx', 'sketch', 'xcf', 'mp4', 'm4v', 'mov', 'avi', 'mkv', 'webm', 'wmv', 'flv', '3gp', 'ogv', 'mts', 'm2ts', 'ts', 'vob', 'mxf', 'pro', 'mp3', 'wav', 'm4a', 'aac', 'ogg', 'flac', 'wma', 'alac', 'aiff', 'mp2', 'mid', 'midi', 'opus', 'amr', 'doc', 'docx', 'dotx', 'xls', 'xlsx', 'xltx', 'ppt', 'pptx', 'potx', 'pub', 'vcf', 'ics', 'odt', 'ods', 'odp', 'odg', 'pages', 'numbers', 'key', 'pdf', 'txt', 'rtf', 'csv', 'md', 'json', 'xml', 'log', 'msg', 'epub', 'mobi', 'azw3', 'cbr', 'cbz', 'stl', 'obj', 'fbx', 'glb', 'gltf', 'blend', '3ds', 'dae', 'dwg', 'dxf', 'step', 'stp', 'zip', 'rar', '7z', 'tar', 'gz', 'tgz', 'bz2', 'iso', 'dmg', 'img'];
     if (!in_array($ext, $allowed, true)) return false;
-    if ($name === '.htaccess' || $name === '.user.ini') return false;
-
+    if ($name === '.htaccess' || $name === '.user.ini' || $name === 'shares.json' || $name === 'blocklist.json' || $name === '.mycloud_crypto_salt') return false;
+	
     // Prevent Apache double-extension execution attacks (e.g. payload.php.jpg)
     if (preg_match('/\.ph(p[34578]?|t|tml|ar)\./i', $name)) return false;
 
@@ -460,9 +502,9 @@ function cxParseMarkdown($text) {
     $text = preg_replace_callback('/!\[([^\]]*)\]\(([^)]+)\)/', function($m) use ($host) {
         $src = trim($m[2]);
         // Block any protocol (http://, ftp://) or protocol-relative (//) URL that doesn't match our host
-        if (preg_match('/^(?:[a-z]+:)?\/\/(?!' . $host . '(?:\/|:|$))/i', $src)) {
-            return '<span class="cx-color" style="color:#d9534f; border:1px solid #d9534f; padding:2px 4px; border-radius:3px; font-size:0.85em;">[External Image Blocked]</span>';
-        }
+        // if (preg_match('/^(?:[a-z]+:)?\/\/(?!' . $host . '(?:\/|:|$))/i', $src)) {
+        //     return '<span class="cx-color" style="color:#d9534f; border:1px solid #d9534f; padding:2px 4px; border-radius:3px; font-size:0.85em;">[External Image Blocked]</span>';
+        // }
         return '<img src="' . $src . '" alt="' . $m[1] . '" style="max-width:100%; height:auto;">';
     }, $text);
 
@@ -796,7 +838,7 @@ if (isset($_GET['cloudshare'])) {
     $validRoots = cloudExGetAllowedRoots();
     if ($sharedRootPath && file_exists($sharedRootPath)) {
         foreach ($validRoots as $root) {
-            if ($root && strpos($sharedRootPath, $root) === 0) { $isValidLocation = true; break; }
+            if ($root && ($sharedRootPath === $root || strpos($sharedRootPath, $root . DIRECTORY_SEPARATOR) === 0)) { $isValidLocation = true; break; }
         }
     }
     if (!$isValidLocation) die(cxLang('err_file_unavailable'));
@@ -877,7 +919,7 @@ if (isset($_GET['cloudshare'])) {
     $canModify = ($perm === 'modify' && !empty($share['password']));
     $isUploadOnly = ($perm === 'upload');
     $subPath = $isUploadOnly ? '' : ($_GET['subpath'] ?? '');
-    $subPath = trim(str_replace(['..', '\\'], ['', '/'], $subPath), '/');
+	$subPath = trim(preg_replace('#\.{2,}#', '', str_replace('\\', '/', $subPath)), '/');
     $realCurrentPath = realpath($sharedRootPath . ($subPath ? DIRECTORY_SEPARATOR . $subPath : ''));
     if (!$realCurrentPath || strpos($realCurrentPath, $sharedRootPath) !== 0) die(cxLang('err_invalid_path'));
 
@@ -892,7 +934,8 @@ if (isset($_GET['cloudshare'])) {
 //       $totalSize = 0;
         $validPaths = [];
         foreach ($selectedItems as $item) {
-            $cleanItem = trim(str_replace(['..', '\\'], ['', '/'], $item), '/');
+            $cleanItem = trim(str_replace('\\', '/', $item), '/');
+            if (strpos($cleanItem, '..') !== false) continue;
             if (empty($cleanItem)) continue;
             
             $itemPath = realpath($realCurrentPath . DIRECTORY_SEPARATOR . $cleanItem);
@@ -971,6 +1014,7 @@ if (isset($_GET['cloudshare'])) {
         }
         if ($canModify && $action === 'delete' && !empty($_POST['target'])) {
             $target = basename($_POST['target']);
+			if ($target === '.' || $target === '..') die(json_encode(['status' => 'error', 'msg' => 'Invalid target']));
             $targetPath = $realCurrentPath . DIRECTORY_SEPARATOR . $target;
             if (file_exists($targetPath) && dirname($targetPath) === $realCurrentPath) {
                 cxRemoveRecursive($targetPath);
@@ -1019,7 +1063,7 @@ if (isset($_GET['cloudshare'])) {
                         $baseCheckPathReal = realpath($baseCheckPath);
                         if (!$baseCheckPathReal && $isUploadOnly) $baseCheckPathReal = $baseCheckPath;
 
-                        if ($baseCheckPathReal && strpos($targetReal, $baseCheckPathReal) === 0) {
+                        if ($baseCheckPathReal && ($targetReal === $baseCheckPathReal || strpos($targetReal, $baseCheckPathReal . DIRECTORY_SEPARATOR) === 0)) {
                             if (is_uploaded_file($tmp)) {
                                 $dest = $targetDir . DIRECTORY_SEPARATOR . basename($name);
                                 if (move_uploaded_file($tmp, $dest)) $currentShareSize += $size;
@@ -1044,8 +1088,8 @@ if (isset($_GET['cloudshare'])) {
     }
 
     if (!$isUploadOnly && isset($_GET['zip']) && $_GET['zip'] === '1' && is_dir($realCurrentPath)) {
-//        $totalSize = cxGetDirSize($realCurrentPath, $max_zip_size + 1);
-//        if ($totalSize > $max_zip_size) die(cxLang('err_zip_size'));
+        $totalSize = cxGetDirSize($realCurrentPath, $max_zip_size + 1);
+        if ($totalSize > $max_zip_size) die(cxLang('err_zip_size'));
         if (!class_exists('ZipArchive')) die(cxLang('err_zip_missing'));
 		
 		session_write_close();
@@ -1090,7 +1134,8 @@ if (isset($_GET['cloudshare'])) {
 
     // --- FILE DOWNLOAD / INLINE PREVIEW HANDLER ---
     if (!$isUploadOnly && is_file($realCurrentPath)) {
-        $filename = basename($realCurrentPath);
+        if (cxIsPathHidden($realCurrentPath)) die(cxLang('err_file_unavailable'));
+		$filename = basename($realCurrentPath);
         $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
 
         if ((isset($_GET['download']) && $_GET['download'] === '1') || (isset($_GET['inline']) && $_GET['inline'] === '1') || (isset($_GET['direct']) && $_GET['direct'] === '1') || ($realCurrentPath === $sharedRootPath && isset($_GET['download']))) {
@@ -1188,7 +1233,8 @@ if (isset($_GET['cloudshare'])) {
                 if (strtolower($item) === 'readme.md') continue;
 
                 $fullSub = $realCurrentPath . DIRECTORY_SEPARATOR . $item;
-                $relPath = ($subPath ? $subPath . '/' : '') . $item;
+                if (cxIsPathHidden($fullSub)) continue;
+				$relPath = ($subPath ? $subPath . '/' : '') . $item;
                 $entry = ['name' => $item, 'date' => date('Y-m-d H:i', filemtime($fullSub)), 'size' => is_dir($fullSub) ? '-' : cxFmtBytes(filesize($fullSub)), 'path' => $relPath, 'isDir' => is_dir($fullSub)];
                 if (is_dir($fullSub)) { $dirs[] = $entry; } 
                 else { 
@@ -1504,11 +1550,11 @@ if (isset($_GET['cloudshare'])) {
                                 
                                 <?php foreach ($dirs as $d): $link = $reqUri . '?cloudshare=' . $guid . '&subpath=' . urlencode($d['path']); ?>
                                     <tr>
-                                        <td align="center"><input type="checkbox" class="cx-item-cb" value="<?php echo htmlspecialchars($d['name']); ?>" data-isdir="1" onclick="cxUpdateSelection(); event.stopPropagation();"></td>
-                                        <td><a href="<?php echo htmlspecialchars($link); ?>" class="row-link"><?php echo cxGetIcon(true, $d['name']); ?> <?php echo htmlspecialchars($d['name']); ?></a></td>
+                                        <td align="center"><input type="checkbox" class="cx-item-cb" value="<?php echo htmlspecialchars($d['name'], ENT_QUOTES, 'UTF-8'); ?>" data-isdir="1" onclick="cxUpdateSelection(); event.stopPropagation();"></td>
+										<td><a href="<?php echo htmlspecialchars($link); ?>" class="row-link"><?php echo cxGetIcon(true, $d['name']); ?> <?php echo htmlspecialchars($d['name']); ?></a></td>
                                         <td class="meta col-date"><?php echo $d['date']; ?></td>
                                         <?php if(!empty($files)) echo '<td class="meta col-size">-</td><td class="meta"></td>'; ?>
-                                        <?php if($canModify): ?><td class="meta" align="center"><button class="del-btn" title="Delete" onclick="cxDelete('<?php echo htmlspecialchars($d['name']); ?>')"><?php echo cxGetDeleteIcon(); ?></button></td><?php endif; ?>
+                                        <?php if($canModify): ?><td class="meta" align="center"><button class="del-btn" title="Delete" onclick="cxDelete('<?php echo htmlspecialchars($d['name'], ENT_QUOTES, 'UTF-8'); ?>')"><?php echo cxGetDeleteIcon(); ?></button></td><?php endif; ?>
                                     </tr>
                                 <?php endforeach; ?>
                                 
@@ -1519,8 +1565,8 @@ if (isset($_GET['cloudshare'])) {
                                     $isPreviewable = in_array($ext, $previewableExts);
                                 ?>
                                     <tr>
-                                        <td align="center"><input type="checkbox" class="cx-item-cb" value="<?php echo htmlspecialchars($f['name']); ?>" data-isdir="0" data-dl="<?php echo htmlspecialchars($dlLink); ?>" onclick="cxUpdateSelection(); event.stopPropagation();"></td>
-                                        <td>
+                                        <td align="center"><input type="checkbox" class="cx-item-cb" value="<?php echo htmlspecialchars($f['name'], ENT_QUOTES, 'UTF-8'); ?>" data-isdir="0" data-dl="<?php echo htmlspecialchars($dlLink, ENT_QUOTES, 'UTF-8'); ?>" onclick="cxUpdateSelection(); event.stopPropagation();"></td>
+										<td>
                                             <?php if ($isPreviewable): ?>
                                                 <a href="javascript:void(0)" onclick="cxOpenPreview('<?php echo htmlspecialchars($inlineLink, ENT_QUOTES); ?>', '<?php echo htmlspecialchars($f['name'], ENT_QUOTES); ?>', '<?php echo $ext; ?>', '<?php echo htmlspecialchars($dlLink, ENT_QUOTES); ?>')" class="row-link"><?php echo cxGetIcon(false, $f['name']); ?> <?php echo htmlspecialchars($f['name']); ?></a>
                                             <?php else: ?>
@@ -1852,8 +1898,8 @@ if (isset($_GET['cloudshare'])) {
             });
 
             // --- FULLSCREEN PREVIEW & NAVIGATION LOGIC ---
-            var previewFiles = <?php echo json_encode($previewableFiles ?? [], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
-            var currentPreviewIndex = -1;
+            var previewFiles = <?php echo json_encode($previewableFiles ?? [], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+			var currentPreviewIndex = -1;
 
             function cxOpenPreview(inlineUrl, filename, ext, dlUrl) {
                 currentPreviewIndex = previewFiles.findIndex(function(f) { return f.name === filename; });

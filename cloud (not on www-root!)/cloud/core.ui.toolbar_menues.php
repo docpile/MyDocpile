@@ -4398,6 +4398,19 @@ window.myCloudHideKeyTips = function() {
 
 window.myCloudShowKeyTips = function() {
     myCloudHideKeyTips();
+
+    // --- GUARD: Only show if main cloud is active and no modals are open ---
+    const container = document.getElementById('myCloudContainer');
+    if (!container || container.style.display === 'none') return;
+    
+    const overlays = ['myCloudModalOverlay', 'myCloudPreviewOverlay', 'myCloudPaletteOverlay', 'myCloudAlertOverlay', 'myCloudVerOverlay'];
+    for (let id of overlays) {
+        const el = document.getElementById(id);
+        if (el && window.getComputedStyle(el).display !== 'none') {
+            return;
+        }
+    }
+
     window.myCloudKeyTipsActive = true;
     window.myCloudKeyTipNodes = {};
     
@@ -4517,6 +4530,14 @@ document.addEventListener('keydown', (e) => {
     const isTipActive = window.myCloudKeyTipsActive && !e.ctrlKey && !e.metaKey && /^[A-Z0-9]$/i.test(e.key);
     
     if (isAltComb || isTipActive) {
+        const container = document.getElementById('myCloudContainer');
+        if (!container || container.style.display === 'none') return;
+        
+        const overlays = ['myCloudModalOverlay', 'myCloudPreviewOverlay', 'myCloudPaletteOverlay', 'myCloudAlertOverlay', 'myCloudVerOverlay'];
+        for (let id of overlays) {
+            const el = document.getElementById(id);
+            if (el && window.getComputedStyle(el).display !== 'none') return;
+        }
         e.preventDefault(); 
         e.stopPropagation();
         
@@ -4539,8 +4560,20 @@ document.addEventListener('keydown', (e) => {
 
 document.addEventListener('keyup', (e) => {
     if (e.key === 'Alt' && altPressedAlone) {
-        e.preventDefault();
-        myCloudToggleKeyTips();
+        const container = document.getElementById('myCloudContainer');
+        let isBlocked = !container || container.style.display === 'none';
+        
+        if (!isBlocked) {
+            const overlays = ['myCloudModalOverlay', 'myCloudPreviewOverlay', 'myCloudPaletteOverlay', 'myCloudAlertOverlay', 'myCloudVerOverlay'];
+            for (let id of overlays) {
+                const el = document.getElementById(id);
+                if (el && window.getComputedStyle(el).display !== 'none') { isBlocked = true; break; }
+            }
+        }
+        if (!isBlocked) {
+            e.preventDefault();
+            myCloudToggleKeyTips();
+        }
     }
     altPressedAlone = false;
 }, true);

@@ -411,11 +411,12 @@
 
             const L = typeof myCloud_LANG !== 'undefined' ? myCloud_LANG : {};
             const subject = (L.share_email_subj || 'Shared Link: %s').replace('%s', name);
+			const safeLink = typeof myCloudEscapeHtml === 'function' ? myCloudEscapeHtml(link) : link.replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
             const body = '<div style="font-family: sans-serif; font-size: 14px; color: var(--text-primary);">' +
                             '<p>' + (L.share_email_body || 'I would like to share the following with you:') + '</p>' +
                             '<div style="padding: 12px 16px; background: var(--gray-05); border-left: 3px solid var(--accent-primary); border-radius: 0 4px 4px 0; margin: 15px 0;">' +
                                 '<b style="font-size: 15px;">' + myCloudEscapeHtml(name) + '</b><br><br>' +
-                                '<a href="' + link + '" style="color: var(--accent-primary); text-decoration: none; word-break: break-all;">' + link + '</a>' +
+                                '<a href="' + safeLink + '" style="color: var(--accent-primary); text-decoration: none; word-break: break-all;">' + link + '</a>' +
                             '</div>' +
                          '</div>';
             

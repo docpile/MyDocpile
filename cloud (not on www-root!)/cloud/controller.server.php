@@ -1038,7 +1038,7 @@ class MyCloudServer {
              $this->sendJsonAndExit(['status'=>'ERR','msg'=>'Invalid path']);
         }
 		
-        $effectiveRole = $this->getEffectiveRoleForAbsPath($src);
+        $effectiveRole = $this->getEffectiveRoleForAbsPath($target);
         if ($effectiveRole === 'no-access' || $this->isActionBlocked('properties', $effectiveRole)) {
             $this->sendJsonAndExit(['status'=>'ERR','msg'=>'Permission denied.']);
         }
@@ -1117,8 +1117,9 @@ class MyCloudServer {
         }
 
         $info = $this->dl_tokens[$token];
-        if (!empty($info['user_hash']) && $info['user_hash'] !== md5($_SESSION['username'])) {
-            header('HTTP/1.1 403 Forbidden'); exit('Token ownership mismatch');
+        $currentUserHash = isset($_SESSION['username']) ? md5($_SESSION['username']) : 'guest';
+        if (!empty($info['user_hash']) && $info['user_hash'] !== $currentUserHash) {
+			header('HTTP/1.1 403 Forbidden'); exit('Token ownership mismatch');
         }
 		
         unset($_SESSION['myCloud_dl_tokens'][$token]);
@@ -1559,6 +1560,8 @@ class MyCloudServer {
             // Strict sanitization to prevent path traversal
             $safeMod = preg_replace('/[^a-zA-Z0-9_.-]/', '', trim($mod));
             if (empty($safeMod)) continue;
+            if (substr($safeMod, -4) !== '.php') continue;
+		    if (!preg_match('/^(assets\.|controller\.|core\.|css\.|modules\.|ui\.)/', $safeMod)) continue;
             $path = $cloud_dir . $safeMod;
             if (file_exists($path)) {
                 require $path;
@@ -5013,6 +5016,16 @@ class MyCloudServer {
         $resData = json_decode($response, true);
         
         if (!empty($resData['fileUrl'])) {
+            $fileUrlObj = parse_url($resData['fileUrl']);
+            if (!$fileUrlObj || !isset($fileUrlObj['scheme']) || !preg_match('/^https?$/i', $fileUrlObj['scheme'])) {
+                $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Invalid fileUrl scheme']);
+            }
+            $urlHost = strtolower($fileUrlObj['host'] ?? '');
+            $allowedInternal = strtolower(parse_url($this->officeInternalBase, PHP_URL_HOST) ?? '');
+            $allowedExternal = strtolower(parse_url($this->officeExternalUrl, PHP_URL_HOST) ?? '');
+            if ($urlHost !== $allowedInternal && $urlHost !== $allowedExternal) {
+                $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Unrecognized Document Server host']);
+            }
             $ch2 = curl_init($resData['fileUrl']);
             curl_setopt($ch2, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch2, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
@@ -5102,6 +5115,16 @@ class MyCloudServer {
         
         // 5. Download the converted PDF and serve it via MyCloud's own token system (CSP safe)
         if (!empty($resData['fileUrl'])) {
+            $fileUrlObj = parse_url($resData['fileUrl']);
+            if (!$fileUrlObj || !isset($fileUrlObj['scheme']) || !preg_match('/^https?$/i', $fileUrlObj['scheme'])) {
+                $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Invalid fileUrl scheme']);
+            }
+            $urlHost = strtolower($fileUrlObj['host'] ?? '');
+            $allowedInternal = strtolower(parse_url($this->officeInternalBase, PHP_URL_HOST) ?? '');
+            $allowedExternal = strtolower(parse_url($this->officeExternalUrl, PHP_URL_HOST) ?? '');
+            if ($urlHost !== $allowedInternal && $urlHost !== $allowedExternal) {
+                $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Unrecognized Document Server host']);
+            }
             // Proxy the PDF content using cURL to avoid allow_url_fopen restrictions
             $ch2 = curl_init($resData['fileUrl']);
             curl_setopt($ch2, CURLOPT_RETURNTRANSFER, true);

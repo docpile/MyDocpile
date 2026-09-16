@@ -1,3 +1,8 @@
+4.3.303
+	Security: Several security bugfixes
+	Security: Sharing security hotfixes
+	Fix: Some smaller bugfixes
+
 4.3.302
 	Fix: Wrong recycle bin icon
 

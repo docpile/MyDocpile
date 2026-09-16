@@ -19,7 +19,8 @@ if (isset($_GET['code']) && isset($_GET['state'])) {
         echo '<!DOCTYPE html><html><head><title>Authenticating...</title></head><body style="display:flex; justify-content:center; align-items:center; height:100vh; font-family:sans-serif; background:#f4f4f4;">';
         echo '<h3>Finalizing authentication...</h3>';
         echo '<script>';
-        echo 'if (window.opener) { window.opener.postMessage({ type: "oauth_code", code: "'.htmlspecialchars($_GET['code']).'", state: '.json_encode($stateDecoded).' }, "*"); window.close(); }';
+//        echo 'if (window.opener) { window.opener.postMessage({ type: "oauth_code", code: "'.htmlspecialchars($_GET['code']).'", state: '.json_encode($stateDecoded).' }, "*"); window.close(); }';
+        echo 'if (window.opener) { window.opener.postMessage({ type: "oauth_code", code: "'.htmlspecialchars($_GET['code']).'", state: '.json_encode($stateDecoded).' }, window.location.origin); window.close(); }';
         echo 'else { document.body.innerHTML = "<h3 style=\'color:red;\'>Error: Parent window connection lost.</h3>"; }';
         echo '</script>';
         echo '</body></html>';
