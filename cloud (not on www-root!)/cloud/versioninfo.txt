@@ -1,3 +1,14 @@
+4.3.304
+	Release Date: September 17, 2026
+	Security: Logging of cloud modifying actions improvements
+	Security: Webdav now also supports directory rights
+	Security: Webdav security and stability bugfixes 
+	Security: Maintenance mode - added optional possibility to switch on and off via existence of the file .maintenance_mode in the configruation dir
+	Security: Maintenance mode - now displaysd already before login
+	Securits: Maintenance mode - denied browsers now logged as well, one time per session
+	Security: Captcha logging improved
+	Improvement: In changelog, add a date tag for release versions
+
 4.3.303
 	Security: Several security bugfixes
 	Security: Sharing security hotfixes

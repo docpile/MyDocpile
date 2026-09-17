@@ -1321,7 +1321,7 @@ function verifyCaptchaCode($code) {
 		unset($_SESSION['captcha_code']);
 		unset($_SESSION['captcha_time']);
 
-		WriteLogLine($log_file, "success", "MainLogin: ✅ CAPTCHA solved successfully");
+		WriteLogLine($log_file, "success", "Captcha: ✅ CAPTCHA solved successfully");
 
 		$captcha_token = bin2hex(random_bytes(32));
 		$_SESSION['waf_captcha_token'] = $captcha_token;
@@ -1331,7 +1331,7 @@ function verifyCaptchaCode($code) {
 	}
 
 	$reason = $is_timeout ? "timeout" : "incorrect code";
-	WriteLogLine($log_file, "warning", "MainLogin: ❌ CAPTCHA failed ($reason). Attempt: " . $_SESSION['captcha_attempts']);
+	WriteLogLine($log_file, "warning", "Captcha: ❌ CAPTCHA failed ($reason). Attempt: " . $_SESSION['captcha_attempts']);
 
 	unset($_SESSION['captcha_code']); // Force regeneration on fail
 	unset($_SESSION['captcha_time']);

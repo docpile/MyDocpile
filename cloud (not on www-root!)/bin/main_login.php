@@ -319,6 +319,7 @@ class Login {
 	}
 
 	public function showCaptchaInterstitial() {
+		WriteLogLine($this->log_file, "warning", "Captcha: Presented CAPTCHA screen to user");
 		$lang = $this->language === 'de' ? 'de' : 'en';
 		$title = $lang === 'de' ? 'Sicherheitsüberprüfung<br>' : 'Security Check<br>';
 

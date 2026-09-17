@@ -134,6 +134,12 @@ class MyCloudServer {
     // =========================================================
 
     private function sendJsonAndExit($data) {
+        if (isset($data['status']) && $data['status'] === 'ERR') {
+            $action = $_POST['myCloud_action'] ?? $_GET['myCloud_action'] ?? 'UNKNOWN_ACTION';
+            $src = $_POST['src'] ?? $_POST['path'] ?? $_POST['parent'] ?? $_POST['dir'] ?? '-';
+            if (is_array($src)) $src = json_encode($src);
+            $this->log($action . '_ERROR', $src, '-', $data['msg'] ?? 'Unknown error');
+        }
         while (ob_get_level() > 0) ob_end_clean();
         echo json_encode($data);
         exit;
@@ -340,7 +346,7 @@ class MyCloudServer {
     }
 
 
-    private function log($action, $src, $tgt = '-', $result = 'OK') {
+    private function log($action, $src, $tgt = '-', $result = 'OK', $timestamp = null) {
         global $cloud_logfile;
         if (empty($cloud_logfile)) return;
 
@@ -348,7 +354,8 @@ class MyCloudServer {
         $safe_src = str_replace(["\r", "\n", "\t"], " ", $src);
         $safe_tgt = str_replace(["\r", "\n", "\t"], " ", $tgt);
 
-        $entry = date('Y-m-d H:i:s') . "\t" . 
+        $timeStr = $timestamp ? date('Y-m-d H:i:s', $timestamp) : date('Y-m-d H:i:s');
+        $entry = $timeStr . "\t" .
                  $this->username . "\t" . 
                  $this->key . "\t" . 
                  $action . "\t" . 
@@ -1157,7 +1164,29 @@ class MyCloudServer {
 
                     header('Content-Type: ' . $mime);
                     header('Content-Disposition: ' . $disposition . '; filename="' . rawurlencode($filename) . '"');
-                    fpassthru($stream); fclose($stream); $zip->close();
+                    
+                    $startTime = time();
+                    $bytesSent = 0;
+                    while (!feof($stream)) {
+                        $chunk = fread($stream, 8192);
+                        if ($chunk === false) break;
+                        echo $chunk;
+                        $bytesSent += strlen($chunk);
+                        flush();
+                        if (connection_aborted()) break;
+                    }
+                    fclose($stream); $zip->close();
+                    
+                    $duration = time() - $startTime;
+                    $success = ($bytesSent == $stat['size']) ? 'SUCCESS' : 'PARTIAL/FAILED';
+                    if (!$preview) {
+                        if ($duration > 10) {
+                            $this->log('DOWNLOAD_START', $internalPath, 'ZIP', 'Started', $startTime);
+                            $this->log('DOWNLOAD_END', $internalPath, 'ZIP', "$success ($bytesSent bytes, {$duration}s)");
+                        } else {
+                            $this->log('DOWNLOAD', $internalPath, 'ZIP', "$success ($bytesSent bytes, {$duration}s)");
+                        }
+                    }
                     exit;
                 }
                 $zip->close();
@@ -1269,6 +1298,8 @@ class MyCloudServer {
         }
         header('Content-Length: ' . ($end - $start + 1));
         
+        $startTime = time();
+        $bytesSent = 0;
         $handle = fopen($fullPath, 'rb');
         if ($handle) {
             fseek($handle, $start);
@@ -1276,9 +1307,25 @@ class MyCloudServer {
             $bytesLeft = $end - $start + 1;
             while (!feof($handle) && $bytesLeft > 0) {
                 $read = fread($handle, min($bytesLeft, $bufferSize));
-                echo $read; $bytesLeft -= strlen($read); flush();
+				if ($read === false) break;
+                echo $read; 
+				$bytesSent += strlen($read);
+				$bytesLeft -= strlen($read); 
+				flush();
+				if (connection_aborted()) break;
             }
             fclose($handle);
+        }
+
+        $duration = time() - $startTime;
+        $success = ($bytesSent == ($end - $start + 1)) ? 'SUCCESS' : 'PARTIAL/FAILED';
+        if (!$preview) {
+            if ($duration > 10) {
+                $this->log('DOWNLOAD_START', $fullPath, '-', 'Started', $startTime);
+                $this->log('DOWNLOAD_END', $fullPath, '-', "$success ($bytesSent bytes, {$duration}s)");
+            } else {
+                $this->log('DOWNLOAD', $fullPath, '-', "$success ($bytesSent bytes, {$duration}s)");
+            }
         }
         
         if (!empty($info['is_temp'])) @unlink($fullPath);
@@ -1305,7 +1352,30 @@ class MyCloudServer {
         header('Content-Type: ' . $fMime);
         header('Content-Disposition: attachment; filename="' . rawurlencode($fName) . '"');
         header('Content-Length: ' . filesize($fPath));
-        readfile($fPath);
+        
+        $startTime = time();
+        $bytesSent = 0;
+        $fileSize = filesize($fPath);
+        $handle = fopen($fPath, 'rb');
+        if ($handle) {
+            while (!feof($handle)) {
+                $chunk = fread($handle, 8192);
+                if ($chunk === false) break;
+                echo $chunk;
+                $bytesSent += strlen($chunk);
+                flush();
+                if (connection_aborted()) break;
+            }
+            fclose($handle);
+        }
+        $duration = time() - $startTime;
+        $success = ($bytesSent == $fileSize) ? 'SUCCESS' : 'PARTIAL/FAILED';
+        if ($duration > 10) {
+            $this->log('DRAGOUT_START', $fPath, '-', 'Started', $startTime);
+            $this->log('DRAGOUT_END', $fPath, '-', "$success ($bytesSent bytes, {$duration}s)");
+        } else {
+            $this->log('DRAGOUT', $fPath, '-', "$success ($bytesSent bytes, {$duration}s)");
+        }
         exit;
     }
     
@@ -1661,7 +1731,6 @@ class MyCloudServer {
                     'is_icon'        => !empty($_POST['is_icon']),
                     'expires'        => time() + 300
                 ];
-                if (!$isPreview) $this->log('DOWNLOAD', $relPath, '-', 'OK (Zip Content)');
                 $this->sendJsonAndExit(['status' => 'OK', 'token' => $token]);
             }
         }
@@ -1744,7 +1813,6 @@ class MyCloudServer {
             'expires' => time() + 300, 'user_hash' => $uHash, 'path_hash' => $pHash, 'rel_dir' => dirname($relPath),
             'is_temp' => $isTempFile, 'is_pdf_print' => $isTempFile
         ];
-        if (!$isPreview) $this->log('DOWNLOAD', $relPath);
         session_write_close();
         $this->sendJsonAndExit(['status' => 'OK', 'token' => $token]);
     }
@@ -2187,7 +2255,7 @@ class MyCloudServer {
                         if ($dirty) @file_put_contents($login_stateful_tokens, json_encode($tokens), LOCK_EX);
                     }
 
-
+					$this->log('CHANGE_PASSWORD', $user);
                     $this->sendJsonAndExit(['status' => 'OK']);
                 }
             }
@@ -2966,7 +3034,8 @@ class MyCloudServer {
         }
 
         if (copy($realTmpPath, $finalDest)) {
-            $this->sendJsonAndExit(['status' => 'OK']);
+            $this->log('EMAIL_INGEST_ATT', basename($finalDest), $destDirRel);
+			$this->sendJsonAndExit(['status' => 'OK']);
 			@unlink($realTmpPath);
         } else {
             $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Server failed to copy file to cloud.']);
@@ -3007,7 +3076,10 @@ class MyCloudServer {
     private function actionCancelShare() {
         if (session_status() === PHP_SESSION_NONE) session_start();
         $stash = $_SESSION['myCloud_shared_stash'] ?? [];
-        foreach ($stash as $item) { @unlink($item['tmp_path']); }
+        foreach ($stash as $item) { 
+            @unlink($item['tmp_path']);
+            $this->log('OS_SHARE_CANCEL', $item['name']);
+        }
         unset($_SESSION['myCloud_shared_stash']);
         $this->sendJsonAndExit(['status' => 'OK']);
     }
@@ -3389,7 +3461,10 @@ class MyCloudServer {
             ? sprintf('gs -dSAFER -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dPDFSETTINGS=/screen -dPrinted=false -dNOPAUSE -dQUIET -dBATCH -sOutputFile=%s %s 2>&1', $this->safeShellArg($dest), $this->safeShellArg($src))
             : sprintf('gs -dSAFER -sDEVICE=pdfwrite -dPDFA=1 -dPDFACompatibilityPolicy=1 -dCompatibilityLevel=1.4 -dPDFSETTINGS=/screen -dNoOutputFonts -dPrinted=false -dNOPAUSE -dQUIET -dBATCH -sOutputFile=%s %s 2>&1', $this->safeShellArg($dest), $this->safeShellArg($src));
         shell_exec($cmd);
-        if (file_exists($dest)) $this->sendJsonAndExit(['status'=>'OK']);
+        if (file_exists($dest)) {
+            $this->log('PDF_SHRINK', $src, $dest);
+            $this->sendJsonAndExit(['status'=>'OK']);
+        }
         $this->sendJsonAndExit(['status'=>'ERR','msg'=>'Compression failed. Ghostscript (gs) is required.']);
     }
 
@@ -3423,7 +3498,10 @@ class MyCloudServer {
             shell_exec($cmd2);
         }
         
-        if (file_exists($dest)) $this->sendJsonAndExit(['status'=>'OK']);
+        if (file_exists($dest)) {
+            $this->log('PDF_KEEP_PAGES', $src, $dest);
+            $this->sendJsonAndExit(['status'=>'OK']);
+        }
         $this->sendJsonAndExit(['status'=>'ERR','msg'=>'Extraction failed. qpdf or gs is required.']);
     }
 
@@ -3463,7 +3541,10 @@ class MyCloudServer {
             shell_exec($cmd2);
         }
 
-        if (file_exists($dest)) $this->sendJsonAndExit(['status'=>'OK']);
+        if (file_exists($dest)) {
+            $this->log('PDF_ROTATE', $src, $dest);
+            $this->sendJsonAndExit(['status'=>'OK']);
+        }
         $this->sendJsonAndExit(['status'=>'ERR','msg'=>'Rotation failed. qpdf or gs is required.']);
     }
 
@@ -3494,7 +3575,10 @@ class MyCloudServer {
                 : sprintf('gs -dSAFER -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -dPDFA=1 -dPDFACompatibilityPolicy=1 -dNoOutputFonts -dPrinted=false -sPDFPassword=%s -sOutputFile=%s %s 2>&1', $this->safeShellArg($pw), $this->safeShellArg($dest), $this->safeShellArg($src));
             shell_exec($cmd2);
         }
-        if (file_exists($dest)) $this->sendJsonAndExit(['status'=>'OK']);
+        if (file_exists($dest)) {
+            $this->log('PDF_UNLOCK', $src, $dest);
+            $this->sendJsonAndExit(['status'=>'OK']);
+        }
         $this->sendJsonAndExit(['status'=>'ERR','msg'=>'Unlock failed. Incorrect password or missing tools.']);
     }
 
@@ -3514,7 +3598,10 @@ class MyCloudServer {
         $cmd = sprintf('pdftotext %s %s 2>&1', $this->safeShellArg($src), $this->safeShellArg($dest));
         shell_exec($cmd);
 
-        if (file_exists($dest)) $this->sendJsonAndExit(['status'=>'OK']);
+        if (file_exists($dest)) {
+            $this->log('PDF_EXTRACT_TEXT', $src, $dest);
+            $this->sendJsonAndExit(['status'=>'OK']);
+        }
         $this->sendJsonAndExit(['status'=>'ERR','msg'=>'Text extraction failed. Poppler-utils (pdftotext) required.']);
     }
 
@@ -3559,7 +3646,10 @@ class MyCloudServer {
         fclose($out);
         @rmdir($tempDir);
 
-        if (file_exists($dest)) $this->sendJsonAndExit(['status'=>'OK']);
+        if (file_exists($dest)) {
+            $this->log('PDF_OCR_TEXT', $src, $dest);
+            $this->sendJsonAndExit(['status'=>'OK']);
+        }
         $this->sendJsonAndExit(['status'=>'ERR','msg'=>'OCR failed. Ensure Tesseract-OCR is installed on the server.']);
     }
 
@@ -3577,7 +3667,10 @@ class MyCloudServer {
         shell_exec($cmd);
 
         $files = array_diff(scandir($destDir), array('.', '..'));
-        if (count($files) > 0) $this->sendJsonAndExit(['status'=>'OK']);
+        if (count($files) > 0) {
+            $this->log('PDF_EXTRACT_IMAGES', $src, $destDir);
+            $this->sendJsonAndExit(['status'=>'OK']);
+        }
         @rmdir($destDir);
         $this->sendJsonAndExit(['status'=>'ERR','msg'=>'Image extraction failed. Poppler-utils (pdfimages) required.']);
     }
@@ -3611,7 +3704,10 @@ class MyCloudServer {
             shell_exec($cmd2);
         }
         
-        if (file_exists($dest) && filesize($dest) > 0) $this->sendJsonAndExit(['status'=>'OK']);
+        if (file_exists($dest) && filesize($dest) > 0) {
+            $this->log('PDF_FLATTEN', $src, $dest);
+            $this->sendJsonAndExit(['status'=>'OK']);
+        }
         $this->sendJsonAndExit(['status'=>'ERR','msg'=>'Flattening failed. pdftk or gs is required.']);
     }
 
@@ -3633,7 +3729,10 @@ class MyCloudServer {
         $cmd = sprintf('qpdf --encrypt %s %s 256 --allow-accessibility=y -- %s %s 2>&1', $this->safeShellArg($pw), $this->safeShellArg($pw), $this->safeShellArg($src), $this->safeShellArg($dest));
         shell_exec($cmd);
         
-        if (file_exists($dest)) $this->sendJsonAndExit(['status'=>'OK']);
+        if (file_exists($dest)) {
+            $this->log('PDF_ENCRYPT', $src, $dest);
+            $this->sendJsonAndExit(['status'=>'OK']);
+        }
         $this->sendJsonAndExit(['status'=>'ERR','msg'=>'Encryption failed. qpdf is required.']);
     }
 
@@ -3718,7 +3817,10 @@ class MyCloudServer {
         $cmd = sprintf('convert %s -define pdf:compliance=PDF/A-1b %s 2>&1', implode(' ', $validFiles), $this->safeShellArg($dest));
         shell_exec($cmd);
         
-        if (file_exists($dest)) $this->sendJsonAndExit(['status'=>'OK']);
+        if (file_exists($dest)) {
+            $this->log('PDF_COMBINE_IMAGES', implode(', ', array_map('basename', $files)), $dest);
+            $this->sendJsonAndExit(['status'=>'OK']);
+        }
         $this->sendJsonAndExit(['status'=>'ERR','msg'=>'Combine failed. ImageMagick (convert) is required.']);
     }
     
@@ -3814,7 +3916,8 @@ class MyCloudServer {
         
         @unlink($tmpXfdf);
 
-        if (file_exists($dest)) {
+        if (file_exists($dest) && filesize($dest) > 0) {
+            $this->log('PDF_FILL_FORM', $src, $dest);
             $this->sendJsonAndExit(['status'=>'OK']);
         }
         $this->sendJsonAndExit(['status'=>'ERR','msg'=>'Failed to inject form data.']);
@@ -3871,7 +3974,8 @@ class MyCloudServer {
 			$this->injectDateIntoDocx($destAbs);
 		}
         
-        $this->sendJsonAndExit(['status' => 'OK', 'newPath' => '/' . $destRel]);
+        $this->log('COPY_AS', $srcAbs, $destAbs);
+		$this->sendJsonAndExit(['status' => 'OK', 'newPath' => '/' . $destRel]);
     }
 	
     // =========================================================
@@ -4007,6 +4111,7 @@ class MyCloudServer {
         ];
         
         $this->saveShares($shares);
+		$this->log('SHARE_CREATE', $finalPath, $guid);
         
         global $cloud_share_url;
         $base = !empty($cloud_share_url) ? rtrim($cloud_share_url, '/') : ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? "https://" : "http://") . $_SERVER['HTTP_HOST'] . strtok($_SERVER["REQUEST_URI"], '?'));
@@ -4042,7 +4147,8 @@ class MyCloudServer {
                 $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Permission denied.']);
             }
 
-            unset($shares[$guid]); 
+            $this->log('SHARE_DELETE', $shares[$guid]['path'], $guid);
+			unset($shares[$guid]); 
             $this->saveShares($shares); 
         }
         $this->sendJsonAndExit(['status' => 'OK']);
@@ -4107,7 +4213,8 @@ class MyCloudServer {
         }
 
         $this->saveShares($shares);
-        $this->sendJsonAndExit(['status' => 'OK']);
+        $this->log('SHARE_UPDATE', $shares[$guid]['path'], $guid);
+		$this->sendJsonAndExit(['status' => 'OK']);
     }
 
     

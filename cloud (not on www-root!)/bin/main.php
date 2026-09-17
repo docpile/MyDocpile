@@ -171,8 +171,29 @@ if (!$isCloudOnly && isset($cloud_beta) && $cloud_beta !== '') {
 		$isCloudOnly = true;
 	}
 }
-
 	
+	
+$maintenance_file = $work_dir . '/configuration/.maintenance_mode';
+$is_maintenance_active = (isset($maintenance_mode) && $maintenance_mode === true) || file_exists($maintenance_file);
+$maintenance_reason = file_exists($maintenance_file) ? 'file exists' : 'variable is set';
+$is_admin_panel = (strpos($_SERVER['REQUEST_URI'], '/auth_adm_php') !== false);
+
+// If maintenance is active and it's NOT the admin panel, block immediately.
+if ($is_maintenance_active && !$is_admin_panel) {
+	if (empty($_SESSION['maintenance_logged'])) {
+		WriteLogLine($log_file, "warning", "Maintenance: Login screen blocked because $maintenance_reason.");
+		$_SESSION['maintenance_logged'] = true;
+	}
+	if (file_exists($work_dir . '/bin/security.php') || file_exists('security.php') || file_exists($work_dir . '/security.php')) {
+		header("Location: processing.php?maintenance=true");
+		exit;
+	} else {
+		http_response_code(503);
+		die("Service is under maintenance.");
+	}
+}
+
+
 require_once $work_dir.'/bin/main_login.php';   
 
 if (isset($_SESSION['loggedin']) && $_SESSION['loggedin'] === true) {
@@ -184,8 +205,12 @@ if (isset($_SESSION['loggedin']) && $_SESSION['loggedin'] === true) {
 
 	$loginRole = $work_dir . '/main_menu/' . getUserRole($_SESSION['username']) . '.php';
 	
-	if ($maintenance_mode === true){ 
-		if (getUserRole($_SESSION['username']) !== "admin") { 
+	if ($is_maintenance_active) { 
+		if (getUserRole($_SESSION['username']) !== "admin") {
+			if (empty($_SESSION['maintenance_logged_post'])) {
+				WriteLogLine($log_file, "warning", "Maintenance: Access blocked for user " . $_SESSION['username'] . " because $maintenance_reason.");
+				$_SESSION['maintenance_logged_post'] = true;
+			}
 			if (file_exists($work_dir . '/bin/security.php') || file_exists('security.php') || file_exists($work_dir . '/security.php')) {
 				header("Location: processing.php?maintenance=true");
 				exit;
@@ -194,8 +219,7 @@ if (isset($_SESSION['loggedin']) && $_SESSION['loggedin'] === true) {
 				die("Service is under maintenance.");
 			}
 		}
-    }
-
+	}
 	
 	
 	// Final decision of the template to load

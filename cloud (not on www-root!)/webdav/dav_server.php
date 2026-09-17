@@ -155,7 +155,7 @@ class BruteForceProtector {
         $now = time();
 
         if (isset($data['global']['panic_until']) && $data['global']['panic_until'] > $now) {
-            usleep(mt_rand(100000, 300000));
+            //usleep(mt_rand(100000, 300000));
             return 'Global panic'; 
         }
 
@@ -219,7 +219,7 @@ class BruteForceProtector {
 }
 
 // [PERFORMANCE] RAM-based tracking prevents flock() from bottlenecking concurrent syncs
-$bf_file   = '/dev/shm/dav_protection_' . substr(md5($work_dir), 0, 8) . '.json';
+$bf_file   = $work_dir . '/data/webdav/dav_protection.json';
 $bf_limit  = $login_failures ?? 5;
 $bf_base   = $login_block_seconds ?? 60;
 $bf_window = $brute_force_window ?? 3600;
@@ -318,46 +318,366 @@ if (!$skip_security_check) {
 }
 
 // -------------------------------------------------------------------------
-// 5. HARDENED FILESYSTEM NODE (AUTHENTICATED ABUSE PROTECTION)
+// 4.5 SUBFOLDER RIGHTS & SECURITY ENGINE
 // -------------------------------------------------------------------------
+class WebDavRightsHelper {
+    private $baseRole;
+    private $subfolderRights;
+    public $rootPath;
+
+    public function __construct($baseRole, $subfolderRights, $rootPath) {
+        $this->baseRole = $baseRole;
+        $this->subfolderRights = $subfolderRights ?: [];
+        $this->rootPath = rtrim(realpath($rootPath), DIRECTORY_SEPARATOR);
+    }
+
+    // NEW: Mirrors the main cloud's sanitizeAndValidateName logic
+    public function isSystemOrBlockedName($name) {
+        $lower_name = strtolower(trim($name));
+        
+        // 1. Block Cloud Internal Structures (Removed .mycloud_crypto_salt)
+        $system_files = ['.recycle_bin', '.recoll', '.mail'];
+        if (in_array($lower_name, $system_files, true)) return true;
+
+        // 2. Block Web Server Overrides, Configs & Keys
+        $blocked_names = ['.htaccess', '.htpasswd', '.user.ini', 'web.config', 'php.ini', '.env', 'authorized_keys', 'id_rsa', 'id_rsa.pub', '.ssh', '.git'];
+        if (in_array($lower_name, $blocked_names, true)) return true;
+
+        // 3. Block Executable Extensions
+        $blocked_exts = ['pht', 'phtml', 'phar', 'phps', 'shtml', 'cgi', 'pl', 'py', 'rb', 'jsp', 'asp', 'aspx', 'sh', 'bash', 'bat', 'cmd', 'ps1', 'vbs', 'bin', 'so', 'php', 'php3', 'php4', 'php5', 'php7', 'php8'];
+        
+        $ext = pathinfo($lower_name, PATHINFO_EXTENSION);
+        if (in_array($ext, $blocked_exts, true)) return true;
+
+        // 4. Fortification: Prevent Double Extensions (e.g., shell.php.jpg)
+        foreach ($blocked_exts as $b_ext) {
+            if (preg_match('/\.'.preg_quote($b_ext, '/').'\./i', $lower_name)) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+
+    public function getEffectiveRole($fullPath) {
+        if (!$fullPath || empty($this->subfolderRights)) return $this->baseRole;
+        $jail = $this->rootPath;
+        if (!$jail || strpos($fullPath, $jail) !== 0) return $this->baseRole;
+
+        $relPath = '/' . ltrim(str_replace('\\', '/', substr($fullPath, strlen($jail))), '/');
+        if ($relPath === '') $relPath = '/';
+
+        $bestMatchLength = 0;
+        $bestRole = $this->baseRole;
+
+        foreach ($this->subfolderRights as $pathKey => $customRole) {
+            $pathKey = '/' . ltrim(str_replace('\\', '/', $pathKey), '/');
+            $isWildcard = strpos($pathKey, '*') !== false || strpos($pathKey, '?') !== false;
+
+            if ($isWildcard) {
+                if (fnmatch($pathKey, $relPath, FNM_PATHNAME | FNM_CASEFOLD) || fnmatch($pathKey . '/*', $relPath, FNM_PATHNAME | FNM_CASEFOLD)) {
+                    if (strlen($pathKey) > $bestMatchLength) {
+                        $bestMatchLength = strlen($pathKey);
+                        $bestRole = $customRole;
+                    }
+                }
+            } else {
+                if ($relPath === $pathKey) return $customRole;
+                if ($pathKey !== '/' && strpos($relPath, $pathKey . '/') === 0) {
+                    if (strlen($pathKey) > $bestMatchLength) {
+                        $bestMatchLength = strlen($pathKey);
+                        $bestRole = $customRole;
+                    }
+                }
+            }
+        }
+        return $bestRole;
+    }
+
+    public function isActionBlocked($action, $role = null, &$visited = []) {
+        if ($role === null) $role = $this->baseRole;
+        if ($role === 'admin_mode' || $role === 'full') return false; 
+        if ($role === 'no-access' || $role === 'hidden') return true;
+
+        if (in_array($role, $visited, true)) return false; 
+        $visited[] = $role;
+
+        global $MYCLOUD_RIGHTS_MATRIX;
+        $matrix = $MYCLOUD_RIGHTS_MATRIX ?? [
+            'read-only' => ['blocked' => ['upload', 'modify', 'delete', 'newfolder', 'rename', 'move']],
+            'upload-only' => ['blocked' => ['download', 'modify', 'delete', 'rename', 'move', 'read']]
+        ];
+
+        $roleConfig = $matrix[$role] ?? null;
+        if (!$roleConfig || !isset($roleConfig['blocked'])) return false;
+        
+        if ($roleConfig['blocked'] === '*') return true;
+        if (in_array($action, $roleConfig['blocked'], true)) return true;
+
+        foreach ($roleConfig['blocked'] as $parentKey) {
+            if (isset($matrix[$parentKey])) {
+                if ($this->isActionBlocked($action, $parentKey, $visited)) return true;
+            }
+        }
+        return false;
+    }
+}
+
+// -------------------------------------------------------------------------
+// 5. HARDENED FILESYSTEM NODES 
+// -------------------------------------------------------------------------
+class HardenedFile extends \Sabre\DAV\FS\File {
+    protected $maxFileSize;
+    protected $rightsHelper;
+
+    public function __construct($path, $maxFileSize, $rightsHelper) {
+        parent::__construct($path);
+        $this->maxFileSize = $maxFileSize;
+        $this->rightsHelper = $rightsHelper;
+    }
+
+    // Helper: Detect if the vault directory contains any files other than the salt
+    private function isVaultInUse() {
+        if (basename($this->path) !== '.mycloud_crypto_salt') return false;
+        $dir = dirname($this->path);
+        $items = @scandir($dir);
+        if (!is_array($items)) return false;
+        foreach ($items as $item) {
+            if ($item === '.' || $item === '..' || $item === '.mycloud_crypto_salt') continue;
+            return true; // Another file exists, vault is locked
+        }
+        return false;
+    }
+
+    public function get() {
+        $role = $this->rightsHelper->getEffectiveRole($this->path);
+        if ($role === 'hidden' || $role === 'no-access') {
+            throw new \Sabre\DAV\Exception\NotFound('File could not be located');
+        }
+        if ($this->rightsHelper->isActionBlocked('download', $role) && $this->rightsHelper->isActionBlocked('read', $role)) {
+            throw new \Sabre\DAV\Exception\Forbidden('Read permission denied');
+        }
+        return parent::get();
+    }
+
+    public function put($data) {
+        $role = $this->rightsHelper->getEffectiveRole($this->path);
+        if ($this->rightsHelper->isActionBlocked('modify', $role)) {
+            throw new \Sabre\DAV\Exception\Forbidden('Modify permission denied');
+        }
+
+        // Conditional Lock for Vault Salt
+        if (basename($this->path) === '.mycloud_crypto_salt' && file_exists($this->path) && $this->isVaultInUse()) {
+            throw new \Sabre\DAV\Exception\Forbidden('Cannot modify encryption salt while the vault contains other files.');
+        }
+
+        $contentLength = isset($_SERVER['CONTENT_LENGTH']) ? (int)$_SERVER['CONTENT_LENGTH'] : null;
+        $isChunked = isset($_SERVER['HTTP_TRANSFER_ENCODING']) && strcasecmp($_SERVER['HTTP_TRANSFER_ENCODING'], 'chunked') === 0;
+
+        // Prevent DoS via massive salt keys matching the main cloud's 512KB limit
+        $effectiveMax = (basename($this->path) === '.mycloud_crypto_salt') ? 524288 : $this->maxFileSize;
+
+        if ($isChunked || $contentLength === null || $contentLength > $effectiveMax) {
+            throw new \Sabre\DAV\Exception\EntityTooLarge('File update exceeds maximum upload limit.');
+        }
+
+        $result = parent::put($data);
+
+        if (file_exists($this->path) && filesize($this->path) > $effectiveMax) {
+            unlink($this->path);
+            throw new \Sabre\DAV\Exception\EntityTooLarge('Uploaded file bypassed header checks. File destroyed.');
+        }
+        return $result;
+    }
+
+    public function delete() {
+        $role = $this->rightsHelper->getEffectiveRole($this->path);
+        if ($this->rightsHelper->isActionBlocked('delete', $role)) {
+            throw new \Sabre\DAV\Exception\Forbidden('Delete permission denied');
+        }
+
+        // Conditional Lock for Vault Salt
+        if (basename($this->path) === '.mycloud_crypto_salt' && $this->isVaultInUse()) {
+            throw new \Sabre\DAV\Exception\Forbidden('Cannot delete encryption salt while the vault contains other files.');
+        }
+
+        return parent::delete();
+    }
+
+    public function setName($name) {
+        // Intercept RENAME/MOVE payloads attempting to bypass extension blocks
+        if ($this->rightsHelper && $this->rightsHelper->isSystemOrBlockedName($name)) {
+            throw new \Sabre\DAV\Exception\Forbidden('Blocked file extension or system file.');
+        }
+
+        $role = $this->rightsHelper->getEffectiveRole($this->path);
+        if ($this->rightsHelper->isActionBlocked('rename', $role)) {
+            throw new \Sabre\DAV\Exception\Forbidden('Rename permission denied');
+        }
+
+        // Conditional Lock for Vault Salt
+        if (basename($this->path) === '.mycloud_crypto_salt' && $this->isVaultInUse()) {
+            throw new \Sabre\DAV\Exception\Forbidden('Cannot rename encryption salt while the vault contains other files.');
+        }
+
+        return parent::setName($name);
+    }
+}
+
 class HardenedDirectory extends \Sabre\DAV\FS\Directory {
     protected $maxFileSize; 
+    protected $rightsHelper;
 
-    public function __construct($path, $maxFileSizeMB = 500) {
+    public function __construct($path, $maxFileSizeMB = 500, $rightsHelper = null) {
         parent::__construct($path);
         $this->maxFileSize = $maxFileSizeMB * 1024 * 1024;
+        $this->rightsHelper = $rightsHelper;
+    }
+
+    public function getChild($name) {
+        if ($this->rightsHelper && $this->rightsHelper->isSystemOrBlockedName($name)) {
+            throw new \Sabre\DAV\Exception\NotFound('File with name ' . $name . ' could not be located');
+        }
+
+        $path = $this->path . '/' . $name;
+        
+        if ($this->rightsHelper) {
+            $role = $this->rightsHelper->getEffectiveRole($path);
+            if ($role === 'hidden' || $role === 'no-access') {
+                throw new \Sabre\DAV\Exception\NotFound('File could not be located');
+            }
+        }
+        
+        if (!file_exists($path)) {
+            throw new \Sabre\DAV\Exception\NotFound('File could not be located');
+        }
+        
+        if (is_dir($path)) {
+            return new HardenedDirectory($path, $this->maxFileSize / 1048576, $this->rightsHelper);
+        }
+        return new HardenedFile($path, $this->maxFileSize, $this->rightsHelper);
+    }
+
+    public function getChildren() {
+        $children = [];
+        $saltNode = null;
+
+        foreach (scandir($this->path) as $node) {
+            if ($node === '.' || $node === '..') continue;
+            if ($this->rightsHelper && $this->rightsHelper->isSystemOrBlockedName($node)) continue;
+
+            if ($this->rightsHelper) {
+                $role = $this->rightsHelper->getEffectiveRole($this->path . '/' . $node);
+                if ($role === 'hidden' || $role === 'no-access') continue;
+            }
+
+            $child = $this->getChild($node);
+
+            // Re-order algorithm: Push the crypto salt to the absolute end of the array.
+            // This guarantees SabreDAV will recursively delete all vault contents BEFORE hitting the salt.
+            if ($node === '.mycloud_crypto_salt') {
+                $saltNode = $child;
+            } else {
+                $children[] = $child;
+            }
+        }
+
+        if ($saltNode !== null) {
+            $children[] = $saltNode;
+        }
+
+        return $children;
     }
 
     public function createFile($name, $data = null) {
-        // 1. Filename Length Check (128 chars max)
+        if ($this->rightsHelper && $this->rightsHelper->isSystemOrBlockedName($name)) {
+            throw new \Sabre\DAV\Exception\Forbidden('Blocked file extension or system file.');
+        }
+
+        if ($this->rightsHelper) {
+            $role = $this->rightsHelper->getEffectiveRole($this->path);
+            if ($this->rightsHelper->isActionBlocked('upload', $role)) {
+                throw new \Sabre\DAV\Exception\Forbidden('Upload permission denied in this folder.');
+            }
+        }
+
         if (strlen($name) > 128) {
             throw new \Sabre\DAV\Exception\Forbidden('Filename too long.');
         }
 
-        // 2. PUT Size Restriction (Quota/DoS Protection)
-        $contentLength = (int)($_SERVER['CONTENT_LENGTH'] ?? 0);
+        $contentLength = isset($_SERVER['CONTENT_LENGTH']) ? (int)$_SERVER['CONTENT_LENGTH'] : null;
         $isChunked = isset($_SERVER['HTTP_TRANSFER_ENCODING']) && strcasecmp($_SERVER['HTTP_TRANSFER_ENCODING'], 'chunked') === 0;
 
-        // If the request is chunked, we cannot trust Content-Length pre-flight. 
-        // Reject chunked encoding to strictly enforce the quota firewall.
-        if ($contentLength > $this->maxFileSize || $isChunked) {
-            throw new \Sabre\DAV\Exception\EntityTooLarge('File exceeds maximum upload limit or uses unsupported chunked encoding.');
+        // Prevent DoS via massive salt keys
+        $effectiveMax = ($name === '.mycloud_crypto_salt') ? 524288 : $this->maxFileSize;
+
+        if ($isChunked || $contentLength === null || $contentLength > $effectiveMax) {
+            throw new \Sabre\DAV\Exception\EntityTooLarge('File exceeds maximum upload limit.');
         }
 
-        // 3. Path Vindicator (Double-check path within jail)
         $dest = $this->path . '/' . $name;
         $realDest = realpath(dirname($dest));
-        $realRoot = realpath($this->path);
+        $realRoot = realpath($this->rightsHelper ? $this->rightsHelper->rootPath : $this->path);
 
-        // Verify resolved path is still strictly inside the root (prevents partial matches)
         $realDestCheck = rtrim($realDest, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
         $realRootCheck = rtrim($realRoot, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
         
         if ($realDest === false || strpos($realDestCheck, $realRootCheck) !== 0) {
-			throw new \Sabre\DAV\Exception\Forbidden('Jailbreak attempt detected.');
+            throw new \Sabre\DAV\Exception\Forbidden('Jailbreak attempt detected.');
         }
 
-        return parent::createFile($name, $data);
+        $result = parent::createFile($name, $data);
+
+        if (file_exists($dest) && filesize($dest) > $effectiveMax) {
+            unlink($dest);
+            throw new \Sabre\DAV\Exception\EntityTooLarge('Uploaded file bypassed header checks. File destroyed.');
+        }
+
+        return $result;
+    }
+
+    public function createDirectory($name) {
+        if ($name === '.mycloud_crypto_salt') {
+            throw new \Sabre\DAV\Exception\Forbidden('Cannot explicitly create a directory with this name.');
+        }
+        if ($this->rightsHelper && $this->rightsHelper->isSystemOrBlockedName($name)) {
+            throw new \Sabre\DAV\Exception\Forbidden('Blocked folder name.');
+        }
+
+        if ($this->rightsHelper) {
+            $role = $this->rightsHelper->getEffectiveRole($this->path);
+            if ($this->rightsHelper->isActionBlocked('newfolder', $role)) {
+                throw new \Sabre\DAV\Exception\Forbidden('Create folder permission denied.');
+            }
+        }
+        return parent::createDirectory($name);
+    }
+
+    public function delete() {
+        if ($this->rightsHelper) {
+            $role = $this->rightsHelper->getEffectiveRole($this->path);
+            if ($this->rightsHelper->isActionBlocked('delete', $role)) {
+                throw new \Sabre\DAV\Exception\Forbidden('Delete permission denied');
+            }
+        }
+        return parent::delete();
+    }
+
+    public function setName($name) {
+        if ($name === '.mycloud_crypto_salt') {
+            throw new \Sabre\DAV\Exception\Forbidden('Blocked folder name.');
+        }
+        if ($this->rightsHelper && $this->rightsHelper->isSystemOrBlockedName($name)) {
+            throw new \Sabre\DAV\Exception\Forbidden('Blocked folder name.');
+        }
+
+        if ($this->rightsHelper) {
+            $role = $this->rightsHelper->getEffectiveRole($this->path);
+            if ($this->rightsHelper->isActionBlocked('rename', $role)) {
+                throw new \Sabre\DAV\Exception\Forbidden('Rename permission denied');
+            }
+        }
+        return parent::setName($name);
     }
 }
 
@@ -372,8 +692,7 @@ class Sha256AuthBackend extends \Sabre\DAV\Auth\Backend\AbstractBasic {
         $this->protector = $protector;
         $this->logger = $logger;
         
-        // Point to RAM Disk (/dev/shm) for speed and disk protection
-        $this->cacheDir = '/dev/shm/webdav_auth_' . substr(md5($work_dir), 0, 8);
+        $this->cacheDir = $work_dir . '/data/webdav/auth_cache';
         if (!is_dir($this->cacheDir)) @mkdir($this->cacheDir, 0700, true);
 
         // Persistent Secret for HMAC
@@ -398,11 +717,8 @@ class Sha256AuthBackend extends \Sabre\DAV\Auth\Backend\AbstractBasic {
         $ip = $_SERVER['REMOTE_ADDR'];
         if ($this->protector->checkAccess($ip, $username) !== true) return false;
         
-        // If user missing, fail uniformly (no 404 leakage)
-        if (!isset($this->users[$username])) {
-            $this->protector->registerFail($ip, 'invalid_user');
-            return false;
-        }
+        $userExists = isset($this->users[$username]);
+        $storedHash = $userExists ? $this->users[$username] : null;
 
         // HMAC Cache Check (RAM)
         $credKey = 'sess_' . hash_hmac('sha256', "$username:$password:$ip", $this->secret);
@@ -419,7 +735,14 @@ class Sha256AuthBackend extends \Sabre\DAV\Auth\Backend\AbstractBasic {
         
         $this->performCacheCleanup();
 
-        $storedHash = $this->users[$username];
+        // Username Enumeration Protection (Timing Attack mitigation)
+        if (!$userExists) {
+            // Compute dummy hash to simulate the exact CPU load of password_verify
+            password_verify($password, '$2y$10$dummyHashToEqualizeTiming1234567890123456789012');
+            $this->protector->registerFail($ip, 'invalid_user');
+            return false;
+        }
+
         $isValid = (substr($storedHash, 0, 1) === '$') 
                    ? password_verify($password, $storedHash) 
                    : hash_equals($storedHash, hash('sha256', $password));
@@ -441,6 +764,8 @@ class Sha256AuthBackend extends \Sabre\DAV\Auth\Backend\AbstractBasic {
 // -------------------------------------------------------------------------
 $username = $_SERVER['PHP_AUTH_USER'] ?? null;
 $userPath = null;
+$baseRole = 'no-access';
+$subfolderRights = [];
 
 if ($username) {
     // Strict Whitelist (Alphanum + . _ - @). Length 3-64. Kills ".." and slashes.
@@ -466,6 +791,8 @@ if ($username) {
 							continue;
 						}
 						$userPath = $cloud['path'] ?? null;
+                        $baseRole = $cloud['rights'] ?? 'no-access';
+                        $subfolderRights = $cloud['subfolder_rights'] ?? [];
 						break;
 					}
 				}
@@ -479,8 +806,11 @@ if ($username) {
 $rootPath = ($userPath && is_dir($userPath)) ? $userPath : $work_dir . '/data/webdav/empty_root';
 if (!is_dir($rootPath)) @mkdir($rootPath, 0750, true);
 
-// Use Hardened Node (3GB Limit)
-$rootNode = new HardenedDirectory($rootPath, 3072);
+// Instantiate the granular rights engine and lock it to the user's root container
+$rightsHelper = new WebDavRightsHelper($baseRole, $subfolderRights, $rootPath);
+
+// Use Hardened Node (3GB Limit) with Rights Enforcement
+$rootNode = new HardenedDirectory($rootPath, 3072, $rightsHelper);
 
 // --- URI FIX ---
 //$requestUri = $_SERVER['REQUEST_URI'];
@@ -508,7 +838,8 @@ $server->addPlugin(new \Sabre\DAV\Auth\Plugin(new Sha256AuthBackend($users, $pro
 
  
 // [COMPATIBILITY] SQLite Property Storage (Prevents Sync Loops)
-$propDbPath = $work_dir . '/data/webdav/properties.sqlite';
+$propDbName = $username ? 'properties_' . $username . '.sqlite' : 'properties_default.sqlite';
+$propDbPath = $work_dir . '/data/webdav/' . $propDbName;
 $propDbExists = file_exists($propDbPath);
 $pdo = new \PDO('sqlite:' . $propDbPath);
 $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
@@ -521,7 +852,7 @@ $server->addPlugin(new \Sabre\DAV\PropertyStorage\Plugin(
     new \Sabre\DAV\PropertyStorage\Backend\PDO($pdo)
 ));
 
-$lockDir = '/dev/shm/webdav_locks_' . substr(md5($work_dir), 0, 8);
+$lockDir = $work_dir . '/data/webdav/locks';
 if (!is_dir(dirname($lockDir))) @mkdir(dirname($lockDir), 0750, true);
 $server->addPlugin(new \Sabre\DAV\Locks\Plugin(new \Sabre\DAV\Locks\Backend\File($lockDir)));
 $server->addPlugin(new \Sabre\DAV\Browser\GuessContentType());
