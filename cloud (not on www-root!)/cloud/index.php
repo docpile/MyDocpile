@@ -194,7 +194,7 @@ echo '<script src="?myCloud_dynamic_js=core.heartbeat.php&t=' . microtime(true) 
     $dirAttr = in_array($language, $rtl_langs) ? 'dir="rtl"' : 'dir="ltr"';
 ?>
 <div id="myCloudContainer" class="myCloudContainer" <?php echo $dirAttr; ?>>
-    
+
   <div id="myCloudCloudSwitcher" class="myCloudCloudSwitcher" style="display:none;"></div>
   <div id="myCloudToolbar" class="myCloudToolbar"></div>
   

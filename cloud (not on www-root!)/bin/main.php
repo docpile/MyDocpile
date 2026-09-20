@@ -12,6 +12,43 @@ include_once $work_dir.'/configuration/config.php';
 require_once $work_dir.'/bin/functions.php'; 
 require_once $user_db;     
 
+// --- FAST INTEGRITY STATUS CHECK (HALTS EXECUTION ON ERROR) ---
+$secure_code_setting = $SecureCode ?? 'none';
+$req_uri = $_SERVER['REQUEST_URI'] ?? '';
+
+// Only enforce if setting is valid AND we are not in the auth_adm_php admin panel
+if (in_array($secure_code_setting, ['all', 'cloud', 'bin'], true) && strpos($req_uri, '/auth_adm_php') === false) {
+    $integrity_file = $work_dir . '/configuration/.integrity_status.json';
+    
+    // Helper function to output a user-friendly error or clean JSON
+    $die_friendly = function($dev_reason) {
+        http_response_code(500);
+        $is_ajax = (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') || isset($_POST['myCloud_action']);
+        if ($is_ajax) {
+            header('Content-Type: application/json');
+            die(json_encode(['status' => 'ERR', 'code' => 'SECURITY_HALT', 'msg' => 'Security Halt: ' . $dev_reason]));
+        }
+        $html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Security Alert</title><style>body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #fcfcfd; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; } .container { background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; max-width: 450px; border-top: 5px solid #e81123; } h2 { color: #e81123; margin-top: 0; font-size: 22px; } p { color: #444; line-height: 1.5; margin-bottom: 20px; font-size: 15px; } .tech { background: #f9f9f9; border: 1px solid #ddd; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 12px; color: #666; text-align: left; word-break: break-all; }</style></head><body><div class="container"><h2>🛡️ Security Alert</h2><p>The system has halted execution to protect your data. A strict code integrity check failed, meaning the system files are either incomplete or modified.</p><div class="tech"><strong>Details:</strong> ' . htmlspecialchars($dev_reason) . '</div></div></body></html>';
+        die($html);
+    };
+
+    if (!file_exists($integrity_file)) {
+        $die_friendly("Code sealing is enabled but the integrity status file is missing. Please run the background integrity checker.");
+    }
+
+    $raw_status = json_decode(file_get_contents($integrity_file), true);
+    
+    // Verify the status file was written by our cron job and not tampered with locally
+    if (!isset($raw_status['data'], $raw_status['hmac']) || !hash_equals(hash_hmac('sha256', json_encode($raw_status['data']), $api_key), $raw_status['hmac'])) {
+        $die_friendly("Integrity status file tampered or invalid. Execution halted.");
+    }
+
+    // If the cron job found tampered files, halt execution immediately
+    if (isset($raw_status['data']['status']) && $raw_status['data']['status'] === 'failed') {
+        $die_friendly("Code integrity check failed. The system may have been tampered with.");
+    }
+}
+// --------------------------------------------------------------
 
 // INIT GEOIP INSTANCE, SIMPLY DELETE THE geoip.php TO REMOVE IT
 if (file_exists($work_dir.'/bin/geoip.php')) {
@@ -178,8 +215,21 @@ $is_maintenance_active = (isset($maintenance_mode) && $maintenance_mode === true
 $maintenance_reason = file_exists($maintenance_file) ? 'file exists' : 'variable is set';
 $is_admin_panel = (strpos($_SERVER['REQUEST_URI'], '/auth_adm_php') !== false);
 
+// Safe save actions during maintenance to prevent data loss
+$is_safe_save = false;
+$req_path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+if (strpos($req_path, '/myCloudOfficeCallback') !== false || strpos($req_path, '/myCloudOfficeFetch') !== false) {
+	$is_safe_save = true;
+}
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['myCloud_action'])) {
+	$action = $_POST['myCloud_action'];
+	if (in_array($action, ['edit-save', 'check_office_state', 'upload', 'delete', 'get_download_token'])) {
+		$is_safe_save = true;
+	}
+}
+
 // If maintenance is active and it's NOT the admin panel, block immediately.
-if ($is_maintenance_active && !$is_admin_panel) {
+if ($is_maintenance_active && !$is_admin_panel && !$is_safe_save) {
 	if (empty($_SESSION['maintenance_logged'])) {
 		WriteLogLine($log_file, "warning", "Maintenance: Login screen blocked because $maintenance_reason.");
 		$_SESSION['maintenance_logged'] = true;
@@ -205,7 +255,9 @@ if (isset($_SESSION['loggedin']) && $_SESSION['loggedin'] === true) {
 
 	$loginRole = $work_dir . '/main_menu/' . getUserRole($_SESSION['username']) . '.php';
 	
-	if ($is_maintenance_active) { 
+    // Post-login check: We already know it's the admin panel if maintenance is active (others blocked above).
+ 	// Now just verify if the logged-in user is actually an admin.
+	if ($is_maintenance_active && !$is_safe_save) {
 		if (getUserRole($_SESSION['username']) !== "admin") {
 			if (empty($_SESSION['maintenance_logged_post'])) {
 				WriteLogLine($log_file, "warning", "Maintenance: Access blocked for user " . $_SESSION['username'] . " because $maintenance_reason.");

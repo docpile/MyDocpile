@@ -98,6 +98,7 @@ wwwuser="$wwwuser"
 www_group="$www_group"
 PHP_VERSION="$PHP_VERSION"
 www="$www"
+secure_code="$secure_code"
 opt_cloud="$opt_cloud"
 ocr_langs="${ocr_langs[*]}"
 opt_mailparse="$opt_mailparse"
@@ -118,6 +119,7 @@ function load_state() {
     if [ -f "$STATE_FILE" ]; then
         source "$STATE_FILE"
         ocr_langs=($ocr_langs) # Re-array
+		secure_code=${secure_code:-all}
         msg_success "Loaded previous installation state."
     else
         msg_error "No installation state found. Please run a full install first."
@@ -167,7 +169,7 @@ function fetch_repository_if_missing() {
             cd "$target_dir" || exit
             execute_logged git remote set-url origin "$repo_url"
             execute_logged git fetch --all
-            execute_logged git reset --hard origin/main
+            execute_logged git -c core.autocrlf=false reset --hard origin/main
             cd - > /dev/null || exit
         else
             msg_info "Cloning repository..."
@@ -187,7 +189,7 @@ function fetch_repository_if_missing() {
             local repo_url="https://github.com/docpile/MyDocpile.git"
             execute_logged git remote set-url origin "$repo_url"
             execute_logged git fetch --all
-            execute_logged git reset --hard origin/main
+            execute_logged git -c core.autocrlf=false reset --hard origin/main
             msg_success "Local repository updated cleanly."
         fi
     fi
@@ -412,6 +414,8 @@ function gather_configuration() {
             fi
         fi
     fi
+
+    secure_code=${secure_code:-all}
 
     prompt_admin_password
 }
@@ -803,6 +807,10 @@ function deploy_application_files() {
     cp "$SRC_DIR/install.sh" "$CLOUD_DIR/install.sh" 2>/dev/null || true
 	chmod +x "$CLOUD_DIR/install.sh" 2>/dev/null || true
 
+    mkdir -p "$CLOUD_DIR/configuration"
+    cp "$SRC_DIR/configuration/signatures.json" "$CLOUD_DIR/configuration/" 2>/dev/null || true
+    cp "$SRC_DIR/configuration/cloud_public_key.pem" "$CLOUD_DIR/configuration/" 2>/dev/null || true
+
     if [ -d "$SRC_DIR/cloud (not on www-root!)" ]; then
         cp -a $update_flag "$SRC_DIR/cloud (not on www-root!)"/. "$CLOUD_DIR"/ || true
 		
@@ -867,6 +875,7 @@ date_default_timezone_set('$timezone');
 \$cloud_share_url = 'https://$main_domain/cloud/index.php';
 \$cloud_public_quotas = '$public_quota';
 \$cloud_public_max_zip_size = '$max_zip_size';
+\$SecureCode = '$secure_code';
 
 \$cloud_icon_cache = '$icon_cache';
 \$cloud_preview_cache = '$preview_cache';
@@ -1031,6 +1040,9 @@ PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 
 # Weekly automated MyDocpile update (Sunday at 04:00 AM)
 0 4 * * 0 root $CLOUD_DIR/install.sh --update > /dev/null 2>&1
+
++# Code Integrity Check (02:00 AM/PM))
++0 2/14 * * * root MEM=\$(free -m | awk '/^Mem:/{print \$7}'); [[ -z "\$MEM" || "\$MEM" -lt 512 ]] && MEM=512; sudo -u $wwwuser $PHP_BIN -d memory_limit=\${MEM}M -d max_execution_time=3550 -d opcache.enable_cli=0 -d opcache.jit=disable /var/lib/mydocpile/bin/check_integrity.php >> $list_dir/cloud.housekeeping.log 2>&1
 EOF
 
     if [[ "$opt_cloud" =~ ^[Yy]$ ]]; then
@@ -1043,6 +1055,24 @@ EOF
 
     chmod 644 "$cron_file"
     msg_success "Cronjobs configured in $cron_file."
+}
+
+function verify_initial_integrity() {
+    if [[ "$secure_code" != "none" ]]; then
+        msg_info "Running initial code integrity verification..."
+        if [ -f "$CLOUD_DIR/bin/check_integrity.php" ]; then
+            execute_logged sudo -u "$wwwuser" "$PHP_BIN" "$CLOUD_DIR/bin/check_integrity.php"
+            if [ $? -eq 0 ]; then
+                msg_success "Code integrity verified successfully."
+            else
+                msg_warn "Code integrity check failed! The downloaded files may have been tampered with or corrupted in transit."
+                msg_warn "Disabling code sealing in config.php to allow the system to run..."
+                sed -i "s/\\\$SecureCode = '.*';/\\\$SecureCode = 'none';/g" "$CLOUD_DIR/configuration/config.php"
+                # Keep state file in sync so future updates don't unexpectedly re-brick it
+                sed -i "s/secure_code=\".*\"/secure_code=\"none\"/g" "$STATE_FILE" 2>/dev/null || true
+            fi
+        fi
+    fi
 }
 
 function update_onlyoffice_container() {
@@ -1194,6 +1224,7 @@ case $MODE in
         install_composer_components
         if [[ "$opt_mailparse" =~ ^[Yy]$ ]]; then optional_component_mailparse; fi
 		setup_cronjobs
+		verify_initial_integrity
         save_state
         show_post_install_instructions
         ;;
@@ -1215,6 +1246,7 @@ case $MODE in
         install_composer_components
         if [[ "$opt_mailparse" =~ ^[Yy]$ ]]; then optional_component_mailparse; fi
 		setup_cronjobs
+		verify_initial_integrity
         save_state
         show_post_install_instructions
         ;;
@@ -1229,6 +1261,7 @@ case $MODE in
         install_composer_components
         if [[ "$opt_mailparse" =~ ^[Yy]$ ]]; then optional_component_mailparse; fi
 		setup_cronjobs
+		verify_initial_integrity
         msg_success "Refresh complete. Config was left untouched."
         show_post_install_instructions
         ;;
@@ -1239,6 +1272,7 @@ case $MODE in
         generate_config
         install_local_onlyoffice
         setup_onlyoffice_proxy
+		verify_initial_integrity
         save_state
         msg_success "Configuration successfully re-initialized."
         ;;
@@ -1258,6 +1292,7 @@ case $MODE in
         deploy_application_files "-u"
         install_composer_components
         update_onlyoffice_container
+		verify_initial_integrity
         msg_success "Update complete."
         show_post_install_instructions
         ;;

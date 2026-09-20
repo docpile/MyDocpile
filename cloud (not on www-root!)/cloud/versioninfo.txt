@@ -1,3 +1,9 @@
+4.3.305
+	Release Date: September 20, 2026
+	Release Date: September 19, 2026
+	Improvement: Maintenance mode improvements, e.g. allow for saving currently edited files and not to interrupt uploads and downloads
+	Security: Webdav: Several security enhancements (e.g. usage of clamav if installed, strict limits on file sizes...)
+
 4.3.304
 	Release Date: September 17, 2026
 	Security: Logging of cloud modifying actions improvements

@@ -134,6 +134,11 @@ class MyCloudServer {
     // =========================================================
 
     private function sendJsonAndExit($data) {
+        global $work_dir, $maintenance_mode;
+        $m_file = ($work_dir ?? dirname(__DIR__)) . '/configuration/.maintenance_mode';
+        if ((isset($maintenance_mode) && $maintenance_mode === true) || file_exists($m_file)) {
+            $data['maintenance_active'] = true;
+        }
         if (isset($data['status']) && $data['status'] === 'ERR') {
             $action = $_POST['myCloud_action'] ?? $_GET['myCloud_action'] ?? 'UNKNOWN_ACTION';
             $src = $_POST['src'] ?? $_POST['path'] ?? $_POST['parent'] ?? $_POST['dir'] ?? '-';
@@ -4986,11 +4991,15 @@ class MyCloudServer {
         // The callback deletes this tracking file the exact millisecond the save finishes
         $stateFile = $tempDir . '/myCloud_office_' . $docKey . '.json';
         $ready = true;
+		$userEditing = null;
         if (file_exists($stateFile)) {
             $state = @json_decode(file_get_contents($stateFile), true);
-            if ($state && (isset($state['username']) && $state['username'] === $this->username)) $ready = false;
+             if ($state && isset($state['username'])) {
+                 if ($state['username'] === $this->username) $ready = false;
+                 $userEditing = $state['username'];
+             }
         }
-        $this->sendJsonAndExit(['status' => 'OK', 'ready' => $ready]);
+        $this->sendJsonAndExit(['status' => 'OK', 'ready' => $ready, 'user' => $userEditing]);
     }
 
 	private function actionGetOfficeConfig() {

@@ -1327,6 +1327,7 @@ async function _cloudExProceedDownload(path, filename, isPreview) {
     // Unconditionally show progress bar for standard downloads to prevent freezing
     if (!isPreview && typeof myCloudCreateProgressUI === 'function') {
         myCloudCreateProgressUI((typeof myCloud_LANG !== 'undefined' && myCloud_LANG.fetching) ? myCloud_LANG.fetching : 'Preparing Download...');
+		window.myCloudTaskStart();
     }
 
     try {
@@ -1501,6 +1502,7 @@ async function _cloudExProceedDownload(path, filename, isPreview) {
                      } catch (err) {
                          console.error(err);
                      }
+					 window.myCloudTaskEnd();
                  })();
             } else {
 //                console.log(downloadUrl + "|started");
@@ -1528,6 +1530,7 @@ async function _cloudExProceedDownload(path, filename, isPreview) {
     	               // User cancelled or error occurred
     	               if (typeof myCloudCloseProgressUI === 'function') myCloudCloseProgressUI();
     	           }
+				   window.myCloudTaskEnd();
    		      })();
 //						console.log(downloadUrl + "|finished");
 			}
@@ -1536,6 +1539,7 @@ async function _cloudExProceedDownload(path, filename, isPreview) {
         if (!isPreview && typeof myCloudCloseProgressUI === 'function') myCloudCloseProgressUI();
     } catch (err) {
         if (!isPreview && typeof myCloudCloseProgressUI === 'function') myCloudCloseProgressUI();
+		if (!isPreview) window.myCloudTaskEnd();
         if (typeof myCloudShowAlert === 'function') myCloudShowAlert("Error", "Error accessing file: " + err.message);
     }
 }

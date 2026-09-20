@@ -210,6 +210,13 @@ function ceInitEditorDOM() {
   // Color picker state
   let ceColorWidgetRange = null;
 
+ // Expose unsaved changes check to global maintenance loop
+ window.myCloudEditor_hasUnsavedChanges = function() {
+    if (!Array.isArray(myCloudEditor_files) || myCloudEditor_files.length === 0) return false;
+    // If ANY tab is dirty, return true to block maintenance reload
+    return myCloudEditor_files.some(f => f.isDirty === true);
+ };
+
   // Dynamic Ace Environment Initialization
   function ceInitAceEditor() {
       if (window.ace && !myCloudEditor_ace) {

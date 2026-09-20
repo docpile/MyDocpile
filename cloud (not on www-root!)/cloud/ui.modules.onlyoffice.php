@@ -12,6 +12,15 @@
 ?>
 
 <script>
+
+// Expose OnlyOffice activity state to global maintenance loop
+window.myCloudOnlyOffice_isActive = function() {
+    const ooContainer = document.getElementById('myCloudEditor_onlyOfficeContainer');
+    // If the wrapper is displayed, or it has active dataset attributes, block reload
+    return (ooContainer && (ooContainer.style.display !== 'none' || ooContainer.dataset.docKey));
+};
+
+
 // Global safety net: If the user closes the tab or the browser crashes while an unencrypted E2E file is open, 
 // the browser will fire this background beacon to nuke the temp file.
 window.addEventListener('pagehide', function() {

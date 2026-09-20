@@ -374,6 +374,29 @@ const myCloudState = {
    originalSidebarSize: null // Store to restore later
 };
 
+
+window.myCloudMaintenanceTriggered = false;
+window.myCloudTriggerMaintenance = function() {
+    if (window.myCloudMaintenanceTriggered) return;
+    window.myCloudMaintenanceTriggered = true;
+
+    if (typeof myCloudSaveCurrentPathState === 'function') myCloudSaveCurrentPathState();
+
+    const checkInterval = setInterval(() => {
+        const hasActiveTasks = window.myCloudActiveTasks > 0;
+        const hasActiveEditor = (typeof window.myCloudEditor_hasUnsavedChanges === 'function' && window.myCloudEditor_hasUnsavedChanges()) ||
+                                (typeof window.myCloudOnlyOffice_isActive === 'function' && window.myCloudOnlyOffice_isActive());
+        
+        if (hasActiveTasks || hasActiveEditor) {
+            if (typeof myCloudNotify === 'function') myCloudNotify(typeof myCloud_LANG !== 'undefined' && myCloud_LANG.maintenance_pending ? myCloud_LANG.maintenance_pending : "Maintenance mode pending. Please save your work and wait for tasks to finish.");
+        } else {
+            clearInterval(checkInterval);
+            window.location.reload();
+        }
+    }, 2000);
+};
+
+
 // ============================================================================
 // CSRF AUTO-RECOVERY ENGINE (Protects all fetch calls globally)
 // ============================================================================
@@ -418,6 +441,10 @@ window.fetch = async function(...args) {
         const cType = clone.headers.get("content-type");
         if (cType && cType.includes("application/json")) {
             const data = await clone.json();
+            if (data && data.status === 'maintenance') {
+                if (typeof window.myCloudTriggerMaintenance === 'function') window.myCloudTriggerMaintenance();
+                return response;
+            }
             if (data && (data.code === 'CSRF_FAILED' || (data.msg && data.msg.includes('CSRF')))) {
                 return new Promise((resolve) => {
                     myCloudRefreshCsrfToken((success) => {
@@ -1034,7 +1061,15 @@ function myCloudCheckResponse(r) {
     // Safely parse JSON to prevent SyntaxErrors from halting the JS thread on 500/502 errors
     return r.text().then(text => {
         try {
-            return JSON.parse(text);
+            const data = JSON.parse(text);
+            if (data && data.maintenance_active) {
+                if (typeof window.myCloudTriggerMaintenance === 'function') window.myCloudTriggerMaintenance();
+            }
+            if (data && data.status === 'maintenance') {
+                if (typeof window.myCloudTriggerMaintenance === 'function') window.myCloudTriggerMaintenance();
+                return { status: 'ERR', msg: 'Maintenance mode enabled', code: 'MAINTENANCE' };
+            }
+            return data;
         } catch (e) {
             console.error("MyCloud API Error: Invalid JSON response.", text);
             return { status: 'ERR', msg: 'Server returned an invalid response. Check server logs.' };

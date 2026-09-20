@@ -16,7 +16,14 @@ if (basename($_SERVER['PHP_SELF']) == basename(__FILE__)) {
 
 	// In Maintenance Mode: Non-admin users cannot access the application	
 	$maintenance_mode = false;	
-	
+
+	// Secure code extension active: Saves from manipulation of the code
+	// Possible values:
+	//    "none"  = no check
+	//    "all"   = all checks
+	//    "bin"   = only bin dir (login code)
+	//    "cloud" = only cloud dir (application code)
+	$SecureCode = 'all';
 	
 // ###############################################################################
 // HOME NAS SETTINGS
