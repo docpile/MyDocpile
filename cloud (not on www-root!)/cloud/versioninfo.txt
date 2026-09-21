@@ -1,3 +1,15 @@
+4.4.309
+	Release Date: September 21, 2026
+	Release Date: September 21, 2026
+	Security: Webmail phishing resistance enhancements
+
+4.4.308
+	Release Date: September 21, 2026
+	Release Date: September 21, 2026
+	Improvement: Webmail App Icon Badging (OS-level Notification Dot)
+	Improvement: Webmail Native File Sharing (Web Share API) similar to the cloud native sharing
+	Improvement: Webmail optional Mailto: Protocol Handler Registration &amp; Interception
+
 4.4.307
 	Release Date: September 21, 2026
 	Improvement: Webmail several usability enhancements on mobile devices

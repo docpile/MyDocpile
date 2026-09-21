@@ -301,6 +301,96 @@ if (basename($_SERVER['PHP_SELF']) == basename(__FILE__)) {
 	$cloud_mail_only_localhost = true;
 
 
+	// phishing filter search terms and the original domains
+	$cloud_webmail_monitored_brands = [
+            // Finance / Payment (Global)
+            'paypal'           => ['paypal.com', 'paypal.de', 'paypal.co.uk', 'paypal.fr', 'paypal.es'],
+            'mastercard'       => ['mastercard.com', 'mastercard.de', 'mastercard.co.uk'],
+            'visa'             => ['visa.com', 'visa.de', 'visa.co.uk'],
+            'american express' => ['americanexpress.com', 'amex.com'],
+            'stripe'           => ['stripe.com'],
+            'wise'             => ['wise.com', 'transferwise.com'],
+            'revolut'          => ['revolut.com'],
+            'square'           => ['squareup.com', 'square.com'],
+            'western union'    => ['westernunion.com'],
+            
+            // Banking (US/UK/EU/Global)
+            'chase'            => ['chase.com'],
+            'bank of america'  => ['bankofamerica.com', 'bofa.com'],
+            'wells fargo'      => ['wellsfargo.com'],
+            'citibank'         => ['citi.com', 'citibank.com'],
+            'hsbc'             => ['hsbc.com', 'hsbc.co.uk'],
+            'barclays'         => ['barclays.com', 'barclays.co.uk'],
+            'santander'        => ['santander.de', 'santander.com', 'santander.co.uk', 'santander.es'],
+            'bnp paribas'      => ['bnpparibas.com', 'mabanque.bnpparibas'],
+            'societe generale' => ['societegenerale.com', 'societegenerale.fr'],
+            'ing'              => ['ing.de', 'ing.com', 'ing-diba.de', 'ing.nl'],
+            
+            // Banking (DACH)
+            'commerzbank'      => ['commerzbank.de', 'commerzbank.com', 'commerz.de'],
+            'sparkasse'        => ['sparkasse.de', 's-finanzgruppe.de'],
+            'volksbank'        => ['volksbank.de', 'vr.de'],
+            'raiffeisen'       => ['raiffeisen.de', 'raiffeisen.com', 'raiffeisen.at', 'raiffeisen.ch'],
+            'deutsche bank'    => ['deutsche-bank.de', 'db.com'],
+            'postbank'         => ['postbank.de'],
+            'dkb'              => ['dkb.de'],
+            'n26'              => ['n26.com'],
+            'klarna'           => ['klarna.com'],
+
+            // Tech / Social / IT
+            'microsoft'        => ['microsoft.com', 'office.com', 'live.com', 'outlook.com', 'windows.com', 'skype.com'],
+            'apple'            => ['apple.com', 'icloud.com', 'me.com', 'mac.com'],
+            'google'           => ['google.com', 'google.de', 'google.co.uk', 'gmail.com', 'youtube.com'],
+            'meta'             => ['meta.com', 'facebook.com', 'instagram.com', 'whatsapp.com', 'fb.com'],
+            'facebook'         => ['facebook.com', 'fb.com'],
+            'linkedin'         => ['linkedin.com'],
+            'twitter'          => ['twitter.com', 'x.com'],
+            'tiktok'           => ['tiktok.com'],
+            'adobe'            => ['adobe.com'],
+            'dropbox'          => ['dropbox.com'],
+            'zoom'             => ['zoom.us', 'zoom.com'],
+            'samsung'          => ['samsung.com'],
+            'sony'             => ['sony.com'],
+
+            // E-commerce / Retail
+            'amazon'           => ['amazon.com', 'amazon.de', 'amazon.co.uk', 'amazon.at', 'amazon.fr', 'amazon.es', 'amazon.it', 'amazon.ca', 'amazon.co.jp'],
+            'ebay'             => ['ebay.com', 'ebay.de', 'ebay.co.uk', 'ebay.fr', 'ebay.it', 'ebay.es', 'ebay.com.au'],
+            'shopify'          => ['shopify.com'],
+            'alibaba'          => ['alibaba.com', 'aliexpress.com'],
+            'walmart'          => ['walmart.com'],
+            'target'           => ['target.com'],
+            'mercado libre'    => ['mercadolibre.com', 'mercadolivre.com.br'],
+            'rakuten'          => ['rakuten.com', 'rakuten.co.jp'],
+            'zalando'          => ['zalando.de', 'zalando.com', 'zalando.fr', 'zalando.it'],
+            'otto'             => ['otto.de'],
+
+            // Streaming / Media
+            'netflix'          => ['netflix.com'],
+            'disney'           => ['disneyplus.com', 'disney.com'],
+            'spotify'          => ['spotify.com'],
+            'hulu'             => ['hulu.com'],
+
+            // Telecom / ISPs
+            'telekom'          => ['telekom.de', 't-online.de', 'telekom.com'],
+            'vodafone'         => ['vodafone.de', 'vodafone.com', 'vodafone.co.uk', 'vodafone.it', 'vodafone.es'],
+            'o2'               => ['o2online.de', 'o2.de', 'o2.com', 'o2.co.uk'],
+            't-mobile'         => ['t-mobile.com'],
+            'att'              => ['att.com'],
+            'verizon'          => ['verizon.com', 'verizonwireless.com'],
+            'orange'           => ['orange.fr', 'orange.com'],
+            'telefonica'       => ['telefonica.com', 'movistar.es'],
+            '1und1'            => ['1und1.de', 'ionos.de'],
+
+            // Logistics / Delivery
+            'dhl'              => ['dhl.de', 'dhl.com'],
+            'fedex'            => ['fedex.com'],
+            'ups'              => ['ups.com'],
+            'usps'             => ['usps.com'],
+            'royal mail'       => ['royalmail.com'],
+            'dpd'              => ['dpd.de', 'dpd.com', 'dpd.co.uk'],
+            'hermes'           => ['myhermes.de', 'hermes-europe.de', 'evri.com']
+        ];
+
 // ###############################################################################
 
 

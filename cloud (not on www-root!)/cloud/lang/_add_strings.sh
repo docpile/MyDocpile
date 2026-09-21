@@ -12,34 +12,37 @@ TARGET_ANCHOR="unencrypted"
 # ==============================================================================
 
 # 2. The Keys
+# 2. The Keys
 KEYS=(
-    "pdf_drag_reorder_seq"
-    "pdf_exclude_att"
+    "set_default_mail"
+    "pull_to_refresh"
+    "release_to_refresh"
+    "prep_sharing"
+    "share_not_supported"
 )
 
 declare -A TRANSLATIONS
 
-TRANSLATIONS[en]="Drag to reorder sequence:|Exclude from PDF"
-TRANSLATIONS[de]="Ziehen, um die Reihenfolge zu ändern:|Aus PDF ausschließen"
-TRANSLATIONS[es]="Arrastre para reordenar la secuencia:|Excluir del PDF"
-TRANSLATIONS[fr]="Faites glisser pour réorganiser la séquence :|Exclure du PDF"
-TRANSLATIONS[it]="Trascina per riordinare la sequenza:|Escludi dal PDF"
-TRANSLATIONS[pt]="Arraste para reordenar a sequência:|Excluir do PDF"
-TRANSLATIONS[ru]="Перетащите, чтобы изменить порядок:|Исключить из PDF"
-TRANSLATIONS[tr]="Sırayı değiştirmek için sürükleyin:|PDF'den hariç tut"
-TRANSLATIONS[zh-cn]="拖动以重新排序：|从 PDF 中排除"
-TRANSLATIONS[ja]="ドラッグして 序を変更:|PDF から除外"
-TRANSLATIONS[ko]="드래그하여 순서 변경:|PDF에서  외"
-TRANSLATIONS[ar]="اسحب لإعادة ترتيب التسلسل:|استبعاد من PDF"
-TRANSLATIONS[fa]="برای تغییر ترتیب بکشید:|حذف از PDF"
-TRANSLATIONS[hi]="क्रम बदलने के लिए खींचें:|PDF से निकालें"
-TRANSLATIONS[vi]="Kéo để sắp xếp lại trình tự:|Loại trừ khỏi PDF"
-TRANSLATIONS[uk]="Перетягніть, щоб змінити порядок:|Виключити з PDF"
-TRANSLATIONS[bar]="Ziang zum Reihnfoig ändern:|Vom PDF aussachliaßn"
-TRANSLATIONS[hes]="Ziehe, um die Reihfolge zu ännern:|Vom PDF ausschließe"
-TRANSLATIONS[lb]="Zéien fir d'Reiefolleg z'änneren:|Vum PDF ausschléissen"
-TRANSLATIONS[pcm]="Drag to rearrange sequence:|Comot from PDF"
-
+TRANSLATIONS[en]="Set as Default Mail App|Pull to refresh|Release to refresh|Preparing for sharing...|File sharing not supported on this browser."
+TRANSLATIONS[de]="Als Standard-Mail-App festlegen|Zieh zum Aktualisieren|Lass los zum Aktualisieren|Bereite zum Teilen vor...|Dateifreigabe wird von diesem Browser nicht unterstützt."
+TRANSLATIONS[es]="Establecer como app de correo predeterminada|Desliza para actualizar|Suelta para actualizar|Preparando para compartir...|Compartir archivos no es compatible en este navegador."
+TRANSLATIONS[fr]="Définir comme appli de messagerie par défaut|Tire pour actualiser|Relâche pour actualiser|Préparation pour le partage...|Le partage de fichiers n'est pas pris en charge sur ce navigateur."
+TRANSLATIONS[it]="Imposta come app di posta predefinita|Tira per aggiornare|Rilascia per aggiornare|Preparazione per la condivisione...|Condivisione file non supportata su questo browser."
+TRANSLATIONS[pt]="Definir como app de e-mail padrão|Puxe para atualizar|Solte para atualizar|Preparando para compartilhar...|Compartilhamento de arquivos não suportado neste navegador."
+TRANSLATIONS[ru]="Сделать почтовым приложением по умолчанию|Потяни для обновления|Отпусти для обновления|Подготовка к отправке...|Отправка файлов не поддерживается в этом браузере."
+TRANSLATIONS[tr]="Varsayılan Posta Uygulaması Yap|Yenilemek için çek|Yenilemek için bırak|Paylaşım için hazırlanıyor...|Dosya paylaşımı bu tarayıcıda desteklenmiyor."
+TRANSLATIONS[zh-cn]="设为默认邮件应用|下拉刷新|释放刷新|正在准备分享...|此浏览器不支持文件共享。"
+TRANSLATIONS[ja]="デフォルトのメールアプリに設定|引っ張って更新|離して更新|共有の準備中...|このブラウザはファイル共有をサポートしていません。"
+TRANSLATIONS[ko]="기본 메일 앱으로 설 |당겨서 새로 침|놓아서 새로 침|공  준비 중...|이 브라우 에서는 파일 공 가 지원되지 않습니다."
+TRANSLATIONS[ar]="تعيين كتطبيق البريد الافتراضي|اسحب للتحديث|أفلت للتحديث|جاري التحضير للمشاركة...|مشاركة الملفات غير مدعومة في هذا المتصفح."
+TRANSLATIONS[fa]="تنظیم به عنوان برنامه ایمیل پیش‌فرض|برای بروزرسانی بکش|برای بروزرسانی رها کن|در حال آماده‌سازی برای اشتراک‌گذاری...|اشتراک‌گذاری فایل در این مرورگر پشتیبانی نمی‌شود."
+TRANSLATIONS[hi]="डिफ़ॉल्ट मेल ऐप सेट करें|रिफ्रेश करने के लिए खींचो|रिफ्रेश करने के लिए छोड़ दो|शेयर करने के लिए तैयार कर रहा है...|इस ब्राउज़र पर फ़ाइल शेयरिंग समर्थित नहीं है।"
+TRANSLATIONS[vi]="Đặt l m ứng dụng thư mặc định|Kéo để l m mới|Thả ra để l m mới|Đang chuẩn bị chia sẻ...|Trình duyệt n y không hỗ trợ chia sẻ tệp."
+TRANSLATIONS[uk]="Зробити поштовою програмою за замовчуванням|Потягни для оновлення|Відпусти для оновлення|Підготовка до відправки...|Відправка файлів не підтримується у цьому браузері."
+TRANSLATIONS[bar]="Ois Standard-Mail-App festlegn|Ziang zum Aktualisiern|Loslassn zum Aktualisiern|Richt zum Teiln her...|Dateifreigabe geht in dem Browser ned."
+TRANSLATIONS[hes]="Als Standard-Mail-App festleje|Zieh zum Aktualisiere|Loslasse zum Aktualisiere|Machs bereit zum Teile...|Dateifreigabe geht in dem Browser net."
+TRANSLATIONS[lb]="Als Standard-Mail-App festleeën|Zéi fir ze aktualiséieren|Lassloosse fir ze aktualiséieren|Gëtt fir d'Deelen virbereet...|Dateifreigabe gëtt an dësem Browser net ënnerstëtzt."
+TRANSLATIONS[pcm]="Set am as default mail app|Draw down to refresh|Leave am to refresh|De prepare to share...|Dis browser no gree make you share files."
 #
 # ==============================================================================
 # EXECUTION ENGINE

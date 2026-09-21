@@ -840,6 +840,49 @@ window._emailImportAttachedKey = function(accId, folder, msgId, part, filename, 
     });
 };
 
+
+window._emailShareAttachment = async function(e, accId, folder, msgId, part, filename) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!navigator.share) return;
+    
+    const L = typeof myCloud_LANG !== 'undefined' ? myCloud_LANG : {};
+    if (typeof myCloudCreateProgressUI === 'function') myCloudCreateProgressUI(L.prep_sharing || 'Preparing for sharing...');
+    
+    const fd = new URLSearchParams({
+        myCloud_action: 'email_dl_attach',
+        myCloud_key: myCloudState.key,
+        myCloud_token: window.myCloudCsrfToken,
+        account_id: accId,
+        folder: folder,
+        message_id: msgId,
+        part: part,
+        filename: filename
+    });
+    
+    try {
+        const response = await fetch('', { method: 'POST', body: fd });
+        if (!response.ok) throw new Error("Download failed");
+        const blob = await response.blob();
+        const fileObj = new File([blob], filename, { type: blob.type });
+        
+        if (typeof myCloudCloseProgressUI === 'function') myCloudCloseProgressUI();
+        
+        if (navigator.canShare && navigator.canShare({ files: [fileObj] })) {
+            await navigator.share({
+                files: [fileObj],
+                title: filename
+            });
+        } else {
+            throw new Error(L.share_not_supported || "File sharing not supported on this browser.");
+        }
+    } catch (err) {
+        if (typeof myCloudCloseProgressUI === 'function') myCloudCloseProgressUI();
+        if (err.name !== 'AbortError' && typeof myCloudShowAlert === 'function') myCloudShowAlert('Error', err.message);
+    }
+};
+
+
 window._emailPreviewAttachment = function(e, accId, folder, msgId, part, filename) {
     e.preventDefault();
     e.stopPropagation();
@@ -1297,6 +1340,34 @@ window.myCloudRenderEmailApp = function(container) {
         window._emlMainTbResizeObs.observe(mainTbWrap);
         checkMainWrap();
     }
+
+    // Intercept mailto: parameters natively if registered as protocol handler
+    const urlParams = new URLSearchParams(window.location.search);
+    const mailtoParam = urlParams.get('mailto');
+    if (mailtoParam) {
+        let toAddress = mailtoParam.replace(/^mailto:/i, '');
+        let subject = '', body = '';
+        
+        if (toAddress.includes('?')) {
+            const parts = toAddress.split('?');
+            toAddress = parts[0];
+            const mailtoQuery = new URLSearchParams(parts[1]);
+            subject = mailtoQuery.get('subject') || '';
+            body = mailtoQuery.get('body') || '';
+        }
+        
+        setTimeout(() => {
+            if (typeof window.myCloudShowEmailComposer === 'function') {
+                window.myCloudShowEmailComposer({ 
+                    to: decodeURIComponent(toAddress), 
+                    subject: decodeURIComponent(subject), 
+                    prefaceText: decodeURIComponent(body) 
+                });
+            }
+            // Clean up URL so it doesn't reopen composer on reload
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }, 1500); // Give the accounts time to load into memory first
+    }
 	
 // --- PULL TO REFRESH (SWIPE DOWN) IMPLEMENTATION ---
     let ptrStartY = 0;
@@ -1680,6 +1751,13 @@ window.myCloudEmailRenderTree = function() {
                 totalUnread += (myCloudEmailState.inboxUnreadCounts[accId] || 0);
             }
         });
+        
+        // OS-Level App Icon Badging
+        if ('setAppBadge' in navigator) {
+            if (totalUnread > 0) navigator.setAppBadge(totalUnread).catch(()=>{});
+            else navigator.clearAppBadge().catch(()=>{});
+        }
+		
         if (totalUnread > 0) {
             const unreadBadge = document.createElement('span');
             unreadBadge.style.cssText = 'margin-inline-start:auto; background:var(--accent-primary); color:#fff; border-radius:10px; padding-block:1px; padding-inline:6px; font-size:10px; font-weight:bold; margin-inline-end:10px;';
@@ -3029,6 +3107,8 @@ window._emailRenderMessageList = function(isAppendOnly = false) {
                 if (myCloudEmailState.selectedMessages && myCloudEmailState.selectedMessages.includes(msgKey)) {
                     targetKeys = [...myCloudEmailState.selectedMessages];
                 }
+                
+                // 1. Internal Drag Data (Moving/Copying inside the app)
                 e.dataTransfer.setData('text/plain', JSON.stringify({ 
                      type: 'email_msg', 
                      account_id: m.account_id || myCloudEmailState.activeAccount, 
@@ -3036,6 +3116,22 @@ window._emailRenderMessageList = function(isAppendOnly = false) {
                     message_id: m.id,
                     targetKeys: targetKeys
                  }));
+                 
+                // 2. Outward Desktop Drag (DownloadURL)
+                // We use the locally cached raw_message to generate a Blob URL. 
+                // This bypasses the OS dropping session cookies or the PHP framework rejecting GET requests.
+                if (myCloudEmailState.bodyCache && myCloudEmailState.bodyCache[msgKey] && myCloudEmailState.bodyCache[msgKey].raw_message) {
+                    const safeSubj = String(m.subject || 'Email').replace(/[^a-zA-Z0-9_\-]/g, '_').trim() || 'Email';
+                    const d = new Date(m.ts * 1000);
+                    const dStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+                    const filename = `${dStr}_${safeSubj}.eml`;
+
+                    const emlBlob = new Blob([myCloudEmailState.bodyCache[msgKey].raw_message], { type: 'application/octet-stream' });
+                    const blobUrl = URL.createObjectURL(emlBlob);
+
+                    e.dataTransfer.setData('DownloadURL', `application/octet-stream:${filename}:${blobUrl}`);
+                }
+                 
                  if (typeof window.myCloudGetDragImage === 'function') e.dataTransfer.setDragImage(window.myCloudGetDragImage(targetKeys.length), 20, 20);
                 e.dataTransfer.effectAllowed = 'copyMove';
             });
@@ -4684,16 +4780,23 @@ window.myCloudEmailReadMessage = function(msgId, meta) {
         if (!isSent && !isDrafts) {
             const tScore = res.trust_score || 'unknown';
             const tSec = res.transport_sec || 'none';
+            const isRiskyDomain = res.is_risky_domain === true;
+            const riskReason = res.risk_reason || 'Suspicious sender characteristics';
             
             let showFailBadge = true;
             if (tScore === 'fail' && tSec === 'internal') {
                 showFailBadge = false;
             }
 
-            if (tScore === 'bimi') trustBadge = '<span title="' + (L.trust_bimi || 'Verified Sender (BIMI)') + '" style="background:' + (isSuspect ? 'var(--gray-50)' : '#004d00') + '; color:#fff; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:bold; margin-inline-start:8px; cursor: pointer;">✓' + '</span>';
-            else if (tScore === 'perfect') trustBadge = '<span title="' + (L.trust_perfect || 'Passed DMARC & SPF') + '" style="background:' + (isSuspect ? 'var(--gray-50)' : '#107c10') + '; color:#fff; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:bold; margin-inline-start:8px; cursor: pointer;">✓' + '</span>';
-            else if (tScore === 'good') trustBadge = '<span title="' + (L.trust_good || 'Passed Partial Authentication') + '" style="background:' + (isSuspect ? 'var(--gray-50)' : '#fbc02d') + '; color:' + (isSuspect ? '#fff' : '#000') + '; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:bold; margin-inline-start:8px; cursor: pointer;">' + (isSuspect ? (L.auth_sender || 'Authenticated') : ' ❓❓ ') + '</span>';
-            else if (tScore === 'fail' && showFailBadge) trustBadge = '<span title="' + (L.trust_fail || 'Authentication Failed') + '" style="background:#e81123; color:#fff; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:bold; margin-inline-start:8px; cursor: pointer;">  ' + (L.trust_untrusted || 'Untrusted') + '</span>';
+            if (isRiskyDomain) {
+                // OVERRIDE: Brand spoofing or high-risk domain caught by threat engine
+                trustBadge = '<span title="' + myCloudEscapeHtml(riskReason) + '" style="background:#e81123; color:#fff; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:bold; margin-inline-start:8px; cursor: pointer;"> ️ ' + (L.risk_warning || 'Risky Domain') + '</span>';
+            } else {
+                if (tScore === 'bimi') trustBadge = '<span title="' + (L.trust_bimi || 'Verified Sender (BIMI)') + '" style="background:' + (isSuspect ? 'var(--gray-50)' : '#004d00') + '; color:#fff; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:bold; margin-inline-start:8px; cursor: pointer;">✓' + '</span>';
+                else if (tScore === 'perfect') trustBadge = '<span title="' + (L.trust_perfect || 'Passed DMARC & SPF') + '" style="background:' + (isSuspect ? 'var(--gray-50)' : '#107c10') + '; color:#fff; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:bold; margin-inline-start:8px; cursor: pointer;">✓' + '</span>';
+                else if (tScore === 'good') trustBadge = '<span title="' + (L.trust_good || 'Passed Partial Authentication') + '" style="background:' + (isSuspect ? 'var(--gray-50)' : '#fbc02d') + '; color:' + (isSuspect ? '#fff' : '#000') + '; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:bold; margin-inline-start:8px; cursor: pointer;">' + (isSuspect ? (L.auth_sender || 'Authenticated') : ' ❓❓ ') + '</span>';
+                else if (tScore === 'fail' && showFailBadge) trustBadge = '<span title="' + (L.trust_fail || 'Authentication Failed') + '" style="background:#e81123; color:#fff; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:bold; margin-inline-start:8px; cursor: pointer;">  ' + (L.trust_untrusted || 'Untrusted') + '</span>';
+            }
         }
 
         const renderAddressPill = (rawAddr, isFromBec = false, becMsg = '') => {
@@ -5029,6 +5132,14 @@ window.myCloudEmailReadMessage = function(msgId, meta) {
                             '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>' +
                         '</button>';
                 }
+
+                // Native OS Share Sheet Integration
+                if (navigator.share && !isMaliciousExt) {
+                    attHtml += 
+                        '<button type="button" title="' + (L.share || 'Share') + '" onclick="window._emailShareAttachment(event, \'' + targetAcc + '\', \'' + targetFolder + '\', \'' + msgId + '\', \'' + att.part + '\', \'' + safeName.replace(/'/g, "\\'") + '\')" style="background:transparent; border:none; border-left:1px solid var(--border-default); padding:4px 10px; cursor:pointer; color:var(--text-secondary); display:inline-flex; align-items:center; transition:background 0.15s; height:auto;" onmouseover="this.style.backgroundColor=\'var(--gray-20)\'; this.style.color=\'var(--text-primary)\'" onmouseout="this.style.backgroundColor=\'transparent\'; this.style.color=\'var(--text-secondary)\'">' +
+                            '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>' +
+                        '</button>';
+                }
                 
                 const writeableClouds = [];
                 if (typeof myCloudCloudConfig !== 'undefined') {
@@ -5078,7 +5189,47 @@ window.myCloudEmailReadMessage = function(msgId, meta) {
         const rawMessageContent = res.raw_message ? window._emailHighlightRawSource(res.raw_message) : (L.raw_not_avail || 'Raw message not available.');
 
         const extractedBody = doc.body ? doc.body.innerHTML : cleanHtml;
-        const processedHtmlString = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{margin:0;padding:15px;font-family:Arial,sans-serif;font-size:14px;color:#333;background:#ffffff;overflow-wrap:break-word;} a{color:var(--accent-primary, #0078d4);}</style></head><body>' + extractedBody + '</body></html>';
+        
+        // Robust email CSS reset to prevent layout collapse, unwanted centering, and forced body backgrounds
+        const emailResetCss = `
+            html, body {
+                margin: 0 !important;
+                padding: 0 !important;
+                background-color: #ffffff !important;
+                color: #202020 !important;
+                font-family: Arial, Helvetica, sans-serif !important;
+                -webkit-text-size-adjust: 100%;
+                -ms-text-size-adjust: 100%;
+            }
+            body {
+                padding: 16px !important;
+            }
+            table {
+                border-collapse: collapse !important;
+                border-spacing: 0 !important;
+            }
+            img {
+                max-width: 100% !important;
+                height: auto !important;
+            }
+            /* Override forced centering for fluid tables commonly used in templates */
+            table.body, table.container, .float-center {
+                margin-left: 0 !important;
+                margin-right: auto !important;
+                float: none !important;
+                text-align: left !important;
+            }
+            center {
+                width: 100% !important;
+                text-align: left !important;
+            }
+            a {
+                color: #0078d4;
+                text-decoration: none;
+            }
+        `;
+
+        const processedHtmlString = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>' + emailResetCss + '</style></head><body>' + extractedBody + '</body></html>';
         
         const escapeSrcDoc = (str) => {
             return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');

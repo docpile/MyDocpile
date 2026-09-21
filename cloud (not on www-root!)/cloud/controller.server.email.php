@@ -1561,6 +1561,133 @@ private function runIncrementalMigration() {
         }
     }
 
+// --- ZERO TRUST: ADVANCED DOMAIN THREAT INTELLIGENCE ---
+    private function analyzeDomainThreat($email, $fromName) {
+        if (empty($email) || strpos($email, '@') === false) return ['is_risky' => false, 'reason' => ''];
+        
+        $email = strtolower(trim($email));
+        $domain = substr(strrchr($email, "@"), 1);
+        $fromNameLower = strtolower(trim($fromName ?? ''));
+
+        // 1. High-Risk TLD Blacklist (Heavily abused by phishers)
+        $highRiskTlds = ['.ink', '.xyz', '.top', '.icu', '.loan', '.click', '.gq', '.cf', '.ml', '.tk', '.pw', '.cc', '.buzz', '.sbs', '.quest'];
+        $tld = '.' . pathinfo($domain, PATHINFO_EXTENSION);
+        $isHighRiskTld = in_array($tld, $highRiskTlds);
+
+        // 2. Brand Impersonation Detection (Commonly spoofed targets)
+
+		global $cloud_webmail_monitored_brands;
+		$defaultMonitoredBrands = [
+            'paypal' => ['paypal.com'],
+            'amazon' => ['amazon.com', 'amazon.de', 'amazon.co.uk'],
+            'microsoft' => ['microsoft.com', 'office.com', 'live.com'],
+            'apple' => ['apple.com', 'icloud.com'],
+            'netflix' => ['netflix.com']
+        ];
+		
+		$monitoredBrands = $defaultMonitoredBrands;
+        if (isset($cloud_webmail_monitored_brands) && is_array($cloud_webmail_monitored_brands)) {
+            $monitoredBrands = array_merge($monitoredBrands, $cloud_webmail_monitored_brands);
+        }
+
+        $spoofedBrand = null;
+        // Phishing taxonomy: Common prefixes/suffixes seamlessly combined with brand names
+        $buzzwords = [
+            'support', 'service', 'bonus', 'update', 'alert', 'mail', 'noreply', 'no-reply', 'team',
+            'info', 'security', 'login', 'auth', 'verify', 'account', 'pay', 'billing', 'points',
+            'rewards', 'post', 'newsletter', 'customer', 'client', 'member', 'mitglied', 'punkte',
+            'prämie', 'praemie', 'kundenservice', 'hilfe', 'ag', 'gmbh', 'inc', 'ltd', 'llc',
+            'my', 'your', 'mein', 'ihr', 'online', 'web', 'app', 'secure', 'safe', 'portal',
+            'center', 'centre', 'bank', 'finance', 'finanz', 'wallet', 'cloud', 'drive', 'system'
+        ];
+        $buzzPattern = implode('|', array_map(function($w) { return preg_quote($w, '/'); }, $buzzwords));
+        
+        $spoofedBrand = null;
+        foreach ($monitoredBrands as $brand => $officialDomains) {
+            // Allow the brand name to be seamlessly connected to digits or known phishing buzzwords 
+            // (e.g., "ups3523", "orangebonus", "paypalupdate") without triggering false positives 
+            // on completely unrelated dictionary words (like "surfing" for "ing").
+            $mod = '(?:\d+|' . $buzzPattern . ')';
+            $pattern = '/\b' . $mod . '*' . preg_quote($brand, '/') . $mod . '*\b/i';
+            
+            if (preg_match($pattern, $fromNameLower) || preg_match($pattern, $email)) {
+                // Check if the actual domain matches any official domain for that brand
+                $isOfficial = false;
+                foreach ($officialDomains as $official) {
+                    if ($domain === $official || substr($domain, -strlen('.' . $official)) === '.' . $official) {
+                        $isOfficial = true;
+                        break;
+                    }
+                }
+                if (!$isOfficial) {
+                    $spoofedBrand = ucfirst($brand);
+                    break;
+                }
+            }
+        }
+
+        if ($spoofedBrand) {
+            return ['is_risky' => true, 'reason' => "Brand Impersonation: Claims to be {$spoofedBrand} but sent from unverified domain ({$domain})"];
+        }
+
+        // 3. Fast RDAP Age Lookup (Cached to prevent blocking)
+        if (filter_var($domain, FILTER_VALIDATE_IP) || strpos($domain, '.') === false || in_array($domain, ['localhost'])) {
+            return ['is_risky' => $isHighRiskTld, 'reason' => $isHighRiskTld ? 'Suspicious high-risk TLD' : ''];
+        }
+
+        $cacheFile = $this->cache_dir . '/domain_reputation.json';
+        $cache = [];
+        if (file_exists($cacheFile)) {
+            $cache = json_decode(file_get_contents($cacheFile), true) ?: [];
+            if (isset($cache[$domain])) {
+                $regDate = $cache[$domain]['reg'];
+                $ageDays = $regDate ? floor((time() - $regDate) / 86400) : null;
+                if ($ageDays !== null && $ageDays < 30) {
+                    return ['is_risky' => true, 'reason' => "Newly registered domain ({$ageDays} days old)"];
+                }
+                return ['is_risky' => $isHighRiskTld, 'reason' => $isHighRiskTld ? 'Suspicious high-risk TLD' : ''];
+            }
+        }
+
+        // Fast RDAP lookup with strict 2-second timeout
+        $ch = curl_init("https://rdap.org/domain/" . urlencode($domain));
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 2);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Accept: application/rdap+json']);
+        $resp = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        $regDate = null;
+        if ($code == 200 && $resp) {
+            $data = json_decode($resp, true);
+            if (!empty($data['events'])) {
+                foreach ($data['events'] as $event) {
+                    if (isset($event['eventAction']) && strtolower($event['eventAction']) === 'registration' && !empty($event['eventDate'])) {
+                        $regDate = strtotime($event['eventDate']);
+                        break;
+                    }
+                }
+            }
+        }
+
+        $cache[$domain] = ['reg' => $regDate, 'chk' => time()];
+        file_put_contents($cacheFile, json_encode($cache));
+
+        $ageDays = $regDate ? floor((time() - $regDate) / 86400) : null;
+        if ($ageDays !== null && $ageDays < 30) {
+            return ['is_risky' => true, 'reason' => "Newly registered domain ({$ageDays} days old)"];
+        }
+
+        // If RDAP failed completely but it's a high-risk TLD combined with numbers/hyphens (e.g., commerzagmitgliedspunkte3-64.ink)
+        if ($regDate === null && $isHighRiskTld && preg_match('/[0-9\-]/', $domain)) {
+            return ['is_risky' => true, 'reason' => 'Suspicious high-risk TLD with randomized structure'];
+        }
+
+        return ['is_risky' => $isHighRiskTld, 'reason' => $isHighRiskTld ? 'Suspicious high-risk TLD' : ''];
+    }
+	
 	public function handleRequest($action) {
         global $MYCLOUD_O365_CLIENT_ID, $MYCLOUD_O365_CLIENT_SECRET;
 
@@ -3028,6 +3155,9 @@ private function runIncrementalMigration() {
                     $htmlContent = str_replace("\0", "", (string)$htmlContent);
                     $htmlContent = mb_convert_encoding($htmlContent, 'UTF-8', 'UTF-8');
 
+                    // Strip <title> tags and their contents completely to prevent them from rendering as raw text
+                    $htmlContent = preg_replace('/<title\b[^>]*>.*?<\/title>/is', '', $htmlContent);
+					
                     // 1. OUTLOOK CONDITIONAL COMMENT CLEANER
                     // Drop entire MSO-only blocks but preserve standard fallbacks (which start with '!')
                     $htmlContent = preg_replace('/<!--\[if\s*(?!!)[^\]]*\]>.*?<!\[endif\]-->/is', '', $htmlContent);
@@ -3079,6 +3209,8 @@ private function runIncrementalMigration() {
                         }
                     }
                     
+                    $threatAnalysis = $this->analyzeDomainThreat($addrs['from_email'] ?? '', $addrs['from_name'] ?? '');
+
                     $bodyData = [
                         'body' => $cleanHtml, 
                         'attachments' => $attachmentsData, 
@@ -3091,8 +3223,11 @@ private function runIncrementalMigration() {
                         'trust_score' => $trustScore,
                         'transport_sec' => $transportSec,
                         'spam_score' => $spamScore,
-                        'is_phishing' => $isPhishing
+                        'is_phishing' => $isPhishing || $threatAnalysis['is_risky'],
+                        'is_risky_domain' => $threatAnalysis['is_risky'],
+                        'risk_reason' => $threatAnalysis['reason']
                     ];
+					
 
                     $this->saveBodyCacheData($bodyPath, $bodyData);
                     $this->sendJsonAndExit(array_merge(['status' => 'OK'], $bodyData));
@@ -3245,12 +3380,14 @@ private function runIncrementalMigration() {
                     libxml_use_internal_errors(true);
                     $dom->loadHTML('<?xml encoding="UTF-8"><meta http-equiv="Content-Type" content="text/html; charset=utf-8">' . $mailBody, LIBXML_NONET | LIBXML_NOXMLDECL | LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
                     
-                    $badTags = ['script', 'link', 'iframe', 'object', 'embed', 'applet', 'meta', 'base', 'video', 'audio', 'source', 'track', 'picture', 'form', 'math', 'frameset', 'frame'];
+                    $badTags = ['script', 'link', 'iframe', 'object', 'embed', 'applet', 'meta', 'base', 'video', 'audio', 'source', 'track', 'picture', 'form', 'math', 'frameset', 'frame', 'title'];
                     foreach ($badTags as $tag) {
                         $nodes = $dom->getElementsByTagName($tag);
                         for ($i = $nodes->length - 1; $i >= 0; $i--) {
                             $node = $nodes->item($i);
-                            $node->parentNode->removeChild($node);
+                            if ($node->parentNode) {
+                                $node->parentNode->removeChild($node);
+                            }
                         }
                     }
 
@@ -3929,9 +4066,10 @@ private function runIncrementalMigration() {
 
             case 'email_dl_eml':
                 $configs = $this->loadConfigs();
-                $accId = $_POST['account_id'] ?? '';
-                $folder = $_POST['folder'] ?? 'INBOX';
-                $msgId = preg_replace('/[^0-9,]/', '', $_POST['message_id'] ?? '');
+                // Support GET for Outward Drag-and-Drop (DownloadURL)
+                $accId = $_POST['account_id'] ?? $_GET['account_id'] ?? '';
+                $folder = $_POST['folder'] ?? $_GET['folder'] ?? 'INBOX';
+                $msgId = preg_replace('/[^0-9,]/', '', $_POST['message_id'] ?? $_GET['message_id'] ?? '');
 
                 if (!isset($configs[$accId])) exit('Account not found');
                 list($client, $folderObj, $err) = $this->connectImap($configs[$accId], $folder, true);
