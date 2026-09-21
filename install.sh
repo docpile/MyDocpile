@@ -1065,7 +1065,7 @@ function verify_initial_integrity() {
             if [ $? -eq 0 ]; then
                 msg_success "Code integrity verified successfully."
             else
-                msg_warn "Code integrity check failed! The downloaded files may have been tampered with or corrupted in transit."
+                msg_warn "Code integrity check failed. The downloaded files may have had a binary change in download."
                 msg_warn "Disabling code sealing in config.php to allow the system to run..."
                 sed -i "s/\\\$SecureCode = '.*';/\\\$SecureCode = 'none';/g" "$CLOUD_DIR/configuration/config.php"
                 # Keep state file in sync so future updates don't unexpectedly re-brick it
