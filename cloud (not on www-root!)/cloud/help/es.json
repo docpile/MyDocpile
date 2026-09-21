@@ -250,7 +250,7 @@
     "id": "mail_tab",
     "icon": "email",
     "title": "La Experiencia Webmail",
-    "keywords": "correo email webmail bandeja redactar leer enviar recibir mensajes",
+    "keywords": "correo email webmail bandeja redactar leer enviar recibir mensajes pdf nube",
     "content": [
       {
         "type": "h1",
@@ -263,52 +263,60 @@
       },
       {
         "type": "h2",
-        "text": "🖥️ El diseño de tres paneles"
+        "text": "🖥️ El Diseño y Navegación"
       },
       {
         "type": "p",
-        "text": "He organizado mi interfaz de correo para darte la mejor vista posible. Cuando abres la pestaña de Correo, divido tu pantalla en tres secciones ordenadas:"
+        "text": "He organizado mi interfaz de correo para darte la mejor vista posible. Divido tu pantalla en tres secciones ordenadas:"
       },
       {
         "type": "ul",
         "items": [
-          "**Izquierda (El Árbol):** Aquí muestro tus cuentas de correo y carpetas (Bandeja de entrada, Enviados, Borradores, etc.). Si tienes varias cuentas, puedes contraerlas y expandirlas aquí.",
-          "**Centro (La Lista):** Muestro todos tus mensajes de la carpeta seleccionada. Puedes ordenarlos, filtrarlos por mensajes no leídos o activar mi vista de hilos de conversación.",
-          "**Derecha (El panel de lectura):** Haz clic en cualquier correo en el medio y lo abriré para ti justo aquí. ¡Sin necesidad de molestas ventanas emergentes!"
+          "**Izquierda (El Árbol):** Aquí muestro tus cuentas de correo y carpetas. Si tienes varias cuentas, mi 'SmartBox' agrupa todos tus correos no leídos en un solo lugar.",
+          "**Centro (La Lista):** Muestro todos tus mensajes de la carpeta seleccionada. Puedes ordenarlos por fecha o remitente, filtrarlos para mostrar solo los no leídos, o activar mi vista de hilos de conversación.",
+          "**Derecha (El Panel de Lectura):** Haz clic en cualquier correo en el medio y lo abriré para ti justo aquí. ¡Sin necesidad de molestas ventanas emergentes!"
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "⌨️ Atajos y Gestos Táctiles"
+      },
+      {
+        "type": "p",
+        "text": "Me encanta dejarte trabajar rápido. Si prefieres el teclado:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Usa las flechas [key:↑] y [key:↓] para deslizarte por tu bandeja de entrada.",
+          "Usa [key:←] y [key:→] para expandir o contraer hilos de correo al instante.",
+          "Presiona [key:Supr] o [key:Retroceso] para enviar un correo directamente a la papelera.",
+          "Mantén presionado [key:Shift] y usa las flechas (o haz clic) para seleccionar varios correos a la vez."
         ]
       },
       {
         "type": "tip",
-        "text": "*Consejo para móviles:* Si estás en tu smartphone, naturalmente ocultaré los paneles que no necesitas en este momento para que tengas suficiente espacio para leer. Puedes usar el botón [badge:Atrás] para deslizarte entre la lista de carpetas, la lista de mensajes y la vista de lectura."
+        "text": "*Consejo para móviles:* Si estás en tu smartphone o tablet, ¡prueba a deslizar! Desliza un correo hacia la derecha para marcarlo como leído/no leído, o hacia la izquierda para eliminarlo. También oculto automáticamente las barras laterales en pantallas pequeñas para darte más espacio de lectura."
       },
       {
         "type": "h2",
-        "text": "✍️ Redactar mensajes"
+        "text": "💾 Guardar como PDF y Exportar a la Nube"
       },
       {
         "type": "p",
-        "text": "Cuando quieras escribir un correo electrónico, haz clic en el botón [badge:Nuevo correo] en la barra de herramientas. Desplegaré un editor de texto enriquecido para ti."
+        "text": "¿Necesitas archivar una factura o conversación importante? ¡Puedo hacer tareas complejas por ti aquí! Haz clic en el botón [badge:Guardar] mientras lees un correo:"
       },
       {
-        "type": "grid",
-        "cards": [
-          {
-            "title": "Direccionamiento inteligente",
-            "text": "Solo empieza a escribir un nombre. Buscaré en tu Libreta de direcciones y te sugeriré automáticamente el contacto correcto."
-          },
-          {
-            "title": "Texto enriquecido e imágenes en línea",
-            "text": "Haz que tus correos se vean geniales. Te doy un editor completo donde puedes poner texto en negrita, crear listas e incluso pegar imágenes directamente en el texto."
-          },
-          {
-            "title": "Archivos adjuntos",
-            "text": "¿Necesitas enviar un archivo? Haz clic en [badge:Adjuntar archivos] o simplemente arrastra y suelta archivos desde tu ordenador directamente en mi ventana del editor."
-          },
-          {
-            "title": "Protección de borradores",
-            "text": "Tómate tu tiempo para escribir. Guardo automáticamente tu progreso en segundo plano en tu carpeta de 'Borradores' para que no se pierda nada."
-          }
+        "type": "ul",
+        "items": [
+          "**Guardar como EML:** Descargaré el archivo de correo original, perfecto para abrirlo en Outlook o Thunderbird más tarde.",
+          "**Guardar como PDF:** Convertiré el correo en un hermoso documento PDF listo para imprimir.",
+          "**Exportar a la Nube:** ¡En lugar de descargarlo a tu dispositivo, puedes decirme que guarde el correo directamente en una de tus carpetas de la nube!"
         ]
+      },
+      {
+        "type": "tip",
+        "text": "*Función PDF:* Si eliges guardar un correo como PDF, ¡puedo tomar todas las imágenes y documentos PDF adjuntos a ese correo y fusionarlos en un único y completo archivo PDF! Incluso puedes reorganizar el orden de los adjuntos o excluir los que no necesites antes de que genere el documento final."
       }
     ]
   },
@@ -424,21 +432,25 @@
         "text": "⌨️ Teclado (Atajos)"
       },
       {
+        "type": "p",
+        "text": "Puedes operarme casi por completo sin ratón. Aquí están todos los atajos que escucho:"
+      },
+      {
         "type": "grid",
         "cards": [
           {
-            "title": "Navegación",
-            "text": "[key:↑] [key:↓] Seleccionar<br>[key:Enter] Abrir<br>[key:Retroceso] Subir nivel"
+            "title": "Navegación y Vistas",
+            "text": "[key:↑] [key:↓] Seleccionar<br>[key:RePág] [key:AvPág] Desplazarse<br>[key:Enter] Abrir<br>[key:Retroceso] Subir nivel<br>[key:Inicio] / [key:Fin] Saltar en listas<br>[key:Alt]+[key:←]/[key:→] Historial Atrás/Adelante<br>[key:Ctrl]+[key:1]/[key:2]/[key:3] Cambiar modo de vista"
           },
           {
             "role": "write",
             "title": "Acción",
-            "text": "[key:F2] Renombrar<br>[key:Supr] Borrar<br>[key:Ctrl]+[key:R] Actualizar"
+            "text": "[key:F2] Renombrar<br>[key:Supr] Borrar<br>[key:Shift]+[key:Supr] Borrar permanentemente<br>[key:Ctrl]+[key:Shift]+[key:N] Nueva carpeta<br>[key:Ctrl]+[key:Z] Deshacer (límite 4s)<br>[key:Ctrl]+[key:R] Actualizar"
           },
           {
             "role": "write",
-            "title": "Seleccionar",
-            "text": "[key:Ctrl]+[key:A] Seleccionar todo"
+            "title": "Buscar y Seleccionar",
+            "text": "[key:Ctrl]+[key:S] Búsqueda global<br>[key:Ctrl]+[key:F] Búsqueda en línea<br>[key:Ctrl]+[key:L] Ir a la ruta<br>[key:Shift]+[key:↓]/[key:↑] Selección múltiple<br>[key:Ctrl]+[key:C]/[key:X]/[key:V] Copiar/Cortar/Pegar<br>[key:Ctrl]+[key:A] Seleccionar todo"
           }
         ]
       },
@@ -456,7 +468,7 @@
       },
       {
         "type": "tip",
-        "text": "*Consejo:* En un teléfono, permíteme usar \"Casillas\" en los Ajustes."
+        "text": "*Consejo:* En un teléfono, permíteme usar \"Casillas\" en los Ajustes. Esto hace que seleccionar archivos en pantallas pequeñas sea mucho más fácil."
       }
     ]
   },
@@ -850,7 +862,7 @@
       {
         "type": "h1",
         "icon": "search",
-        "text": "Búsqueda"
+        "text": "Búsqueda e Índice de Texto Completo"
       },
       {
         "type": "h2",
@@ -858,23 +870,68 @@
       },
       {
         "type": "p",
-        "text": "¡Sin formalidades! Solo escribe las primeras letras de un archivo en tu teclado. Saltaré a la primera coincidencia."
-      },
-      {
-        "type": "h2",
-        "text": "2. Búsqueda Global (Diálogo) 🔍"
+        "text": "*Ubicación:* Directamente en la lista de archivos."
       },
       {
         "type": "p",
-        "text": "En este diálogo, escaneo *recursivamente* todas las subcarpetas. Filtros:"
+        "text": "¡Sin formalidades! Solo escribe las primeras letras de un archivo en tu teclado. Saltaré a la primera coincidencia en la carpeta actual al instante. Perfecto para navegar listas largas rápidamente."
       },
       {
-        "type": "ul",
-        "items": [
-          "*Nombre:* Parte del nombre.",
-          "*Fecha:* \"Últimas 24h\", \"Semana Pasada\" o \"Personalizado\".",
-          "*Tamaño:* \"Pequeño\", \"Enorme\" o \"Personalizado\"."
+        "type": "h2",
+        "text": "2. Búsqueda Global y Texto Completo (Diálogo) 🔍"
+      },
+      {
+        "type": "p",
+        "text": "*Ubicación:* Presiona [key:Ctrl]+[key:S] (o haz clic en el botón [badge:Buscar])."
+      },
+      {
+        "type": "p",
+        "text": "En este diálogo, escaneo tus archivos. Cuando mi índice de texto completo está activo, no solo reviso los nombres de archivo: ¡busco directamente dentro del contenido de tus documentos! Puedes combinar potentes operadores para encontrar cualquier cosa en una fracción de segundo:"
+      },
+      {
+        "type": "table",
+        "headers": [
+          "Operador / Expresión",
+          "Qué hace y Ejemplos"
+        ],
+        "rows": [
+          {
+            "c1": "*Comodines* (`*` / `?`)",
+            "c2": "Usa `*` para múltiples caracteres (`inv*2024.pdf`) o `?` para un solo carácter (`img_00?.jpg`)."
+          },
+          {
+            "c1": "*Frase exacta y proximidad* (`\"\"` / `\" \"N`)",
+            "c2": "Busca frases exactas usando comillas (`\"tax audit\"`). Añade un número para la proximidad de palabras (`\"tax audit\"10`)."
+          },
+          {
+            "c1": "*Extensión de archivo* (`ext:`)",
+            "c2": "Filtra por tipo de archivo. Ejemplo: `budget ext:pdf` o `ext:xlsx`."
+          },
+          {
+            "c1": "*Carpeta y Nombre* (`dir:` / `fn:`)",
+            "c2": "Apunta a carpetas específicas (`dir:invoices`) o nombres de archivo (`fn:receipt*`)."
+          },
+          {
+            "c1": "*Metadatos* (`author:` / `title:` / `from:` / `to:`)",
+            "c2": "Busca autores de documentos, títulos o remitentes/destinatarios de correos (`from:boss@example.com`)."
+          },
+          {
+            "c1": "*Tamaño y Fechas* (`size:` / `date:`)",
+            "c2": "Filtra por peso del archivo (`size>100k OR size<2M`) o límites de fechas específicas (`date:2023-01-01/2023-12-31`)."
+          },
+          {
+            "c1": "*Categorías* (`rclcat:`)",
+            "c2": "Filtra por grupos de Recoll. Disponibles: `text`, `spreadsheet`, `presentation`, `media`, `message`. Ejemplo: `rclcat:spreadsheet`."
+          },
+          {
+            "c1": "*Lógica Booleana* (`OR` / `AND` / `-`)",
+            "c2": "Combina términos (`apple OR orange`), requiere ambos (`apple AND juice`), o excluye palabras (`-milk`)."
+          }
         ]
+      },
+      {
+        "type": "tip",
+        "text": "*Consejo:* Te muestro los resultados como una lista. ¡Puedes hacer doble clic en cualquier resultado directamente en la ventana de búsqueda para pedirme que lo abra al instante!"
       }
     ]
   },
@@ -1092,6 +1149,137 @@
             "text": "Puedes editar cualquier contacto para añadir varias direcciones de correo, números de teléfono, su empresa e incluso adjuntar claves de seguridad específicas a su perfil."
           }
         ]
+      }
+    ]
+  },
+  {
+    "id": "mail_composer",
+    "icon": "edit",
+    "title": "El Editor Webmail",
+    "keywords": "redactar escribir enviar editor adjuntos nube plantillas deshacer",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "edit",
+        "text": "El Editor Webmail"
+      },
+      {
+        "type": "p",
+        "text": "Escribir correos conmigo es muy fácil. Solo dale al botón [badge:Nuevo correo] y desplegaré un potente editor de texto enriquecido para ti."
+      },
+      {
+        "type": "h2",
+        "text": "✨ Funciones Inteligentes"
+      },
+      {
+        "type": "grid",
+        "cards": [
+          {
+            "title": "Direccionamiento Inteligente",
+            "text": "Solo empieza a escribir un nombre o dirección. Buscaré en tu Libreta de Direcciones y en las personas contactadas recientemente, puntuándolas por la frecuencia con la que hablas con ellas, para sugerirte al instante el contacto correcto."
+          },
+          {
+            "title": "Plantillas",
+            "text": "¿Escribes las mismas respuestas una y otra vez? ¡Guárdalas como Plantillas! Puedes insertar un texto preescrito (incluyendo el asunto) con un solo clic."
+          },
+          {
+            "title": "Alias y Firmas",
+            "text": "Si gestionas varias direcciones (como 'info@' o 'soporte@'), puedes seleccionarlas fácilmente en el menú desplegable 'De'. ¡Cambiaré automáticamente la firma correcta para ese alias!"
+          },
+          {
+            "title": "Protección de Borradores",
+            "text": "Tómate tu tiempo para escribir. Si intentas cerrar la ventana, intervendré y te preguntaré si quieres que guardes tu trabajo de forma segura en tu carpeta de 'Borradores' para que no se pierda nada."
+          }
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "📎 Adjuntos y Enlaces en la Nube"
+      },
+      {
+        "type": "p",
+        "text": "Puedes arrastrar y soltar archivos desde tu computadora directamente a mi editor, o incluso pegar imágenes directamente en el texto. ¡También te permito adjuntar archivos que ya están en tu nube!"
+      },
+      {
+        "type": "tip",
+        "text": "*Enlaces Automáticos en la Nube:* Los servidores de correo odian los archivos enormes. Si adjuntas más de 20 MB en archivos, intervendré y te ofreceré ayuda: ¡puedo subir automáticamente esos archivos a una carpeta segura en tu nube e insertar un enlace para compartir directamente en el cuerpo de tu correo!"
+      },
+      {
+        "type": "h2",
+        "text": "⏳ Deshacer Envío"
+      },
+      {
+        "type": "p",
+        "text": "Todos cometemos errores. Cuando le das a [badge:Enviar], no envío el correo de inmediato. Te daré una cuenta regresiva de 5 segundos en la parte inferior de la pantalla. Si ves un error tipográfico o te olvidaste de un adjunto, ¡solo dale a [badge:Deshacer] y traeré el correo de vuelta al editor!"
+      }
+    ]
+  },
+  {
+    "id": "mailbox_security_general",
+    "icon": "lock",
+    "title": "Seguridad del Webmail",
+    "keywords": "seguridad dmarc spf bimi phishing rastreo pixel cache encriptado seguro",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "lock",
+        "text": "Seguridad y Privacidad del Webmail"
+      },
+      {
+        "type": "p",
+        "text": "Te protejo de interferencias no deseadas en línea. Mi webmail viene con sólidas funciones de seguridad integradas para mantenerte a salvo de rastreadores, estafadores y fisgones."
+      },
+      {
+        "type": "h2",
+        "text": "🛡️ Privacidad y Protección contra Rastreo"
+      },
+      {
+        "type": "p",
+        "text": "A los remitentes no autorizados les encanta incrustar 'píxeles de rastreo' invisibles en los correos electrónicos para ver exactamente cuándo y dónde los abres. ¡No bajo mi vigilancia!"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Bloqueo todas las imágenes externas por defecto a menos que el remitente esté en tu lista de confianza.",
+          "Incluso si decides cargar imágenes, no dejo que el remitente vea tu dirección IP real. Obtengo las imágenes a través de mi propio servidor proxy seguro.",
+          "Escaneo activamente los enlaces de imágenes y bloqueo los patrones de rastreo conocidos."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "✅ Insignias de Autenticación"
+      },
+      {
+        "type": "p",
+        "text": "Cualquiera puede falsificar una dirección 'De'. Para combatir esto, analizo las firmas digitales invisibles (DMARC, SPF y BIMI) adjuntas a cada correo electrónico. Mira justo al lado del nombre del remitente para ver mi veredicto:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "**Marca de verificación verde:** ¡Perfecto! El remitente está verificado y es auténtico.",
+          "**Signos de interrogación amarillos:** Autenticación parcial. Ten un poco de precaución.",
+          "**'No confiable' en rojo:** El correo electrónico falló las comprobaciones de autenticación. Es muy probable que sea un mensaje falsificado."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "🎣 Anti-Phishing y Escáner de Enlaces"
+      },
+      {
+        "type": "p",
+        "text": "Si un correo electrónico parece muy sospechoso (por ejemplo, mi motor de puntuación de spam lo califica por encima de 7.0), aislaré el contenido y colocaré un gran banner de advertencia en la parte superior para que sepas que debes andar con cuidado."
+      },
+      {
+        "type": "tip",
+        "text": "*Guardián de Enlaces:* A los estafadores les encantan los 'ataques homógrafos' (usar letras extranjeras que se ven exactamente como las estándar para falsificar un sitio web) o esconder enlaces malos bajo texto inocente. Si haces clic en un enlace, analizo instantáneamente el destino. Si el dominio no coincide con el del remitente, o si detecto caracteres engañosos, ¡bloquearé el clic y te advertiré antes de que tu navegador abra la página!"
+      },
+      {
+        "type": "h2",
+        "text": "🔐 Caché Local Encriptada"
+      },
+      {
+        "type": "p",
+        "text": "Para que leer tus correos sea ultrarrápido, los almaceno en caché localmente. ¡Pero no dejo tus datos personales tirados sin protección! Comprimo y encripto fuertemente toda tu caché de correo electrónico sin conexión (usando encriptación robusta AES-256-GCM). Incluso si software o usuarios no autorizados obtienen acceso a los archivos en bruto en tu disco duro, tus correos permanecen completamente ilegibles."
       }
     ]
   },

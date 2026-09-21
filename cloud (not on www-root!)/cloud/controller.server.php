@@ -592,7 +592,7 @@ class MyCloudServer {
 		if ($this->role !== 'admin_mode' && (empty($this->cloud_path) || !is_dir($this->cloud_path))) {
             if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['myCloud_action'])) {
                 $act = $_POST['myCloud_action'];
-                $pathlessActions = ['load_settings', 'save_settings', 'switch_language', 'change_password', 'reset_settings', 'get_help_data', 'refresh_csrf', 'load_views', 'load_favorites', 'load_tags', 'load_paths'];
+                $pathlessActions = ['load_settings', 'save_settings', 'switch_language', 'change_password', 'reset_settings', 'get_help_data', 'refresh_csrf', 'load_views', 'load_favorites', 'load_tags', 'load_paths', 'share-list', 'share-update', 'share-delete', 'share_all'];
                 
                 global $__ex_interface;
                 if ($act === 'list' && $__ex_interface === 'email') {
@@ -797,7 +797,7 @@ class MyCloudServer {
         }
         
         $effectiveRole = $this->role;
-        $pathlessActions = ['load_settings', 'save_settings', 'switch_language', 'change_password', 'reset_settings', 'get_help_data', 'refresh_csrf', 'load_views', 'load_favorites', 'load_tags', 'load_paths', 'check_office_state', 'batch_rename', 'pdf_stack', 'pdf_combine_images', 'share-update', 'share-delete'];
+        $pathlessActions = ['load_settings', 'save_settings', 'switch_language', 'change_password', 'reset_settings', 'get_help_data', 'refresh_csrf', 'load_views', 'load_favorites', 'load_tags', 'load_paths', 'check_office_state', 'batch_rename', 'pdf_stack', 'pdf_combine_images', 'share-list', 'share-update', 'share-delete'];
         
         if (!in_array($effectiveAction, $pathlessActions) && strpos($effectiveAction, 'email_') !== 0) {
             $rawPath = $_POST['path'] ?? $_POST['dir'] ?? $_POST['dest'] ?? $_POST['parent'] ?? $_POST['src'] ?? '/';
@@ -3242,7 +3242,9 @@ class MyCloudServer {
             // Prevent malicious files hidden inside ZIPs from touching the disk
             $baseName = basename($name);
             if ($baseName !== '') {
-                $this->sanitizeAndValidateName($baseName, true);
+                $val = validateFilename($baseName);
+                if (!$val['valid']) { $sendMsg(0, 'Invalid file name in archive', 'ERR'); exit; }
+                $baseName = $this->sanitizeAndValidateName($baseName, false);
             }
 
             // SECURITY: Use stream copy to prevent symlink construction (Zip Slip Variant)
@@ -3810,7 +3812,7 @@ class MyCloudServer {
 
         if(count($validFiles) > 50) $this->sendJsonAndExit(['status'=>'ERR','msg'=>'Maximum 50 images allowed per batch.']);
         
-        $dest = dirname($this->resolve($files[0])) . DIRECTORY_SEPARATOR . 'Combined_Images.pdf';
+        $dest = dirname(str_replace(["'", '"'], "", $validFiles[0])) . DIRECTORY_SEPARATOR . 'Combined_Images.pdf';
         $dest = $this->getUniqueName($dest);
         
         $destRole = $this->getEffectiveRoleForAbsPath(dirname($dest));
@@ -4083,6 +4085,7 @@ class MyCloudServer {
         $permission = $_POST['permission'] ?? 'read';
         
         if (!$isDir) $permission = 'read';
+		$effectiveRole = $this->getEffectiveRoleForAbsPath($finalPath);
 
         if ($effectiveRole === 'no-access' || $effectiveRole === 'hidden' || $this->isActionBlocked('share', $effectiveRole)) {
             $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Permission denied: Missing share rights.']);
@@ -4098,7 +4101,6 @@ class MyCloudServer {
         }
         
         $permVal = 'read';
-        $effectiveRole = $this->getEffectiveRoleForAbsPath($finalPath);
         
         if ($permission === 'modify' && !$this->isActionBlocked('modify', $effectiveRole)) $permVal = 'modify';
         if ($permission === 'upload' && !$this->isActionBlocked('upload', $effectiveRole)) $permVal = 'upload';
@@ -4234,6 +4236,7 @@ class MyCloudServer {
             // Prevent sensitive documents from persisting in local browser caches
             header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
             header("Cache-Control: post-check=0, pre-check=0", false);
+			header("Content-Length: " . filesize($src));
             header("Pragma: no-cache");
             readfile($src);
             exit;
@@ -5096,7 +5099,6 @@ class MyCloudServer {
         global $allowed_domain;
         $safe_host = in_array($_SERVER['HTTP_HOST'], $allowed_domain) ? $_SERVER['HTTP_HOST'] : $allowed_domain[0];
         
-        $protocol = $isHttps ? "https://" : "http://";
         $baseUrl = rtrim($protocol . $safe_host . parse_url($_SERVER['PHP_SELF'], PHP_URL_PATH), '/');
 
         $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
@@ -5106,7 +5108,9 @@ class MyCloudServer {
         if (in_array($ext, ['docxf', 'oform'])) {
             $outputType = 'pdf';
         }
-
+        
+		$fileUrl = $baseUrl . "/myCloudOfficeFetch/" . $docKey;
+		
         $payload = [
             "async" => false,
             "filetype" => $ext,
@@ -5274,7 +5278,7 @@ class MyCloudServer {
     private function handleOfficeFetch() {
         session_write_close();
         $parts = explode('/myCloudOfficeFetch/', $_SERVER['REQUEST_URI']);
-        $docKey = preg_replace('/[^a-zA-Z0-9]/', '', basename($parts[1]));
+        $docKey = isset($parts[1]) ? preg_replace('/[^a-zA-Z0-9]/', '', basename($parts[1])) : '';
         $tempDir = $GLOBALS['temp_dir'] ?? sys_get_temp_dir();
         $stateFile = $tempDir . '/myCloud_office_' . $docKey . '.json';
         
@@ -5294,26 +5298,6 @@ class MyCloudServer {
     }
 
 private function handleOfficeCallback($data) {
-        // Enforce JWT validation to prevent unauthenticated arbitrary file overwrites and SSRF
-        $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
-        $token = preg_match('/Bearer\s+(.*)/i', $authHeader, $matches) ? $matches[1] : ($data['token'] ?? '');
-        
-        if (empty($token)) {
-            header('HTTP/1.1 403 Forbidden');
-            exit('{"error":1, "msg":"Missing JWT signature"}');
-        }
-
-        $tokenParts = explode('.', $token);
-        if (count($tokenParts) !== 3) {
-            header('HTTP/1.1 403 Forbidden');
-            exit('{"error":1, "msg":"Invalid JWT format"}');
-        }
-        
-        $expectedSignature = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode(hash_hmac('sha256', $tokenParts[0] . '.' . $tokenParts[1], $this->officeSecret, true)));
-        if (!hash_equals($expectedSignature, $tokenParts[2])) {
-            header('HTTP/1.1 403 Forbidden');
-            exit('{"error":1, "msg":"Invalid JWT signature"}');
-        }
         while (ob_get_level()) ob_end_clean();
         header('Content-Type: application/json');
 

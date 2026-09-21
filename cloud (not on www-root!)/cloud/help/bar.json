@@ -160,7 +160,7 @@
     "id": "mail_tab",
     "icon": "email",
     "title": "Des Webmail-Erlebnis",
-    "keywords": "mail email webmail posteingang schreim lesn sendn empfanga nachrichtn",
+    "keywords": "mail email webmail posteingang schreim lesn sendn empfanga nachrichtn pdf cloud",
     "content": [
       {
         "type": "h1",
@@ -173,52 +173,60 @@
       },
       {
         "type": "h2",
-        "text": "🖥️ Des Drei-Spalten-Layout"
+        "text": "🖥️ Des Layout & Navigation"
       },
       {
         "type": "p",
-        "text": "I hob mei E-Mail-Oberflächn so organisiert, dassd den bestmöglichen Überblick host. Wennst den Mail-Tab aufmochst, teil i dein Buidlschirm in drei übersichtliche Bereiche:"
+        "text": "I hob mei E-Mail-Oberflächn so organisiert, dassd den bestmöglichen Überblick host. I teil dein Buidlschirm in drei übersichtliche Bereiche:"
       },
       {
         "type": "ul",
         "items": [
-          "**Links (Da Baam):** Do zeig i da dei E-Mail-Konten und Ordner (Posteingang, Gesendet, Entwürfe usw.). Wennst mehrane Konten host, konnst as do ei- und ausklappn.",
-          "**Mittn (De Listn):** I zeig da olle Nachrichtn fia den ausgwähldn Ordner. Du konnst as sortiern, noch unglesne Nachrichtn filtern oda mei Diskussionsfaden-Osicht eischaltn.",
+          "**Links (Da Baam):** Do zeig i da dei E-Mail-Konten und Ordner. Wennst mehrane Konten host, bündelt mei 'SmartBox' olle deine unglesnen E-Mails an oam Ort!",
+          "**Mittn (De Listn):** I zeig da olle Nachrichtn fia den ausgwähldn Ordner. Du konnst as nach Datum oda Absender sortiern, nach unglesnen filtern oda mei smarte Diskussionsfaden-Ansicht eischaltn.",
           "**Rechts (Da Lesebereich):** Klick auf a E-Mail in da Mittn, und i moch's da direkt do auf. Koane nervigen Popups nötig!"
         ]
       },
       {
-        "type": "tip",
-        "text": "*Handy-Tipp:* Wennst auf deim Smartphone bist, versteck i natürlich de Bereiche, deast grod ned brauchst, damitst gnua Plotz zum Lesn host. Du konnst den [badge:Zruck]-Button nutzn, um zwischn Ordnerlistn, Nachrichtenlistn und Leseansicht hin und her z'rutschen."
-      },
-      {
         "type": "h2",
-        "text": "✍️ Nachrichtn vafassn"
+        "text": "⌨️ Tastenkürzel & Wischgesten"
       },
       {
         "type": "p",
-        "text": "Wennst a E-Mail schreim wuist, klick aufn [badge:Neiche E-Mail]-Button in da Symbolleistn. I fahr da an Rich-Text-Editor auf."
+        "text": "I liebs, wennst schnei arbatn konnst. Wennst de Tastatur liaba mogst:"
       },
       {
-        "type": "grid",
-        "cards": [
-          {
-            "title": "Smarte Adressierung",
-            "text": "Fang oafach o, an Nam z'tippn. I such in deim Adressbuch und schlog da automatisch den richtign Kontakt voa."
-          },
-          {
-            "title": "Rich Text & Inline-Buidl",
-            "text": "Moch dei E-Mails schee. I gib da an volln Editor, woast Text fett mocha, Listn erstelln und sogar Buidl direkt in den Text eifügn konnst."
-          },
-          {
-            "title": "Anhänge",
-            "text": "Muasst a Datei mitschicka? Klick auf [badge:Dateien ohänga] oda ziag de Dateien oafach vo deim Rechner direkt in mei Editor-Fenster (Drag & Drop)."
-          },
-          {
-            "title": "Entwurfsschutz",
-            "text": "Lass da Zeit beim Schreim. I speicher dein Fortschritt automatisch im Hintergrund im 'Entwürfe'-Ordner, damit nix valoan geht."
-          }
+        "type": "ul",
+        "items": [
+          "Nutz de [key:↑] und [key:↓] Pfeile, um gschmeidig durch dein Posteingang z'gleitn.",
+          "Nutz [key:←] und [key:→], um E-Mail-Valäuf sofort aus- oda eiz'klappn.",
+          "Druck [key:Entf] oda [key:Rücktaste], um a E-Mail direkt in Papierkorb z'vaschiabn.",
+          "Hoid [key:Umschalt] druckt und nutz de Pfeile (oda klick), um mehrane E-Mails auf oamoi auszwähln."
         ]
+      },
+      {
+        "type": "tip",
+        "text": "*Handy-Tipp:* Wennst auf deim Smartphone oda Tablet bist, probier Wischgesten aus! Wisch a E-Mail nach rechts, um se als glesn/unglesn z'markiern, oda nach links, um se z'löschen. Außadem blend i de Seitenleistn auf kloane Buidlschirm automatisch aus, damitst mehra Platz zum Lesn host."
+      },
+      {
+        "type": "h2",
+        "text": "💾 Als PDF speichern & Cloud-Export"
+      },
+      {
+        "type": "p",
+        "text": "Muasst a wichtige Rechnung oda Untahaltung archiviern? I ko da do komplexe Aufgabn abnemma! Klick beim Lesn vo oana E-Mail aufn [badge:Speichern]-Button:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "**Als EML speichern:** I lod de rohe Original-E-Mail-Datei obea, perfekt um se spada in Outlook oda Thunderbird aufz'mocha.",
+          "**Als PDF speichern:** I wandel de E-Mail in a scheens, druckfertigs PDF-Dokument um.",
+          "**Cloud-Export:** Anstatt ses auf dei Gerät obazlodn, konnst ma sogn, dass i de E-Mail direkt in oam vo deine Cloud-Ordner speichan soi!"
+        ]
+      },
+      {
+        "type": "tip",
+        "text": "*PDF-Funktion:* Wennst di entscheidst, a E-Mail als PDF z'speichan, ko i olle Buidl und PDF-Dokumente, de an de E-Mail ohängt san, nehma und se in a oanzige, umfassende PDF-Datei zsammführn! Du konnst sogar de Reihenfolge vo de Anhänge ändern oda ned benötigte ausschliaßn, bevor i des endgültige Dokument generier."
       }
     ]
   },
@@ -306,26 +314,46 @@
       },
       {
         "type": "h2",
-        "text": "⌨️ Tastatur"
+        "text": "⌨️ Tastatur (Shortcuts)"
+      },
+      {
+        "type": "p",
+        "text": "Du konnst mi fast komplett ohne Maus bedienen. Des san alle Kürzel, de i versteh:"
       },
       {
         "type": "grid",
         "cards": [
           {
-            "title": "Navigiern",
-            "text": "[key:↑] [key:↓] Wähln<br>[key:Enter] Auf<br>[key:Backspace] Nauf"
+            "title": "Navigiern & Ansicht",
+            "text": "[key:↑] [key:↓] Wähln<br>[key:Bild Auf] [key:Bild Ab] Scrolln<br>[key:Enter] Aufmacha<br>[key:Backspace] Nauf<br>[key:Pos1] / [key:Ende] Listen-Endn<br>[key:Alt]+[key:←]/[key:→] Verlauf Zruck/Vira<br>[key:Strg]+[key:1]/[key:2]/[key:3] Ansicht wechsln"
           },
           {
             "role": "write",
             "title": "Action",
-            "text": "[key:F2] Umbenenna<br>[key:Entf] Löschen"
+            "text": "[key:F2] Umbenenna<br>[key:Entf] Löschen<br>[key:Umschalt]+[key:Entf] Für imma löschen<br>[key:Strg]+[key:Umschalt]+[key:N] Neuer Ordner<br>[key:Strg]+[key:Z] Rückgängig (4s Limit)<br>[key:Strg]+[key:R] Aktualisiern"
           },
           {
             "role": "write",
-            "title": "Ois wähln",
-            "text": "[key:Strg]+[key:A]"
+            "title": "Suacha & Wähln",
+            "text": "[key:Strg]+[key:S] Globale Suche<br>[key:Strg]+[key:F] Ordner durchsuacha<br>[key:Strg]+[key:L] Pfad eingem<br>[key:Umschalt]+[key:↓]/[key:↑] Mehrere wähln<br>[key:Strg]+[key:C]/[key:X]/[key:V] Kopiern/Ausschneidn/Einfügn<br>[key:Strg]+[key:A] Ois wähln"
           }
         ]
+      },
+      {
+        "type": "h2",
+        "text": "📱 Touch (Handy/Tablet)"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "*Dippn:* Wähln.",
+          "*Zwoamal dippn:* Aufmacha.",
+          "*Lang drucka:* Menü aufmacha."
+        ]
+      },
+      {
+        "type": "tip",
+        "text": "*Tipp:* Lass mi am Handy de \"Markierungskästchen\" aus de Optionen hernemma. Des macht as Auswählen vui leichter."
       }
     ]
   },
@@ -657,7 +685,7 @@
       {
         "type": "h1",
         "icon": "search",
-        "text": "Suche"
+        "text": "Suche & Volltext-Index"
       },
       {
         "type": "h2",
@@ -665,15 +693,68 @@
       },
       {
         "type": "p",
-        "text": "Tipp einfach d'ersten Buchstbn. I spring hi."
-      },
-      {
-        "type": "h2",
-        "text": "2. Globale Suche 🔍"
+        "text": "*Ort:* Direkt in da Listn."
       },
       {
         "type": "p",
-        "text": "Da such i in alle Unterordner."
+        "text": "Tipp einfach d'ersten Buchstbn vo da Datei auf da Tastatur. I spring sofort zum ersten Treffer im aktuellen Ordner. Perfekt für lange Listen."
+      },
+      {
+        "type": "h2",
+        "text": "2. Globale Suche & Volltext (Dialog) 🔍"
+      },
+      {
+        "type": "p",
+        "text": "*Ort:* Druck [key:Strg]+[key:S] (oda klick aufn [badge:Suche]-Knopf)."
+      },
+      {
+        "type": "p",
+        "text": "Da such i durch dei ganzen Dateien. Wenn mei Volltext-Index lafft, schau i ned nur aufn Dateinamen, sondern les a direkt im Dokument! Du konnst echt starke Filter nehma, um ois in Sekundenschnelle z'finden:"
+      },
+      {
+        "type": "table",
+        "headers": [
+          "Befehl / Kürzel",
+          "Wos des duat & Beispui"
+        ],
+        "rows": [
+          {
+            "c1": "*Platzhoita* (`*` / `?`)",
+            "c2": "Nimm `*` für mehrere Zeichn (`inv*2024.pdf`) oder `?` für oans (`img_00?.jpg`)."
+          },
+          {
+            "c1": "*Genaue Phrase & Nähe* (`\"\"` / `\" \"N`)",
+            "c2": "Such nach genauen Phrasen mit Anführungszeichen (`\"tax audit\"`). Pack a Zahl dazu fürn Wortabstand (`\"tax audit\"10`)."
+          },
+          {
+            "c1": "*Dateiendung* (`ext:`)",
+            "c2": "Nach Typ filtern. Beispiel: `budget ext:pdf` oda `ext:xlsx`."
+          },
+          {
+            "c1": "*Ordner & Name* (`dir:` / `fn:`)",
+            "c2": "Bstimmte Ordner (`dir:invoices`) oder Dateinamen (`fn:receipt*`) durchsuacha."
+          },
+          {
+            "c1": "*Metadaten* (`author:` / `title:` / `from:` / `to:`)",
+            "c2": "Nach Autor, Titel oda E-Mail-Absender/Empfänger suacha (`from:boss@example.com`)."
+          },
+          {
+            "c1": "*Größe & Datum* (`size:` / `date:`)",
+            "c2": "Nach Dateigröße (`size>100k OR size<2M`) oda am bstimmten Datumsbereich filtern (`date:2023-01-01/2023-12-31`)."
+          },
+          {
+            "c1": "*Kategorien* (`rclcat:`)",
+            "c2": "Nach Recoll-Kategorien filtern. Geht für: `text`, `spreadsheet`, `presentation`, `media`, `message`. Beispiel: `rclcat:spreadsheet`."
+          },
+          {
+            "c1": "*Logik* (`OR` / `AND` / `-`)",
+            "c2": "Begriffe kombiniern (`apple OR orange`), beides verlanga (`apple AND juice`), oder wos ausschliaßn (`-milk`)."
+          }
+        ]
+      },
+      {
+        "type": "tip",
+        "text": "*Tipp:* I zeig da de Ergebnisse in ana Listn. Doppelklick einfach auf a Ergebnis direkt im Suchfenster, dann mach is da sofort auf!"
       }
     ]
   },
@@ -883,6 +964,137 @@
             "text": "Du konnst jedn Kontakt bearbeitn, um mehra E-Mail-Adressn, Telefonnumman, eana Firma hinzuzfügn und sogar spezielle Sicherheitsschlüssl an eana Profil z'hänga."
           }
         ]
+      }
+    ]
+  },
+  {
+    "id": "mail_composer",
+    "icon": "edit",
+    "title": "Da Webmail-Editor",
+    "keywords": "schreim vafassn sendn editor anhänge cloud vorlagn zrucknemma",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "edit",
+        "text": "Da Webmail-Editor"
+      },
+      {
+        "type": "p",
+        "text": "E-Mails schreim is mit mia a Kinderspui. Klick oafach aufn [badge:Neiche E-Mail]-Button, und i klapp an leistungsstarkn Rich-Text-Editor fia di auf."
+      },
+      {
+        "type": "h2",
+        "text": "✨ Smarte Funktiona"
+      },
+      {
+        "type": "grid",
+        "cards": [
+          {
+            "title": "Smarte Adressierung",
+            "text": "Fang oafach o, an Nam oda a Adress z'tippn. I durchsuch dein Adressbuch und kürzlich kontaktierte Personen und bewert se danach, wia oft du mit eana sprichst, um da sofort den richtign Kontakt vorz'schlogn."
+          },
+          {
+            "title": "Vorlagn",
+            "text": "Tippst imma wieda de gleichn Antworten? Speicher se als Vorlagn! Du konnst an vorgefertigtn Text (inklusive Betreff) mit am oanzign Klick eifügn."
+          },
+          {
+            "title": "Aliase & Signaturn",
+            "text": "Wennst mehrane Adressn (wia 'info@' oda 'support@') vawaltst, konnstas ganz oafach im 'Von'-Dropdown auswähln. I füg dann automatisch de richtige Signatur fia den Alias ei!"
+          },
+          {
+            "title": "Entwurfsschutz",
+            "text": "Lass da Zeit beim Schreim. Wennst vasuchst, des Fensta z'schliaßn, greif i ei und frog di, ob i dei Arbat sicha in deim 'Entwürfe'-Ordner speichan soi, damit nix valoan geht."
+          }
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "📎 Anhänge & Cloud-Links"
+      },
+      {
+        "type": "p",
+        "text": "Du konnst Dateien vo deim Computa per Drag-and-Drop direkt in mein Editor ziang oda sogar Buidl direkt in den Text eifügn (i bett se perfekt ei). I erlaub da a, Dateien oz'hänga, de scho in deina Cloud lieng!"
+      },
+      {
+        "type": "tip",
+        "text": "*Automatische Cloud-Links:* E-Mail-Server mögn koane riesign Dateien. Wennst mehr als 20 MB an Dateien ohängst, greif i ei und biet da a praktische Hilfe: I ko de massivn Dateien automatisch in an sichan Ordner in deina Cloud hochlodn und stattdessn an schee formatiertn Freigabelink direkt in dein E-Mail-Text eifügn!"
+      },
+      {
+        "type": "h2",
+        "text": "⏳ Senden zrucknemma"
+      },
+      {
+        "type": "p",
+        "text": "Mia olle macha Fehler. Wennst auf [badge:Sendn] druckst, vaschick i de E-Mail ned sofort. I gib da an 5-Sekundn-Countdown am untan Buidlschirmrand. Wennst an Tippfehler entdekst oda an Anhang vagessn host, druck oafach [badge:Zrucknemma] und i ziag de E-Mail direkt in den Editor zruck!"
+      }
+    ]
+  },
+  {
+    "id": "mailbox_security_general",
+    "icon": "lock",
+    "title": "Webmail-Sicherheit",
+    "keywords": "sicherheit dmarc spf bimi phishing tracking pixel cache vaschlüsselt sicha",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "lock",
+        "text": "Webmail-Sicherheit & Privatsphäre"
+      },
+      {
+        "type": "p",
+        "text": "I schütz di vor unerwünschtn Eimischunga im Internet. Mei Webmail verfügt über integrierte, robuste Sicherheitsfunktiona, um di vor Trackern, Betrügern und Schnüfflern sicha z'hoidn."
+      },
+      {
+        "type": "h2",
+        "text": "🛡️ Privatsphäre & Tracking-Schutz"
+      },
+      {
+        "type": "p",
+        "text": "Marketer und unbefugte Absender liebn es, unsichtbare 'Tracking-Pixel' in E-Mails eiz'bettn, um genau z'segn, wann und wo du se aufmachst. Ned mit mia!"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "I blockier standardmäßig olle externen Buidl, es sei denn, da Absender steht auf deina Vertrauenslistn.",
+          "Selbst wennst di entscheidst, Buidl z'lodn, lass i den Absender ned dei echte IP-Adresse segn. I ruf de Buidl über mein eignan sichan Proxy-Server ab.",
+          "I scann aktiv Buidl-Links und blockier bekannte Tracker-Muster."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "✅ Echtheits-Siegel"
+      },
+      {
+        "type": "p",
+        "text": "Jeda ko a 'Von'-Adress fälschn. Um dem entgenz'wirkn, analysier i forensisch de unsichtbarn digitaln Signaturn (DMARC, SPF und BIMI), de an jede E-Mail ohängt san. Schau direkt neban Nam des Absenders fia mei Urteil:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "**Grüns Häkal:** Perfekt! Da Absender is verifiziert und authentisch.",
+          "**Gelbe Fragezeichn:** Partielle Authentifizierung. Sei a wengal vorsichtig.",
+          "**Rots 'Ned vertrauenswürdig':** De E-Mail is bei de Authentifizierungsprüfunga durchgfoin. Es is sehr wahrscheinli, dass se um a gefälschte Nachricht handelt."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "🎣 Anti-Phishing & Link-Scanner"
+      },
+      {
+        "type": "p",
+        "text": "Wenn a E-Mail höchst verdächtig ausschaut (z.B. bewert se mei Spam-Bewertungs-Engine mit über 7.0), isolier i den Inhalt und platzier a groß Warnbanner obm, damitst woast, dassd vorsichtig sei muasst."
+      },
+      {
+        "type": "tip",
+        "text": "*Link-Wächter:* Betrüger liebn 'Homograph-Angriffe' (de Vawendung ausländischa Buachstabn, de genau wia Standardbuachstabn ausschaun, um a Website z'fälschn) oda des Vasteckn schlechta Links unter harmlosem Text. Wennst auf an Link klickst, analysier i sofort des Ziel. Wenn de Domain ned mitm Absender übereinstimmt oda wenn i täuschende Zeichn entdeck, blockier i den Klick und warn di, bevor dein Browser de Seitn jemals aufmacht!"
+      },
+      {
+        "type": "h2",
+        "text": "🔐 Vaschlüsselter lokala Cache"
+      },
+      {
+        "type": "p",
+        "text": "Damitst dei E-Mails blitzschnei lesn konnst, speicher is lokal zwischn. Aba i lass dei persönlichn Datn ned ungeschützt umanandalieng! I komprimier und vaschlüssl dein gesamtn Offline-E-Mail-Cache stark (mit robusta AES-256-GCM-Vaschlüsselung). Selbst wenn unbefugte Software oda Benutzer Zugriff auf de Rohdateien auf deina Festplattn darlanga, bleibm dei E-Mails absolut unlesbar."
       }
     ]
   },

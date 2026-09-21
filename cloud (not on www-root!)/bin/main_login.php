@@ -976,7 +976,23 @@ class Login {
 					if (strpos($stored_hash, '$') === 0) {
 						if (password_verify($password, $stored_hash)) {
 							$authenticated = true;
-							if (password_needs_rehash($stored_hash, PASSWORD_ARGON2ID)) {}
+							if (password_needs_rehash($stored_hash, PASSWORD_ARGON2ID) && is_writable($this->user_db)) {
+								$new_secure_hash = password_hash($password, PASSWORD_ARGON2ID);
+								$handle = @fopen($this->user_db, 'r+');
+								if ($handle && flock($handle, LOCK_EX)) {
+									$content = stream_get_contents($handle);
+									$pattern = "/(['\"]" . preg_quote($username, '/') . "['\"]\s*=>\s*)(['\"][^'\"]+['\"])/";
+									if (preg_match($pattern, $content)) {
+										$new_content = preg_replace_callback($pattern, function($m) use ($new_secure_hash) {
+											return $m[1] . "'" . $new_secure_hash . "'";
+										}, $content);
+										if ($new_content && $new_content !== $content) {
+											rewind($handle); fwrite($handle, $new_content); ftruncate($handle, ftell($handle));
+										}
+									}
+									flock($handle, LOCK_UN); fclose($handle);
+								}
+							}
 						}
 					} elseif (!$this->force_argon2_only && hash_equals($stored_hash, hash('sha256', $password))) {
 						$authenticated = true;

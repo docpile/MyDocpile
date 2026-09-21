@@ -250,7 +250,7 @@
     "id": "mail_tab",
     "icon": "email",
     "title": "Das Webmail-Erlebnis",
-    "keywords": "mail email webmail posteingang schreiben lesen senden empfangen nachrichten",
+    "keywords": "mail email webmail posteingang schreiben lesen senden empfangen nachrichten pdf cloud",
     "content": [
       {
         "type": "h1",
@@ -263,52 +263,60 @@
       },
       {
         "type": "h2",
-        "text": "🖥️ Das Drei-Spalten-Layout"
+        "text": "🖥️ Das Layout & Navigation"
       },
       {
         "type": "p",
-        "text": "Ich habe meine E-Mail-Oberfläche so organisiert, dass du den bestmöglichen Überblick hast. Wenn du den Mail-Tab öffnest, teile ich deinen Bildschirm in drei übersichtliche Bereiche:"
+        "text": "Ich habe meine E-Mail-Oberfläche so organisiert, dass du den bestmöglichen Überblick hast. Ich teile deinen Bildschirm in drei übersichtliche Bereiche:"
       },
       {
         "type": "ul",
         "items": [
-          "**Links (Der Baum):** Hier zeige ich deine E-Mail-Konten und Ordner (Posteingang, Gesendet, Entwürfe usw.). Wenn du mehrere Konten hast, kannst du sie hier ein- und ausklappen.",
-          "**Mitte (Die Liste):** Ich zeige dir alle Nachrichten für den ausgewählten Ordner. Du kannst sie sortieren, nach ungelesenen Nachrichten filtern oder meine Diskussionsfaden-Ansicht einschalten.",
+          "**Links (Der Baum):** Hier zeige ich deine E-Mail-Konten und Ordner. Wenn du mehrere Konten hast, bündelt meine 'SmartBox' all deine ungelesenen E-Mails an einem Ort!",
+          "**Mitte (Die Liste):** Ich zeige dir alle Nachrichten für den ausgewählten Ordner. Du kannst sie nach Datum oder Absender sortieren, nach ungelesenen filtern oder meine smarte Diskussionsfaden-Ansicht einschalten.",
           "**Rechts (Der Lesebereich):** Klicke auf eine E-Mail in der Mitte, und ich öffne sie dir direkt hier. Keine nervigen Popups nötig!"
         ]
       },
       {
-        "type": "tip",
-        "text": "*Handy-Tipp:* Wenn du auf deinem Smartphone bist, verstecke ich natürlich die Bereiche, die du gerade nicht brauchst, damit du genug Platz zum Lesen hast. Du kannst den [badge:Zurück]-Button nutzen, um zwischen Ordnerliste, Nachrichtenliste und Leseansicht hin und her zu wischen."
-      },
-      {
         "type": "h2",
-        "text": "✍️ Nachrichten verfassen"
+        "text": "⌨️ Tastenkürzel & Wischgesten"
       },
       {
         "type": "p",
-        "text": "Wenn du eine E-Mail schreiben willst, klicke auf den [badge:Neue E-Mail]-Button in der Symbolleiste. Ich fahre dir einen Rich-Text-Editor auf."
+        "text": "Ich liebe es, wenn du schnell arbeiten kannst. Wenn du die Tastatur bevorzugst:"
       },
       {
-        "type": "grid",
-        "cards": [
-          {
-            "title": "Smarte Adressierung",
-            "text": "Fang einfach an, einen Namen zu tippen. Ich suche in deinem Adressbuch und schlage dir automatisch den richtigen Kontakt vor."
-          },
-          {
-            "title": "Rich Text & Inline-Bilder",
-            "text": "Mach deine E-Mails schön. Ich gebe dir einen vollen Editor, wo du Text fett machen, Listen erstellen und sogar Bilder direkt in den Text einfügen kannst."
-          },
-          {
-            "title": "Anhänge",
-            "text": "Musst du eine Datei mitschicken? Klicke auf [badge:Dateien anhängen] oder ziehe die Dateien einfach von deinem Rechner direkt in mein Editor-Fenster (Drag & Drop)."
-          },
-          {
-            "title": "Entwurfsschutz",
-            "text": "Lass dir Zeit beim Schreiben. Ich speichere deinen Fortschritt automatisch im Hintergrund im 'Entwürfe'-Ordner, damit nichts verloren geht."
-          }
+        "type": "ul",
+        "items": [
+          "Nutze die [key:↑] und [key:↓] Pfeile, um geschmeidig durch deinen Posteingang zu gleiten.",
+          "Nutze [key:←] und [key:→], um E-Mail-Verläufe sofort aus- oder einzuklappen.",
+          "Drücke [key:Entf] oder [key:Rücktaste], um eine E-Mail direkt in den Papierkorb zu verschieben.",
+          "Halte [key:Umschalt] gedrückt und nutze die Pfeile (oder klicke), um mehrere E-Mails auf einmal auszuwählen."
         ]
+      },
+      {
+        "type": "tip",
+        "text": "*Handy-Tipp:* Wenn du auf deinem Smartphone oder Tablet bist, probiere Wischgesten aus! Wische eine E-Mail nach rechts, um sie als gelesen/ungelesen zu markieren, oder nach links, um sie zu löschen. Außerdem blende ich die Seitenleisten auf kleinen Bildschirmen automatisch aus, damit du mehr Platz zum Lesen hast."
+      },
+      {
+        "type": "h2",
+        "text": "💾 Als PDF speichern & Cloud-Export"
+      },
+      {
+        "type": "p",
+        "text": "Musst du eine wichtige Rechnung oder Unterhaltung archivieren? Ich kann dir hier komplexe Aufgaben abnehmen! Klicke beim Lesen einer E-Mail auf den [badge:Speichern]-Button:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "**Als EML speichern:** Ich lade die rohe Original-E-Mail-Datei herunter, perfekt um sie später in Outlook oder Thunderbird zu öffnen.",
+          "**Als PDF speichern:** Ich wandle die E-Mail in ein schönes, druckfertiges PDF-Dokument um.",
+          "**Cloud-Export:** Anstatt sie auf dein Gerät herunterzuladen, kannst du mir sagen, dass ich die E-Mail direkt in einem deiner Cloud-Ordner speichern soll!"
+        ]
+      },
+      {
+        "type": "tip",
+        "text": "*PDF-Funktion:* Wenn du dich entscheidest, eine E-Mail als PDF zu speichern, kann ich alle Bilder und PDF-Dokumente, die an diese E-Mail angehängt sind, nehmen und sie in einer einzigen, umfassenden PDF-Datei zusammenführen! Du kannst sogar die Reihenfolge der Anhänge ändern oder nicht benötigte ausschließen, bevor ich das endgültige Dokument generiere."
       }
     ]
   },
@@ -431,18 +439,18 @@
         "type": "grid",
         "cards": [
           {
-            "title": "Navigation",
-            "text": "[key:↑] [key:↓] Wählen<br>[key:Bild][key:↑] [key:↓] Seite blättern<br>[key:Enter] Öffnen<br>[key:Backspace] Zurück (Ebene hoch)<br>[key:Pos1] / [key:Ende] Liste Anfang/Ende"
+            "title": "Navigation & Ansicht",
+            "text": "[key:↑] [key:↓] Wählen<br>[key:Bild][key:↑] [key:↓] Seite blättern<br>[key:Enter] Öffnen<br>[key:Backspace] Zurück (Ebene hoch)<br>[key:Pos1] / [key:Ende] Liste Anfang/Ende<br>[key:Alt]+[key:←]/[key:→] Verlauf Zurück/Vor<br>[key:Strg]+[key:1]/[key:2]/[key:3] Ansichtsmodus wechseln"
           },
           {
             "role": "write",
             "title": "Aktionen",
-            "text": "[key:F2] Umbenennen<br>[key:Entf] Löschen<br>[key:Strg]+[key:R] Aktualisieren"
+            "text": "[key:F2] Umbenennen<br>[key:Entf] Löschen<br>[key:Umschalt]+[key:Entf] Dauerhaft löschen<br>[key:Strg]+[key:Umschalt]+[key:N] Neuer Ordner<br>[key:Strg]+[key:Z] Rückgängig (4s)<br>[key:Strg]+[key:R] Aktualisieren"
           },
           {
             "role": "write",
-            "title": "Auswahl",
-            "text": "[key:Umschalt]+[key:↓]/[key:↑] Mehrere auswählen<br>[key:Strg]+[key:C]/[key:X]/[key:V] Kopieren/Ausschn./Einfügen[br][key:Strg]+[key:A] Alles wählen"
+            "title": "Suche & Auswahl",
+            "text": "[key:Strg]+[key:S] Globale Suche<br>[key:Strg]+[key:F] Im Ordner suchen<br>[key:Strg]+[key:L] Zum Pfad springen<br>[key:Umschalt]+[key:↓]/[key:↑] Mehrere auswählen<br>[key:Strg]+[key:C]/[key:X]/[key:V] Kopieren/Ausschn./Einfügen[br][key:Strg]+[key:A] Alles wählen"
           }
         ]
       },
@@ -993,7 +1001,7 @@
       {
         "type": "h1",
         "icon": "search",
-        "text": "Suche"
+        "text": "Suche & Volltext-Index"
       },
       {
         "type": "h2",
@@ -1005,31 +1013,64 @@
       },
       {
         "type": "p",
-        "text": "Wir brauchen gar keinen Dialog! Tippe einfach die ersten Buchstaben einer Datei auf deiner Tastatur. Ich springe sofort zur ersten passenden Datei im aktuellen Ordner. Ideal, damit wir in langen Listen schnell navigieren können."
+        "text": "Ohne Umwege! Tippe einfach die ersten Buchstaben einer Datei auf deiner Tastatur. Ich springe sofort zum ersten Treffer im aktuellen Ordner. Ideal, um schnell in langen Listen zu navigieren."
       },
       {
         "type": "h2",
-        "text": "2. Globale Suche (Dialog) 🔍"
+        "text": "2. Globale Suche & Volltext-Index (Dialog) 🔍"
       },
       {
         "type": "p",
-        "text": "*Ort:* Button [badge:Suche]."
+        "text": "*Ort:* Drücke [key:Strg]+[key:S] (oder klicke den [badge:Suche] Button)."
       },
       {
         "type": "p",
-        "text": "In diesem Dialog durchsuche ich *rekursiv* alle Unterordner, ausgehend vom aktuellen Ordner. Du kannst Filter für mich kombinieren:"
+        "text": "In diesem Dialog scanne ich deine Dateien. Wenn mein Volltext-Index aktiv ist, prüfe ich nicht nur Dateinamen – ich suche direkt im Inhalt deiner Dokumente! Du kannst mächtige Operatoren kombinieren, um alles in Sekundenbruchteilen zu finden:"
       },
       {
-        "type": "ul",
-        "items": [
-          "*Name:* Gib mir einen Teil des Namens. Leer lassen = Ich finde alles (was zu den Filtern passt).",
-          "*Datum:* \"Letzte 24h\", \"Letzte Woche\" oder \"Benutzerdefiniert\" (Wähle ein Von-Bis Datum).",
-          "*Größe:* \"Klein\", \"Riesig\" oder \"Benutzerdefiniert\" (Gib mir exakte Min/Max MB)."
+        "type": "table",
+        "headers": [
+          "Operator / Suchbegriff",
+          "Was es tut & Beispiele"
+        ],
+        "rows": [
+          {
+            "c1": "*Platzhalter* (`*` / `?`)",
+            "c2": "Nutze `*` für mehrere Zeichen (`inv*2024.pdf`) oder `?` für ein einzelnes Zeichen (`img_00?.jpg`)."
+          },
+          {
+            "c1": "*Genaue Phrase & Nähe* (`\"\"` / `\" \"N`)",
+            "c2": "Suche nach exakten Phrasen in Anführungszeichen (`\"tax audit\"`). Füge eine Zahl für den maximalen Wortabstand hinzu (`\"tax audit\"10`)."
+          },
+          {
+            "c1": "*Dateiendung* (`ext:`)",
+            "c2": "Nach Dateityp filtern. Beispiel: `budget ext:pdf` oder `ext:xlsx`."
+          },
+          {
+            "c1": "*Ordner & Dateiname* (`dir:` / `fn:`)",
+            "c2": "Bestimmte Ordner (`dir:invoices`) oder Dateinamen (`fn:receipt*`) durchsuchen."
+          },
+          {
+            "c1": "*Metadaten* (`author:` / `title:` / `from:` / `to:`)",
+            "c2": "Nach Dokumentautor, Titel oder E-Mail-Absender/Empfänger suchen (`from:boss@example.com`)."
+          },
+          {
+            "c1": "*Größe & Datum* (`size:` / `date:`)",
+            "c2": "Nach Dateigröße (`size>100k OR size<2M`) oder genauen Datumsbereichen filtern (`date:2023-01-01/2023-12-31`)."
+          },
+          {
+            "c1": "*Kategorien* (`rclcat:`)",
+            "c2": "Nach Recoll-Kategorien filtern. Verfügbar: `text`, `spreadsheet`, `presentation`, `media`, `message`. Beispiel: `rclcat:spreadsheet`."
+          },
+          {
+            "c1": "*Logik* (`OR` / `AND` / `-`)",
+            "c2": "Begriffe kombinieren (`apple OR orange`), beide verlangen (`apple AND juice`) oder Wörter ausschließen (`-milk`)."
+          }
         ]
       },
       {
         "type": "tip",
-        "text": "*Tipp:* Die Ergebnisse präsentiere ich dir als Liste. Du kannst direkt im Suchfenster auf eine Datei doppelklicken, damit ich sie öffne."
+        "text": "*Tipp:* Ich zeige dir die Ergebnisse als Liste. Doppelklicke auf ein Ergebnis direkt im Suchfenster, um es sofort von mir öffnen zu lassen!"
       }
     ]
   },
@@ -1255,6 +1296,137 @@
             "text": "Du kannst jeden Kontakt bearbeiten, um mehrere E-Mail-Adressen, Telefonnummern, deren Firma hinzuzufügen und sogar spezielle Sicherheitsschlüssel an ihr Profil zu hängen."
           }
         ]
+      }
+    ]
+  },
+  {
+    "id": "mail_composer",
+    "icon": "edit",
+    "title": "Der Webmail-Editor",
+    "keywords": "schreiben verfassen senden editor anhänge cloud vorlagen rückgängig",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "edit",
+        "text": "Der Webmail-Editor"
+      },
+      {
+        "type": "p",
+        "text": "E-Mails schreiben ist mit mir ein Kinderspiel. Klicke einfach auf den [badge:Neue E-Mail]-Button, und ich klappe einen leistungsstarken Rich-Text-Editor für dich auf."
+      },
+      {
+        "type": "h2",
+        "text": "✨ Smarte Funktionen"
+      },
+      {
+        "type": "grid",
+        "cards": [
+          {
+            "title": "Smarte Adressierung",
+            "text": "Fang einfach an, einen Namen oder eine Adresse zu tippen. Ich durchsuche dein Adressbuch und kürzlich kontaktierte Personen und bewerte sie danach, wie oft du mit ihnen sprichst, um dir sofort den richtigen Kontakt vorzuschlagen."
+          },
+          {
+            "title": "Vorlagen",
+            "text": "Tippst du immer wieder die gleichen Antworten? Speichere sie als Vorlagen! Du kannst einen vorgefertigten Text (inklusive Betreff) mit einem einzigen Klick einfügen."
+          },
+          {
+            "title": "Aliase & Signaturen",
+            "text": "Wenn du mehrere Adressen (wie 'info@' oder 'support@') verwaltest, kannst du diese ganz einfach im 'Von'-Dropdown auswählen. Ich füge dann automatisch die richtige Signatur für diesen Alias ein!"
+          },
+          {
+            "title": "Entwurfsschutz",
+            "text": "Lass dir Zeit beim Schreiben. Wenn du versuchst, das Fenster zu schließen, greife ich ein und frage dich, ob ich deine Arbeit sicher in deinem 'Entwürfe'-Ordner speichern soll, damit nichts verloren geht."
+          }
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "📎 Anhänge & Cloud-Links"
+      },
+      {
+        "type": "p",
+        "text": "Du kannst Dateien von deinem Computer per Drag-and-Drop direkt in meinen Editor ziehen oder sogar Bilder direkt in den Text einfügen (ich bette sie perfekt ein). Ich erlaube dir auch, Dateien anzuhängen, die bereits in deiner Cloud liegen!"
+      },
+      {
+        "type": "tip",
+        "text": "*Automatische Cloud-Links:* E-Mail-Server mögen keine riesigen Dateien. Wenn du mehr als 20 MB an Dateien anhängst, greife ich ein und biete dir eine praktische Hilfe: Ich kann diese massiven Dateien automatisch in einen sicheren Ordner in deiner Cloud hochladen und stattdessen einen schön formatierten Freigabelink direkt in deinen E-Mail-Text einfügen!"
+      },
+      {
+        "type": "h2",
+        "text": "⏳ Senden rückgängig machen"
+      },
+      {
+        "type": "p",
+        "text": "Wir alle machen Fehler. Wenn du auf [badge:Senden] drückst, verschicke ich die E-Mail nicht sofort. Ich gebe dir einen 5-Sekunden-Countdown am unteren Bildschirmrand. Wenn du einen Tippfehler entdeckst oder einen Anhang vergessen hast, drücke einfach [badge:Rückgängig] und ich ziehe die E-Mail direkt in den Editor zurück!"
+      }
+    ]
+  },
+  {
+    "id": "mailbox_security_general",
+    "icon": "lock",
+    "title": "Webmail-Sicherheit",
+    "keywords": "sicherheit dmarc spf bimi phishing tracking pixel cache verschlüsselt sicher",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "lock",
+        "text": "Webmail-Sicherheit & Privatsphäre"
+      },
+      {
+        "type": "p",
+        "text": "Ich schütze dich vor unerwünschten Einmischungen im Internet. Mein Webmail verfügt über integrierte, robuste Sicherheitsfunktionen, um dich vor Trackern, Betrügern und Schnüfflern sicher zu halten."
+      },
+      {
+        "type": "h2",
+        "text": "🛡️ Privatsphäre & Tracking-Schutz"
+      },
+      {
+        "type": "p",
+        "text": "Marketer und unbefugte Absender lieben es, unsichtbare 'Tracking-Pixel' in E-Mails einzubetten, um genau zu sehen, wann und wo du sie öffnest. Nicht mit mir!"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Ich blockiere standardmäßig alle externen Bilder, es sei denn, der Absender steht auf deiner Vertrauensliste.",
+          "Selbst wenn du dich entscheidest, Bilder zu laden, lasse ich den Absender nicht deine echte IP-Adresse sehen. Ich rufe die Bilder über meinen eigenen sicheren Proxy-Server ab.",
+          "Ich scanne aktiv Bild-Links und blockiere bekannte Tracker-Muster."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "✅ Authentifizierungs-Badges"
+      },
+      {
+        "type": "p",
+        "text": "Jeder kann eine 'Von'-Adresse fälschen. Um dem entgegenzuwirken, analysiere ich forensisch die unsichtbaren digitalen Signaturen (DMARC, SPF und BIMI), die an jede E-Mail angehängt sind. Schau direkt neben den Namen des Absenders für mein Urteil:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "**Grünes Häkchen:** Perfekt! Der Absender ist verifiziert und authentisch.",
+          "**Gelbe Fragezeichen:** Partielle Authentifizierung. Sei ein wenig vorsichtig.",
+          "**Rotes 'Nicht vertrauenswürdig':** Die E-Mail ist bei den Authentifizierungsprüfungen durchgefallen. Es ist sehr wahrscheinlich, dass es sich um eine gefälschte Nachricht handelt."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "🎣 Anti-Phishing & Link-Scanner"
+      },
+      {
+        "type": "p",
+        "text": "Wenn eine E-Mail höchst verdächtig aussieht (z. B. bewertet sie meine Spam-Bewertungs-Engine mit über 7.0), isoliere ich den Inhalt und platziere ein großes Warnbanner oben, damit du weißt, dass du vorsichtig sein musst."
+      },
+      {
+        "type": "tip",
+        "text": "*Link-Wächter:* Betrüger lieben 'Homograph-Angriffe' (die Verwendung ausländischer Buchstaben, die genau wie Standardbuchstaben aussehen, um eine Website zu fälschen) oder das Verstecken schlechter Links unter harmlosem Text. Wenn du auf einen Link klickst, analysiere ich sofort das Ziel. Wenn die Domain nicht mit dem Absender übereinstimmt oder wenn ich täuschende Zeichen entdecke, blockiere ich den Klick und warne dich, bevor dein Browser die Seite jemals öffnet!"
+      },
+      {
+        "type": "h2",
+        "text": "🔐 Verschlüsselter lokaler Cache"
+      },
+      {
+        "type": "p",
+        "text": "Damit du deine E-Mails blitzschnell lesen kannst, speichere ich sie lokal zwischen. Aber ich lasse deine persönlichen Daten nicht ungeschützt herumliegen! Ich komprimiere und verschlüssele deinen gesamten Offline-E-Mail-Cache stark (mit robuster AES-256-GCM-Verschlüsselung). Selbst wenn unbefugte Software oder Benutzer Zugriff auf die Rohdateien auf deiner Festplatte erhalten, bleiben deine E-Mails absolut unlesbar."
       }
     ]
   },

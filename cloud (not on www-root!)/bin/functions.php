@@ -403,7 +403,7 @@ function gethostbyaddr_timeout($ip, $dns = "8.8.8.8", $timeout = 1000)
             // move pointer on to the next segment
             $position += $len[1] + 1;
         }
-        while ($len != 0);
+        while ($len[1] != 0);
         // error - return the hostname we constructed (without the . on the end)
         return $ip;
     }
@@ -788,7 +788,7 @@ function myCloudStripJsComments($str) {
         // Regex usually follows a punctuation like ( = , : ! & | ? { or keyword 'return'.
         if ($char === '/') {
             // Look backward for non-whitespace to guess context
-            $lastChar = substr(trim(substr($output, 0, -1) . $output[strlen($output)-1] ?? ''), -1);
+            $lastChar = substr(trim($output), -1);
             if (preg_match('/[\(\=\,\:\!\&\|\?\{\;\r\n]/', $lastChar) || $output === '') {
                  $inRegex = true;
             }

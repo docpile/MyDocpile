@@ -328,10 +328,12 @@ window.myCloudTaskStart = async function() {
     window.myCloudActiveTasks++;
     if ('setAppBadge' in navigator) navigator.setAppBadge(window.myCloudActiveTasks).catch(()=>{});
     
-    if ('wakeLock' in navigator && window.myCloudWakeLock === null) {
+    if ('wakeLock' in navigator && !window.myCloudWakeLock && !window._wakeLockRequesting) {
+        window._wakeLockRequesting = true;
         try {
             window.myCloudWakeLock = await navigator.wakeLock.request('screen');
         } catch (err) {}
+		window._wakeLockRequesting = false;
     }
 };
 

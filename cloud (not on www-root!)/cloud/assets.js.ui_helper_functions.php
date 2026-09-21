@@ -11,8 +11,7 @@
  */
  
 ?><script>
- 
-<script>
+
 
 function updateToggleUI(btn, targetIsPreview) {
 
@@ -725,6 +724,8 @@ function myCloudFetchDirectory(path, depth = 2, silent = false) {
         if (resp.status === 'OK') {
             if (resp.role) myCloudUserRole = resp.role;
 
+                if (!myCloudState.encryptedDirs) myCloudState.encryptedDirs = new Set();
+
                 if (resp.is_encrypted_root && typeof myCloudCrypto !== 'undefined') {
                     myCloudState.encryptedDirs.add(resp.crypto_root);
                     if (!myCloudCrypto.isDirUnlocked(resp.crypto_root)) {
@@ -739,7 +740,6 @@ function myCloudFetchDirectory(path, depth = 2, silent = false) {
                 }
 			
             // Build Global Registry of Encrypted Directories
-            if (!myCloudState.encryptedDirs) myCloudState.encryptedDirs = new Set();
             if (resp.is_encrypted_root) myCloudState.encryptedDirs.add(resp.crypto_root);
             resp.data.forEach(newItem => {
 				if (newItem.isEncrypted) myCloudState.encryptedDirs.add(newItem.name);
@@ -797,6 +797,18 @@ function myCloudFetchDirectory(path, depth = 2, silent = false) {
             // 4. Update State
             myCloudState.allItems = Array.from(itemMap.values());
             myCloudState.items = myCloudState.allItems;
+
+            // Local History Tracking for Alt+Left / Alt+Right
+            if (!window._isHistoryNavigating) {
+                if (!window.myCloudLocalHistory) { window.myCloudLocalHistory = []; window.myCloudLocalHistoryIdx = -1; }
+                if (window.myCloudLocalHistoryIdx < window.myCloudLocalHistory.length - 1) {
+                    window.myCloudLocalHistory = window.myCloudLocalHistory.slice(0, window.myCloudLocalHistoryIdx + 1);
+                }
+                if (window.myCloudLocalHistory[window.myCloudLocalHistory.length - 1] !== path) {
+                    window.myCloudLocalHistory.push(path);
+                    window.myCloudLocalHistoryIdx++;
+                }
+            }
             
             // Check for Media existence & Auto Switch
             const hasMedia = myCloudState.allItems.some(i => {
@@ -924,7 +936,7 @@ window.myCloudAction_EncryptPrompt = function(dirPath, forceUnlock = false, onSu
                 // 2. SETUP/ENCRYPT PHASE
                 const { payload } = await myCloudCrypto.unlockDirectory(dirPath, password, null);
                
-                const fd = newSearchParams({ 
+                const fd = new SearchParams({ 
                     myCloud_action: 'crypto_init', 
                     myCloud_key: myCloudState.key, 
                     myCloud_token: typeof myCloudCsrfToken !== 'undefined' ? myCloudCsrfToken : '', 
@@ -1357,7 +1369,7 @@ async function _cloudExProceedDownload(path, filename, isPreview) {
             throw new Error(res.msg || res.message || 'Server Error');
         }
 
-        let downloadUrl = window.location.pathname + '?myCloud_token=' + res.token + '&nocache=' + Date.now();;
+        let downloadUrl = window.location.pathname + '?myCloud_token=' + res.token + '&nocache=' + Date.now();
         let finalFilename = filename;
         let isDecryptedBlob = false;
 		let memoryBlob = null;
@@ -1380,7 +1392,9 @@ async function _cloudExProceedDownload(path, filename, isPreview) {
                 }
 
                 try {
-                    const encryptedBlob = await fetch(downloadUrl).then(r => r.blob());
+                    const r = await fetch(downloadUrl);
+                    if (!r.ok) throw new Error("Network response was not OK");
+                    const encryptedBlob = await r.blob();
                     const root = myCloudCrypto.getCryptoRoot(path);
                     const decryptedBlob = await myCloudCrypto.decryptFile(root, encryptedBlob);
                     downloadUrl = URL.createObjectURL(decryptedBlob);
@@ -2965,7 +2979,6 @@ function myCloudInitKeyboardNav() {
         }
     }, true);
 
-
     // 2. TREE KEYS
     tree.addEventListener('keydown', (e) => {
         if (e.key === 'Tab') return; // Handled by global
@@ -3587,6 +3600,124 @@ document.addEventListener('wheel', (e) => {
         e.preventDefault(); // Block native browser page zoom everywhere else
     }
 }, { passive: false });
+
+// ============================================================
+// GLOBAL KEYBOARD SHORTCUTS & APP COMMANDS
+// ============================================================
+window.addEventListener('keydown', (e) => {
+    const modifier = (e.ctrlKey || e.metaKey);
+    
+    // --- 1. UNIVERSAL SHORTCUTS ---
+    // Ctrl+Z: Undo 4-Second Action (Clicks the Toast button if active)
+    if (modifier && !e.shiftKey && (e.code === 'KeyZ')) {
+        const undoBtn = document.getElementById('ceUndoBtn');
+        if (undoBtn) {
+            e.preventDefault(); e.stopPropagation();
+            undoBtn.click();
+            return;
+        }
+    }
+
+    // --- 2. EXPLORER SHORTCUTS (Guarded against Email/Office/Editor) ---
+    if (typeof myCloudState !== 'undefined' && myCloudState) {
+        if (myCloudState.interface === 'email' || myCloudState.isOfficeMode) return;
+        const editorWrap = document.getElementById('myCloudEditor_modal_wrap');
+        if (editorWrap && editorWrap.offsetParent !== null) return;
+
+        // Check if Modals are open
+        const overlay = document.getElementById('myCloudModalOverlay');
+        const isModalOpen = (overlay && overlay.style.display === 'flex');
+        
+        // Ctrl+S: Global Search
+        if (modifier && !e.shiftKey && e.code === 'KeyS') {
+            e.preventDefault(); e.stopPropagation();
+            if (isModalOpen) {
+                const modal = document.getElementById('myCloudModal');
+                if (modal && modal.classList.contains('search-modal')) {
+                    const searchInput = document.getElementById('myCloudSearchInput');
+                   if (searchInput) searchInput.focus();
+                }
+                return;
+            }
+            if (typeof myCloudAction_Search === 'function') myCloudAction_Search();
+            return;
+        }
+
+        // Only process the rest if no modals are open
+        if (isModalOpen) return;
+
+        // Ctrl+F: Find (Command Palette)
+        if (modifier && !e.shiftKey && e.code === 'KeyF') {
+            e.preventDefault(); e.stopPropagation();
+            if (typeof myCloudShowCommandPalette === 'function') myCloudShowCommandPalette();
+            return;
+        }
+
+        // Ctrl+L: Focus Path Bar (Go To)
+        if (modifier && !e.shiftKey && e.code === 'KeyL') {
+            e.preventDefault(); e.stopPropagation();
+            if (typeof myCloudShowInputModal === 'function') {
+                myCloudShowInputModal(typeof myCloud_LANG !== 'undefined' ? myCloud_LANG.go_to || 'Go To' : 'Go To', 'Path:', myCloudState.currentDir, (newPath) => { 
+                    myCloudHandleEnter({ name: newPath, size: 'DIR' }); 
+                }, false);
+            }
+            return;
+        }
+
+        // Ctrl+Shift+N: New Folder
+        if (modifier && e.shiftKey && e.code === 'KeyN') {
+            e.preventDefault(); e.stopPropagation();
+            if (typeof myCloudAction_NewFolder === 'function') myCloudAction_NewFolder();
+            return;
+        }
+
+        // Shift+Delete: Permanent Delete
+        if (e.shiftKey && !modifier && e.code === 'Delete') {
+            if (myCloudState.selectedFiles && myCloudState.selectedFiles.length > 0) {
+                e.preventDefault(); e.stopPropagation();
+                const msg = typeof myCloud_LANG !== 'undefined' && myCloud_LANG.delete_perm_confirm ? myCloud_LANG.delete_perm_confirm : 'Permanently delete ' + myCloudState.selectedFiles.length + ' item(s)? This cannot be undone.';
+                myCloudShowAlert('Permanent Delete', msg, async () => {
+                    myCloudShowLoading();
+                    for (let p of myCloudState.selectedFiles) {
+                        const fd = new URLSearchParams({ myCloud_action: 'delete', myCloud_key: myCloudState.key, myCloud_token: window.myCloudCsrfToken, src: p, permanent: 'true' });
+                        await fetch('', { method: 'POST', body: fd });
+                    }
+                    myCloudHideLoading();
+                    myCloudSurgicalRemove(myCloudState.selectedFiles);
+                    myCloudFetchDirectory(myCloudState.currentDir, 2, true);
+                });
+            }
+            return;
+        }
+
+        // Alt+Left / Alt+Right: Local History Navigation
+        if (e.altKey && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) {
+            e.preventDefault(); e.stopPropagation();
+            if (!window.myCloudLocalHistory) return;
+            
+            const moveHistory = (offset) => {
+                window.myCloudLocalHistoryIdx += offset;
+                window._isHistoryNavigating = true;
+                myCloudHandleEnter({ name: window.myCloudLocalHistory[window.myCloudLocalHistoryIdx], size: 'DIR' });
+                setTimeout(() => { window._isHistoryNavigating = false; }, 500);
+            };
+
+            if (e.code === 'ArrowLeft' && window.myCloudLocalHistoryIdx > 0) moveHistory(-1);
+            else if (e.code === 'ArrowRight' && window.myCloudLocalHistoryIdx < window.myCloudLocalHistory.length - 1) moveHistory(1);
+            return;
+        }
+
+        // Ctrl+1, 2, 3: Switch View Modes
+        if (modifier && !e.shiftKey && !e.altKey && ['Digit1', 'Digit2', 'Digit3'].includes(e.code)) {
+            e.preventDefault(); e.stopPropagation();
+            if (e.code === 'Digit1') { myCloudState.viewMode = 'list'; if (myCloudState.isCommanderMode && typeof myCloudToggleCommander === 'function') myCloudToggleCommander(); else myCloudRenderUI(); } 
+            else if (e.code === 'Digit2') { myCloudState.viewMode = 'symbol'; if (myCloudState.isCommanderMode && typeof myCloudToggleCommander === 'function') myCloudToggleCommander(); else myCloudRenderUI(); } 
+            else if (e.code === 'Digit3') { if (!myCloudState.isCommanderMode && typeof myCloudToggleCommander === 'function') myCloudToggleCommander(); }
+            return;
+        }
+    }
+}, { capture: true });
+
 
 /* ==========================================
    APP-LIKE HARDWARE BACK BUTTON HANDLER

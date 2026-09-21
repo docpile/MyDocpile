@@ -286,7 +286,7 @@ if (isset($_SESSION['loggedin']) && $_SESSION['loggedin'] === true) {
 	if (file_exists($loginRole) && is_readable($loginRole)) {
 		require_once $loginRole;
 	} else {
-		require_once $work_dir . '/main_menu/notfound.php';;
+		require_once $work_dir . '/main_menu/notfound.php';
 	}
 // --- LOGGED IN ---
 }

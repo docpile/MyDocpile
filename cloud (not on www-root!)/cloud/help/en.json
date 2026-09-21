@@ -250,7 +250,7 @@
     "id": "mail_tab",
     "icon": "email",
     "title": "The Webmail Experience",
-    "keywords": "mail email webmail inbox compose read send receive messages",
+    "keywords": "mail email webmail inbox compose read send receive messages pdf cloud",
     "content": [
       {
         "type": "h1",
@@ -263,52 +263,60 @@
       },
       {
         "type": "h2",
-        "text": "🖥️ The Three-Pane Layout"
+        "text": "🖥️ The Layout & Navigation"
       },
       {
         "type": "p",
-        "text": "I have organized my email interface to give you the best overview possible. When you open the Mail Tab, I split your screen into three neat sections:"
+        "text": "I have organized my email interface to give you the best overview possible. I split your screen into three neat sections:"
       },
       {
         "type": "ul",
         "items": [
-          "**Left (The Tree):** Here I show your email accounts and folders (Inbox, Sent, Drafts, etc.). If you have multiple accounts, you can collapse and expand them here.",
-          "**Middle (The List):** I display all your messages for the selected folder. You can sort them, filter them for unread messages, or switch on my conversation thread view.",
+          "**Left (The Tree):** Here I show your email accounts and folders. If you have multiple accounts, my 'SmartBox' aggregates all your unread mail in one place!",
+          "**Middle (The List):** I display all your messages for the selected folder. You can sort them by date or sender, filter them to show only unread messages, or switch on my smart conversation thread view.",
           "**Right (The Reading Pane):** Click on any email in the middle, and I will open it for you right here. No annoying popups needed!"
         ]
       },
       {
-        "type": "tip",
-        "text": "*Mobile Tip:* If you are on your smartphone, I will naturally hide the panes you don't need at the moment so you have enough space to read. You can use the [badge:Back] button to slide between the folder list, message list, and reading view."
-      },
-      {
         "type": "h2",
-        "text": "✍️ Composing Messages"
+        "text": "⌨️ Shortcuts & Touch Gestures"
       },
       {
         "type": "p",
-        "text": "When you want to write an email, click the [badge:New mail] button in the toolbar. I will slide open a rich text composer for you."
+        "text": "I love letting you work fast. If you prefer the keyboard:"
       },
       {
-        "type": "grid",
-        "cards": [
-          {
-            "title": "Smart Addressing",
-            "text": "Just start typing a name. I will search through your Address Book and automatically suggest the right contact for you."
-          },
-          {
-            "title": "Rich Text & Inline Images",
-            "text": "Make your emails look great. I give you a full editor where you can bold text, create lists, and even paste images directly into the text."
-          },
-          {
-            "title": "Attachments",
-            "text": "Need to send a file? Click [badge:Attach Files] or simply drag and drop files from your computer straight into my composer window."
-          },
-          {
-            "title": "Draft Protection",
-            "text": "Take your time writing. I automatically save your progress in the background to your 'Drafts' folder so nothing gets lost."
-          }
+        "type": "ul",
+        "items": [
+          "Use the [key:↑] and [key:↓] arrows to glide through your inbox.",
+          "Use [key:←] and [key:→] to instantly expand or collapse email threads.",
+          "Hit [key:Del] or [key:Backspace] to send an email straight to the trash.",
+          "Hold [key:Shift] and use the arrows (or click) to select multiple emails at once."
         ]
+      },
+      {
+        "type": "tip",
+        "text": "*Mobile Tip:* If you are on your smartphone or tablet, try swiping! Swipe an email to the right to mark it as read/unread, or swipe it to the left to delete it. I also automatically hide the sidebars on small screens to give you more reading room."
+      },
+      {
+        "type": "h2",
+        "text": "💾 Save as PDF & Cloud Export"
+      },
+      {
+        "type": "p",
+        "text": "Do you need to archive an important invoice or conversation? I can do some heavy lifting for you here! Click the [badge:Save] button while reading an email:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "**Save as EML:** I will download the raw, original email file, perfect for opening in Outlook or Thunderbird later.",
+          "**Save as PDF:** I will convert the email into a beautiful, print-ready PDF document.",
+          "**Cloud Export:** Instead of downloading to your device, you can tell me to save the email directly into one of your cloud folders!"
+        ]
+      },
+      {
+        "type": "tip",
+        "text": "*PDF Feature:* If you choose to save an email as a PDF, I can grab all the images and PDF documents attached to that email and merge them into a single, comprehensive PDF file! You can even rearrange the order of the attachments or exclude the ones you don't need before I generate the final document."
       }
     ]
   },
@@ -391,7 +399,7 @@
     "id": "basic",
     "icon": "controls",
     "title": "Controls & Selection",
-    "keywords": "mouse keyboard touch selection click drag marquee input methods",
+    "keywords": "mouse keyboard touch selection click drag marquee input methods shortcuts",
     "content": [
       {
         "type": "h1",
@@ -431,18 +439,18 @@
         "type": "grid",
         "cards": [
           {
-            "title": "Navigation",
-            "text": "[key:↑] [key:↓] Select<br>[key:PgUp] [key:PgDn] Scroll<br>[key:Enter] Open<br>[key:Backspace] Go Up<br>[key:Home] / [key:End] Jump Lists"
+            "title": "Navigation & Views",
+            "text": "[key:↑] [key:↓] Select<br>[key:PgUp] [key:PgDn] Scroll<br>[key:Enter] Open<br>[key:Backspace] Go Up<br>[key:Home] / [key:End] Jump Lists<br>[key:Alt]+[key:←]/[key:→] History Back/Forward<br>[key:Ctrl]+[key:1]/[key:2]/[key:3] Switch View Modes"
           },
           {
             "role": "write",
             "title": "Action",
-            "text": "[key:F2] Rename<br>[key:Del] Delete<br>[key:Ctrl]+[key:R] Refresh"
+            "text": "[key:F2] Rename<br>[key:Del] Delete<br>[key:Shift]+[key:Del] Permanent Delete<br>[key:Ctrl]+[key:Shift]+[key:N] New Folder<br>[key:Ctrl]+[key:Z] Undo (4s limit)<br>[key:Ctrl]+[key:R] Refresh"
           },
           {
             "role": "write",
-            "title": "Select",
-            "text": "[key:Shift]+[key:↓]/[key:↑] Select multiple<br>[key:Ctrl]+[key:C]/[key:X]/[key:V] Copy/Cut/Paste[br][key:Ctrl]+[key:A] Select All"
+            "title": "Search & Select",
+            "text": "[key:Ctrl]+[key:S] Global Search<br>[key:Ctrl]+[key:F] Inline Find<br>[key:Ctrl]+[key:L] Go To Path<br>[key:Shift]+[key:↓]/[key:↑] Select multiple<br>[key:Ctrl]+[key:C]/[key:X]/[key:V] Copy/Cut/Paste<br>[key:Ctrl]+[key:A] Select All"
           }
         ]
       },
@@ -988,12 +996,12 @@
     "id": "search",
     "icon": "search",
     "title": "Dialog: Search",
-    "keywords": "search find filter date size query dialog type seek",
+    "keywords": "search find filter date size query dialog type seek index recoll wildcard rclcat syntax",
     "content": [
       {
         "type": "h1",
         "icon": "search",
-        "text": "Search"
+        "text": "Search & Full-Text Index"
       },
       {
         "type": "h2",
@@ -1009,27 +1017,60 @@
       },
       {
         "type": "h2",
-        "text": "2. Global Search (Dialog) 🔍"
+        "text": "2. Global Search & Full-Text Index (Dialog) 🔍"
       },
       {
         "type": "p",
-        "text": "*Location:* Button [badge:Search] ."
+        "text": "*Location:* Hit [key:Ctrl]+[key:S] (or click the [badge:Search] button)."
       },
       {
         "type": "p",
-        "text": "In this dialog, I scan *recursively* through all subfolders of your current folder. You can combine filters for me:"
+        "text": "In this dialog, I scan through your files. When my full-text index is active, I don't just check filenames—I search directly inside the contents of your documents! You can combine powerful query operators to find anything in a split second:"
       },
       {
-        "type": "ul",
-        "items": [
-          "*Name:* Give me part of filename. Empty = I find All (matching filters).",
-          "*Date:* \"Last 24h\", \"Last Week\" or \"Custom\" (Select date range).",
-          "*Size:* \"Small\", \"Huge\" or \"Custom\" (Give me exact Min/Max MB)."
+        "type": "table",
+        "headers": [
+          "Operator / Expression",
+          "What it does & Examples"
+        ],
+        "rows": [
+          {
+            "c1": "*Wildcards* (`*` / `?`)",
+            "c2": "Use `*` for multiple characters (`inv*2024.pdf`) or `?` for a single character (`img_00?.jpg`)."
+          },
+          {
+            "c1": "*Exact Phrase & Proximity* (`\"\"` / `\" \"N`)",
+            "c2": "Search for exact phrases using quotes (`\"tax audit\"`). Add a number for word proximity (`\"tax audit\"10`)."
+          },
+          {
+            "c1": "*File Extension* (`ext:`)",
+            "c2": "Filter by file type. Example: `budget ext:pdf` or `ext:xlsx`."
+          },
+          {
+            "c1": "*Folder & Filename* (`dir:` / `fn:`)",
+            "c2": "Target specific folders (`dir:invoices`) or filenames (`fn:receipt*`)."
+          },
+          {
+            "c1": "*Metadata* (`author:` / `title:` / `from:` / `to:`)",
+            "c2": "Search document authors, titles, or email sender/recipient headers (`from:boss@example.com`)."
+          },
+          {
+            "c1": "*Size & Date Ranges* (`size:` / `date:`)",
+            "c2": "Filter by file weight (`size>100k OR size<2M`) or specific date boundaries (`date:2023-01-01/2023-12-31`)."
+          },
+          {
+            "c1": "*Categories* (`rclcat:`)",
+            "c2": "Filter by Recoll category groups. Available categories: `text`, `spreadsheet`, `presentation`, `media`, `message`. Example: `rclcat:spreadsheet`."
+          },
+          {
+            "c1": "*Boolean Logic* (`OR` / `AND` / `-`)",
+            "c2": "Combine terms (`apple OR orange`), require both (`apple AND juice`), or exclude words (`-milk`)."
+          }
         ]
       },
       {
         "type": "tip",
-        "text": "*Tip:* I show you the results as a list. You can double-click a result directly in the search window to ask me to open it."
+        "text": "*Tip:* I show you the results as a list. You can double-click a result directly in the search window to ask me to open it instantly!"
       }
     ]
   },
@@ -1255,6 +1296,137 @@
             "text": "You can edit any contact to add multiple email addresses, phone numbers, their company, and even attach specific security keys to their profile."
           }
         ]
+      }
+    ]
+  },
+  {
+    "id": "mail_composer",
+    "icon": "edit",
+    "title": "The Webmail Composer",
+    "keywords": "compose write send editor attachments cloud templates undo",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "edit",
+        "text": "The Webmail Composer"
+      },
+      {
+        "type": "p",
+        "text": "Writing emails with me is a breeze. Just hit the [badge:New mail] button, and I'll slide open a powerful rich-text composer."
+      },
+      {
+        "type": "h2",
+        "text": "✨ Smart Features"
+      },
+      {
+        "type": "grid",
+        "cards": [
+          {
+            "title": "Smart Addressing",
+            "text": "Just start typing a name or address. I will search through your Address Book and recently contacted people, scoring them by how often you talk, to instantly suggest the right contact."
+          },
+          {
+            "title": "Templates",
+            "text": "Do you type the same replies over and over? Save them as Templates! You can insert a pre-written text (including the subject line) with a single click."
+          },
+          {
+            "title": "Aliases & Signatures",
+            "text": "If you manage multiple addresses (like 'info@' or 'support@'), you can easily select them from the 'From' dropdown. I will automatically swap in the correct signature for that alias!"
+          },
+          {
+            "title": "Draft Protection",
+            "text": "Take your time writing. If you try to close the window, I will step in and ask if you want me to save your work securely to your 'Drafts' folder so nothing gets lost."
+          }
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "📎 Attachments & Cloud Links"
+      },
+      {
+        "type": "p",
+        "text": "You can drag and drop files from your computer straight into my editor, or even paste images directly into the text (I'll embed them perfectly). I also let you attach files that already live inside your cloud!"
+      },
+      {
+        "type": "tip",
+        "text": "*Automatic Cloud Links:* Email servers dislike massive files. If you attach more than 20MB of files, I will step in and offer a convenient helper: I can automatically upload those massive files into a secure folder in your cloud and insert a beautifully formatted sharing link directly into your email body instead!"
+      },
+      {
+        "type": "h2",
+        "text": "⏳ Undo Send"
+      },
+      {
+        "type": "p",
+        "text": "We all make mistakes. When you hit [badge:Send], I don't send the email immediately. I will give you a 5-second countdown banner at the bottom of the screen. If you spot a typo or forgot an attachment, just hit [badge:Undo] and I will pull the email right back into the editor!"
+      }
+    ]
+  },
+  {
+    "id": "mailbox_security_general",
+    "icon": "lock",
+    "title": "Webmail Security",
+    "keywords": "security dmarc spf bimi phishing tracking pixel cache encrypted safe",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "lock",
+        "text": "Webmail Security & Privacy"
+      },
+      {
+        "type": "p",
+        "text": "I protect you from unwanted interference online. My webmail comes with robust security features built-in to keep you safe from trackers, scams, and snoops."
+      },
+      {
+        "type": "h2",
+        "text": "🛡️ Privacy & Tracking Protection"
+      },
+      {
+        "type": "p",
+        "text": "Marketers and unauthorized senders love to embed invisible 'tracking pixels' in emails to see exactly when and where you open them. Not on my watch!"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "I block all external images by default unless the sender is in your trusted list.",
+          "Even if you choose to load images, I don't let the sender see your real IP address. I fetch the images through my own secure proxy server.",
+          "I actively scan image links and block known tracker patterns (like 'collect', 'track', or 'open')."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "✅ Authentication Badges"
+      },
+      {
+        "type": "p",
+        "text": "Anyone can fake a 'From' address. To combat this, I forensically analyze the invisible digital signatures (DMARC, SPF, and BIMI) attached to every email. Look right next to the sender's name for my verdict:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "**Green Checkmark:** Perfect! The sender is verified and authentic.",
+          "**Yellow Question Marks:** Partial authentication. Be slightly cautious.",
+          "**Red 'Untrusted':** The email failed authentication checks. It is highly likely to be a spoofed or forged message."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "🎣 Anti-Phishing & Link Scanner"
+      },
+      {
+        "type": "p",
+        "text": "If an email looks highly suspicious (e.g., my spam scoring engine rates it above a 7.0), I will quarantine the content and place a large warning banner at the top so you know to tread carefully."
+      },
+      {
+        "type": "tip",
+        "text": "*Link Guard:* Scammers love 'Homograph attacks' (using foreign letters that look exactly like standard ones to fake a website) or hiding bad links under innocent text. If you click a link, I instantly analyze the destination. If the domain doesn't match the sender, or if I detect deceptive characters, I will intercept the click and warn you before your browser ever opens the page!"
+      },
+      {
+        "type": "h2",
+        "text": "🔐 Encrypted Local Cache"
+      },
+      {
+        "type": "p",
+        "text": "To make reading your emails lightning-fast, I cache them locally. But I don't leave your personal data lying around unprotected! I compress and heavily encrypt your entire offline email cache (using robust AES-256-GCM encryption). Even if unauthorized software or users gain access to the raw files on your hard drive, your emails remain entirely unreadable."
       }
     ]
   },

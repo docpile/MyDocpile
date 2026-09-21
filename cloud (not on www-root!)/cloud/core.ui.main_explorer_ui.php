@@ -1293,7 +1293,7 @@ function myCloudRenderUI() {
                 textSpan.style.fontWeight = 'bold';
             }
         }
-        textSpan.style.flex = '0 1 auto';;
+        textSpan.style.flex = '0 1 auto';
         contentDiv.appendChild(textSpan);
 
 		if (window.myCloudActionAllowed('edit_tags')) {

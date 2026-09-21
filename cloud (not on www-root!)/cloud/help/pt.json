@@ -226,7 +226,7 @@
     "id": "mail_tab",
     "icon": "email",
     "title": "A Experiência Webmail",
-    "keywords": "correio email webmail caixa de entrada escrever ler enviar receber mensagens",
+    "keywords": "correio email webmail caixa de entrada escrever ler enviar receber mensagens pdf nuvem",
     "content": [
       {
         "type": "h1",
@@ -239,52 +239,60 @@
       },
       {
         "type": "h2",
-        "text": "🖥️ O Layout de Três Painéis"
+        "text": "🖥️ O Layout e a Navegação"
       },
       {
         "type": "p",
-        "text": "Organizei a minha interface de e-mail para te dar a melhor visão geral possível. Quando abres o separador Mail, divido o teu ecrã em três secções arrumadas:"
+        "text": "Organizei a minha interface de e-mail para te dar a melhor visão geral possível. Divido o teu ecrã em três secções arrumadas:"
       },
       {
         "type": "ul",
         "items": [
-          "**Esquerda (A Árvore):** Aqui mostro as tuas contas de e-mail e pastas (Caixa de Entrada, Enviados, Rascunhos, etc.). Se tiveres várias contas, podes colapsá-las e expandi-las aqui.",
-          "**Centro (A Lista):** Mostro todos os teus mensagens para a pasta selecionada. Podes ordená-las, filtrá-las para ver apenas as não lidas, ou ativar a minha vista de conversação (threads).",
+          "**Esquerda (A Árvore):** Aqui mostro as tuas contas de e-mail e pastas. Se tiveres várias contas, a minha 'SmartBox' junta todos os teus e-mails não lidos num único sítio!",
+          "**Centro (A Lista):** Mostro todas as tuas mensagens para a pasta selecionada. Podes ordená-las por data ou remetente, filtrá-las para ver apenas as não lidas, ou ativar a minha vista de conversação inteligente.",
           "**Direita (O Painel de Leitura):** Clica em qualquer e-mail no centro, e eu vou abri-lo para ti mesmo aqui. Sem necessidade de popups irritantes!"
         ]
       },
       {
-        "type": "tip",
-        "text": "*Dica Móvel:* Se estiveres no teu smartphone, naturalmente vou esconder os painéis que não precisas no momento para que tenhas espaço suficiente para ler. Podes usar o botão [badge:Voltar] para deslizar entre a lista de pastas, lista de mensagens e a vista de leitura."
-      },
-      {
         "type": "h2",
-        "text": "✍️ Escrever Mensagens"
+        "text": "⌨️ Atalhos e Gestos Tácteis"
       },
       {
         "type": "p",
-        "text": "Quando quiseres escrever um e-mail, clica no botão [badge:Nova mensagem] na barra de ferramentas. Vou abrir um editor de texto enriquecido para ti."
+        "text": "Gosto de te deixar trabalhar depressa. Se preferes o teclado:"
       },
       {
-        "type": "grid",
-        "cards": [
-          {
-            "title": "Endereçamento Inteligente",
-            "text": "Começa apenas a digitar um nome. Vou pesquisar no teu Livro de Endereços e sugerir automaticamente o contacto certo para ti."
-          },
-          {
-            "title": "Texto Enriquecido e Imagens Em Linha",
-            "text": "Deixa os teus e-mails com ótimo aspeto. Dou-te um editor completo onde podes pôr texto a negrito, criar listas e até colar imagens diretamente no texto."
-          },
-          {
-            "title": "Anexos",
-            "text": "Precisas de enviar um ficheiro? Clica em [badge:Anexar Ficheiros] ou simplesmente arrasta e larga ficheiros do teu computador diretamente na minha janela do editor."
-          },
-          {
-            "title": "Proteção de Rascunhos",
-            "text": "Leva o teu tempo a escrever. Gravo automaticamente o teu progresso em segundo plano na tua pasta de 'Rascunhos' para que nada se perca."
-          }
+        "type": "ul",
+        "items": [
+          "Usa as setas [key:↑] e [key:↓] para deslizar suavemente pela tua caixa de entrada.",
+          "Usa [key:←] e [key:→] para expandir ou contrair instantaneamente as conversas de e-mail.",
+          "prime [key:Del] ou [key:Backspace] para enviar um e-mail diretamente para o lixo.",
+          "Mantém premido [key:Shift] e usa as setas (ou clica) para selecionar múltiplos e-mails de uma vez."
         ]
+      },
+      {
+        "type": "tip",
+        "text": "*Dica Móvel:* Se estiveres no teu smartphone ou tablet, tenta deslizar! Desliza um e-mail para a direita para o marcar como lido/não lido, ou para a esquerda para o apagar. Também escondo automaticamente as barras laterais em ecrãs pequenos para te dar mais espaço de leitura."
+      },
+      {
+        "type": "h2",
+        "text": "💾 Guardar como PDF & Exportar para a Nuvem"
+      },
+      {
+        "type": "p",
+        "text": "Precisas de arquivar uma fatura ou conversa importante? Posso fazer trabalhos complexos por ti aqui! Clica no botão [badge:Guardar] enquanto lês um e-mail:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "**Guardar como EML:** Vou descarregar o ficheiro de e-mail original e bruto, perfeito para abrir no Outlook or Thunderbird mais tarde.",
+          "**Guardar como PDF:** Vou converter o e-mail num documento PDF bonito e pronto a imprimir.",
+          "**Exportar para a Nuvem:** Em vez de descarregar para o teu dispositivo, podes dizer-me para guardar o e-mail diretamente numa das tuas pastas na nuvem!"
+        ]
+      },
+      {
+        "type": "tip",
+        "text": "*Recursos de PDF:* Se escolheres guardar um e-mail como PDF, posso recolher todas as imagens e documentos PDF anexados a esse e-mail e fundi-los num único ficheiro PDF abrangente! Podes até reorganizar a ordem dos anexos ou excluir os que não precisas antes de eu gerar o documento final."
       }
     ]
   },
@@ -363,7 +371,7 @@
     "id": "basic",
     "icon": "controls",
     "title": "Controles e Seleção",
-    "keywords": "mouse teclado toque selecao clique arrastar marquee entrada metodos",
+    "keywords": "mouse teclado toque selecao clique arrastar marquee entrada metodos atalhos",
     "content": [
       {
         "type": "h1",
@@ -388,7 +396,7 @@
             "text": "*Clique Direito:* Abro o Menu de Contexto."
           },
           "*Caixa de Seleção:* Clique no espaço vazio e arraste para selecionar vários.",
-          "*Seleção Múltipla:* Segure [key:Shift] ou [key:Ctrl] enquanto clica."
+          "*Seleção Múltipla:* Segure [key:Shift] ou [key:Ctrl] enquanto clica para selecionar vários arquivos."
         ]
       },
       {
@@ -396,21 +404,25 @@
         "text": "⌨️ Teclado (Atalhos)"
       },
       {
+        "type": "p",
+        "text": "Você pode me operar quase totalmente sem um mouse. Aqui estão todos os atalhos que escuto:"
+      },
+      {
         "type": "grid",
         "cards": [
           {
-            "title": "Navegação",
-            "text": "[key:↑] [key:↓] Selecionar<br>[key:Enter] Abrir<br>[key:Backspace] Subir"
+            "title": "Navegação e Vistas",
+            "text": "[key:↑] [key:↓] Selecionar<br>[key:PgUp] [key:PgDn] Rolar<br>[key:Enter] Abrir<br>[key:Backspace] Subir<br>[key:Home] / [key:End] Pular nas listas<br>[key:Alt]+[key:←]/[key:→] Histórico Voltar/Avançar<br>[key:Ctrl]+[key:1]/[key:2]/[key:3] Alternar modo de visualização"
           },
           {
             "role": "write",
             "title": "Ação",
-            "text": "[key:F2] Renomear<br>[key:Del] Deletar<br>[key:Ctrl]+[key:R] Atualizar"
+            "text": "[key:F2] Renomear<br>[key:Del] Deletar<br>[key:Shift]+[key:Del] Deletar permanentemente<br>[key:Ctrl]+[key:Shift]+[key:N] Nova Pasta<br>[key:Ctrl]+[key:Z] Desfazer (limite 4s)<br>[key:Ctrl]+[key:R] Atualizar"
           },
           {
             "role": "write",
-            "title": "Seleção",
-            "text": "[key:Ctrl]+[key:A] Selecionar Tudo"
+            "title": "Busca e Seleção",
+            "text": "[key:Ctrl]+[key:S] Busca Global<br>[key:Ctrl]+[key:F] Busca Local<br>[key:Ctrl]+[key:L] Ir para o Caminho<br>[key:Shift]+[key:↓]/[key:↑] Seleção múltipla<br>[key:Ctrl]+[key:C]/[key:X]/[key:V] Copiar/Cortar/Colar<br>[key:Ctrl]+[key:A] Selecionar Tudo"
           }
         ]
       },
@@ -425,6 +437,10 @@
           "*Duplo Toque:* Abro.",
           "*Pressionar Longo:* Abro o Menu."
         ]
+      },
+      {
+        "type": "tip",
+        "text": "*Dica:* Em um telefone, permita-me usar as \"Caixas de Seleção\" nas Configurações. Isso torna a seleção de arquivos em telas pequenas muito mais fácil."
       }
     ]
   },
@@ -813,12 +829,12 @@
     "id": "search",
     "icon": "search",
     "title": "Diálogo: Busca",
-    "keywords": "buscar encontrar filtro data tamanho consulta dialogo tipo",
+    "keywords": "buscar encontrar filtro data tamanho consulta dialogo tipo indice recoll curinga sintaxe",
     "content": [
       {
         "type": "h1",
         "icon": "search",
-        "text": "Busca"
+        "text": "Busca e Índice de Texto Completo"
       },
       {
         "type": "h2",
@@ -826,23 +842,68 @@
       },
       {
         "type": "p",
-        "text": "Sem formalidades! Apenas digite as primeiras letras de um arquivo. Eu pulo instantaneamente para ele."
-      },
-      {
-        "type": "h2",
-        "text": "2. Busca Global (Diálogo) 🔍"
+        "text": "*Local:* Diretamente na lista de arquivos."
       },
       {
         "type": "p",
-        "text": "Neste diálogo, escaneio *recursivamente* todas as subpastas. Filtros:"
+        "text": "Sem formalidades! Apenas digite as primeiras letras de um arquivo no seu teclado. Eu pulo instantaneamente para o primeiro resultado na pasta atual. Perfeito para navegar rapidamente por listas longas."
       },
       {
-        "type": "ul",
-        "items": [
-          "*Nome:* Parte do nome.",
-          "*Data:* \"Últimas 24h\", \"Semana Passada\" ou \"Personalizado\".",
-          "*Tamanho:* \"Pequeno\", \"Enorme\" ou \"Personalizado\"."
+        "type": "h2",
+        "text": "2. Busca Global e Índice de Texto Completo (Diálogo) 🔍"
+      },
+      {
+        "type": "p",
+        "text": "*Local:* Pressione [key:Ctrl]+[key:S] (ou clique no botão [badge:Busca])."
+      },
+      {
+        "type": "p",
+        "text": "Neste diálogo, verifico seus arquivos. Quando meu índice de texto completo está ativo, não analiso apenas os nomes dos arquivos — procuro diretamente dentro do conteúdo dos seus documentos! Você pode combinar operadores poderosos para encontrar qualquer coisa em uma fração de segundo:"
+      },
+      {
+        "type": "table",
+        "headers": [
+          "Operador / Expressão",
+          "O que faz e Exemplos"
+        ],
+        "rows": [
+          {
+            "c1": "*Curingas* (`*` / `?`)",
+            "c2": "Use `*` para vários caracteres (`inv*2024.pdf`) ou `?` para um único caractere (`img_00?.jpg`)."
+          },
+          {
+            "c1": "*Frase Exata e Proximidade* (`\"\"` / `\" \"N`)",
+            "c2": "Procure frases exatas usando aspas (`\"tax audit\"`). Adicione um número para a proximidade das palavras (`\"tax audit\"10`)."
+          },
+          {
+            "c1": "*Extensão* (`ext:`)",
+            "c2": "Filtre por tipo de arquivo. Exemplo: `budget ext:pdf` ou `ext:xlsx`."
+          },
+          {
+            "c1": "*Pasta e Nome* (`dir:` / `fn:`)",
+            "c2": "Direcione para pastas específicas (`dir:invoices`) ou nomes de arquivos (`fn:receipt*`)."
+          },
+          {
+            "c1": "*Metadados* (`author:` / `title:` / `from:` / `to:`)",
+            "c2": "Busque autores, títulos ou remetentes/destinatários de e-mails (`from:boss@example.com`)."
+          },
+          {
+            "c1": "*Tamanho e Datas* (`size:` / `date:`)",
+            "c2": "Filtre por peso do arquivo (`size>100k OR size<2M`) ou limites de datas específicas (`date:2023-01-01/2023-12-31`)."
+          },
+          {
+            "c1": "*Categorias* (`rclcat:`)",
+            "c2": "Filtre por grupos de categorias do Recoll. Disponíveis: `text`, `spreadsheet`, `presentation`, `media`, `message`. Exemplo: `rclcat:spreadsheet`."
+          },
+          {
+            "c1": "*Lógica Booleana* (`OR` / `AND` / `-`)",
+            "c2": "Combine termos (`apple OR orange`), exija ambos (`apple AND juice`), ou exclua palavras (`-milk`)."
+          }
         ]
+      },
+      {
+        "type": "tip",
+        "text": "*Dica:* Mostro os resultados como uma lista. Você pode clicar duas vezes em qualquer resultado diretamente na janela de busca para pedir que eu o abra na hora!"
       }
     ]
   },
@@ -1056,6 +1117,137 @@
             "text": "Podes editar qualquer contacto para adicionar vários endereços de e-mail, números de telefone, a empresa deles, e até anexar chaves de segurança específicas ao perfil deles."
           }
         ]
+      }
+    ]
+  },
+  {
+    "id": "mail_composer",
+    "icon": "edit",
+    "title": "O Editor de Webmail",
+    "keywords": "compor escrever enviar editor anexos nuvem modelos desfazer",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "edit",
+        "text": "O Editor de Webmail"
+      },
+      {
+        "type": "p",
+        "text": "Escrever e-mails comigo é muito fácil. Basta carregar no botão [badge:Nova mensagem], e eu abrirei um poderoso editor de texto enriquecido para ti."
+      },
+      {
+        "type": "h2",
+        "text": "✨ Funcionalidades Inteligentes"
+      },
+      {
+        "type": "grid",
+        "cards": [
+          {
+            "title": "Endereçamento Inteligente",
+            "text": "Começa apenas a digitar um nome ou endereço. Vou pesquisar no teu Livro de Endereços e contactos recentes, pontuando-os pela frequência com que falas com eles, para te sugerir instantaneamente o contacto certo."
+          },
+          {
+            "title": "Modelos",
+            "text": "Escreves as mesmas respostas vezes sem conta? Guarda-as como Modelos! Podes inserir um texto pré-escrito (incluindo o assunto) com um único clique."
+          },
+          {
+            "title": "Aliases & Assinaturas",
+            "text": "Se geres vários endereços (como 'info@' ou 'suporte@'), podes selecioná-los facilmente no menu pendente 'De'. Vou trocar automaticamente para a assinatura correta desse alias!"
+          },
+          {
+            "title": "Proteção de Rascunhos",
+            "text": "Leva o teu tempo a escrever. Se tentares fechar a janela, intervir-sei e perguntar-te se queres que guarde o teu trabalho em segurança na tua pasta de 'Rascunhos' para que nada se perca."
+          }
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "📎 Anexos & Links na Nuvem"
+      },
+      {
+        "type": "p",
+        "text": "Podes arrastar e largar ficheiros do teu computador diretamente para o meu editor, ou até colar imagens diretamente no texto (eu incorporo-as na perfeição). Também te permito anexar ficheiros que já vivem dentro da tua nuvem!"
+      },
+      {
+        "type": "tip",
+        "text": "*Links Automáticos na Nuvem:* Os servidores de e-mail odeiam ficheiros gigantes. Se anexares mais de 20MB de ficheiros, intervir-sei e oferecerei uma ajuda prática: posso carregar automaticamente esses ficheiros massivos para uma pasta segura na tua nuvem e inserir um link de partilha formatado diretamente no corpo do teu e-mail!"
+      },
+      {
+        "type": "h2",
+        "text": "⏳ Desfazer Envio"
+      },
+      {
+        "type": "p",
+        "text": "Todos nós cometemos erros. Quando clicas em [badge:Enviar], não envio o e-mail de imediato. Dou-te uma contagem decrescente de 5 segundos no fundo do ecrã. Se deres por um erro ortográfico ou te esqueceres de um anexo, basta clicares em [badge:Desfazer] e trago o e-mail de volta para o editor!"
+      }
+    ]
+  },
+  {
+    "id": "mailbox_security_general",
+    "icon": "lock",
+    "title": "Segurança do Webmail",
+    "keywords": "segurança dmarc spf bimi phishing rastreio pixel cache encriptado seguro",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "lock",
+        "text": "Segurança e Privacidade do Webmail"
+      },
+      {
+        "type": "p",
+        "text": "Protejo-te contra interferências indesejadas online. O meu webmail vem com recursos de segurança robustos integrados para te manter a salvo de rastreadores, burlões e cuscos."
+      },
+      {
+        "type": "h2",
+        "text": "🛡️ Privacidade & Proteção Anti-Rastreio"
+      },
+      {
+        "type": "p",
+        "text": "Os marqueteiros e remetentes não autorizados adoram embutir 'píxeis de rastreio' invisíveis nos e-mails para verem exatamente quando e onde os abres. Não comigo!"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Bloqueio todas as imagens externas por predefinição, a menos que o remetente esteja na tua lista de confiança.",
+          "Mesmo que decidas carregar imagens, não deixo o remetente ver o teu verdadeiro endereço IP. Vou buscar as imagens através do meu próprio servidor proxy seguro.",
+          "Faço o varrimento ativo de links de imagens e bloqueio padrões de rastreio conhecidos."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "✅ Crachás de Autenticação"
+      },
+      {
+        "type": "p",
+        "text": "Qualquer um pode falsificar um endereço 'De'. Para combater isto, analiso de forma forense as assinaturas digitais invisíveis (DMARC, SPF e BIMI) anexadas a cada e-mail. Olha mesmo ao lado do nome do remetente para ver o meu Veredicto:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "**Marca de verificação verde:** Perfeito! O remetente está verificado e é autêntico.",
+          "**Pontos de interrogação amarelos:** Autenticação parcial. Sê ligeiramente cauteloso.",
+          "**Vermelho 'Não Confiável':** O e-mail falhou as verificações de autenticação. É altamente provável que seja uma mensagem forjada ou falsificada."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "🎣 Anti-Phishing & Verificador de Links"
+      },
+      {
+        "type": "p",
+        "text": "Se um e-mail parecer altamente suspeito (por exemplo, o meu motor de pontuação de spam classifica-o acima de 7.0), isolarei o conteúdo e colocarei um grande banner de aviso no topo para saberes que deves andar com cuidado."
+      },
+      {
+        "type": "tip",
+        "text": "*Guardião de Links:* Os burlões adoram 'ataques de homógrafos' (usar letras estrangeiras que se parecem exatamente com letras padrão para falsificar um site) ou esconder maus links sob texto inofensivo. Se clicares num link, analiso instantaneamente o destino. Se o domínio não coincidir com o remetente, ou se eu detetar caracteres enganosos, interceptarei o clique e avisar-te-ei antes do teu navegador abrir a página!"
+      },
+      {
+        "type": "h2",
+        "text": "🔐 Cache Local Encriptada"
+      },
+      {
+        "type": "p",
+        "text": "Para tornar a leitura dos teus e-mails ultrarrápida, ponho-os em cache localmente. Mas não deixo os teus dados pessoais abandonados sem proteção! Comprimo e encripto fortemente toda a tua cache de e-mail offline (usando a encriptação robusta AES-256-GCM). Mesmo que software não autorizado ou utilizadores obtenham acesso aos ficheiros brutos no teu disco rígido, os teus e-mails permanecem totalmente ilegíveis."
       }
     ]
   },

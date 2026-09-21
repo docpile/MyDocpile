@@ -480,41 +480,55 @@ window.myCloudShowSearchHelp = function(e, btn) {
 
     const tip = document.createElement('div');
     tip.id = 'myCloudSearchHelpTooltip';
-    tip.style.cssText = 'position:fixed; z-index:21000; background:var(--gray-00); border:1px solid var(--border-medium); box-shadow:0 8px 24px rgba(0,0,0,0.2); border-radius:6px; padding:16px; font-size:14px; color:var(--text-primary); width:350px; font-family:monospace; line-height:1.3;';
+    tip.style.cssText = 'position:fixed; z-index:21000; background:var(--gray-00); border:1px solid var(--border-medium); box-shadow:0 8px 24px rgba(0,0,0,0.2); border-radius:6px; padding:16px; font-size:13.5px; color:var(--text-primary); width:460px; font-family:monospace; line-height:1.4;';
     
     tip.innerHTML = 
-		'<table style="width:100%; border-collapse:collapse;">' +
-             '<tr><td style="padding:2px 0; color:var(--accent-primary); width:30%;">INDEX:</td><td></td></tr>' +
-             '<tr><td style="padding:2px 0; color:var(--accent-primary); width:30%;">*</td><td>inv*2024.pdf</td></tr>' +
-             '<tr><td style="padding:2px 0; color:var(--accent-primary);">?</td><td>img_00?.jpg</td></tr>' +
-             '<tr><td style="padding:2px 0; color:var(--accent-primary);">""</td><td>"exact phrase"</td></tr>' +
-             '<tr><td style="padding:2px 0; color:var(--accent-primary);">" "N</td><td>"tax audit"10 <span style="font-size:10px; color:var(--text-secondary);">(proximity)</span></td></tr>' +
-             '<tr><td style="padding:2px 0; color:var(--accent-primary);">ext:</td><td>tax ext:pdf</td></tr>' +
-             '<tr><td style="padding:2px 0; color:var(--accent-primary);">dir:</td><td>dir:invoices 2024</td></tr>' +
-             '<tr><td style="padding:2px 0; color:var(--accent-primary);">fn:</td><td>fn:receipt* <span style="font-size:10px; color:var(--text-secondary);">(filename)</span></td></tr>' +
-             '<tr><td style="padding:2px 0; color:var(--accent-primary);">author:</td><td>author:john</td></tr>' +
-             '<tr><td style="padding:2px 0; color:var(--accent-primary);">title:</td><td>title:report</td></tr>' +
-             '<tr><td style="padding:2px 0; color:var(--accent-primary);">OR/AND</td><td>apple OR orange</td></tr>' +
-             '<tr><td style="padding:2px 0; color:var(--accent-primary);">( )</td><td>(apple OR orange) AND juice</td></tr>' +
-             '<tr><td style="padding:2px 0; color:var(--accent-primary);">-</td><td>apple -orange</td></tr>' +
+        '<table style="width:100%; border-collapse:collapse;">' +
+             '<tr><td style="padding:2px 0; color:var(--accent-primary); width:28%;">INDEX:</td><td><span style="font-size:11px; color:var(--text-secondary); font-family:sans-serif;">Advanced Search Filters</span></td></tr>' +
+             '<tr><td style="padding:2px 0; color:var(--accent-primary);">* / ?</td><td>inv*20?.pdf <span style="font-size:10px; color:var(--text-secondary);">(Wildcards)</span></td></tr>' +
+             '<tr><td style="padding:2px 0; color:var(--accent-primary);">"" / " "N</td><td>"tax audit"10 <span style="font-size:10px; color:var(--text-secondary);">(Exact / Proximity within N words)</span></td></tr>' +
+             '<tr><td style="padding:2px 0; color:var(--accent-primary);">ext:</td><td>ext:pdf <span style="font-size:10px; color:var(--text-secondary);">(File extension)</span></td></tr>' +
+             '<tr><td style="padding:2px 0; color:var(--accent-primary);">dir: / fn:</td><td>dir:invoices fn:receipt* <span style="font-size:10px; color:var(--text-secondary);">(Folder / File name)</span></td></tr>' +
+             '<tr><td style="padding:2px 0; color:var(--accent-primary);">author: / title:</td><td>author:john title:report</td></tr>' +
+             '<tr><td style="padding:2px 0; color:var(--accent-primary);">from: / to:</td><td>from:boss@example.com <span style="font-size:10px; color:var(--text-secondary);">(Emails)</span></td></tr>' +
+             '<tr><td style="padding:2px 0; color:var(--accent-primary);">size:</td><td>size&gt;100k OR size&lt;2M</td></tr>' +
+             '<tr><td style="padding:2px 0; color:var(--accent-primary);">date:</td><td>date:2023-01-01/2023-12-31</td></tr>' +
+             '<tr><td style="padding:2px 0; color:var(--accent-primary);">rclcat:</td><td>rclcat:spreadsheet <br><span style="font-size:10px; color:var(--text-secondary);">(Categories: text, spreadsheet, presentation, media, message)</span></td></tr>' +
+             '<tr><td style="padding:2px 0; color:var(--accent-primary);">OR / AND / -</td><td>(apple OR orange) AND juice -milk</td></tr>' +
          '</table>';
+         
     document.body.appendChild(tip);
     if (typeof myCloudApplyTheme === 'function') myCloudApplyTheme();
 
     const rect = btn.getBoundingClientRect();
     tip.style.top = (rect.bottom + 6) + 'px';
-    let left = rect.right - 300; // Align right edge with the button
-    if (left < 10) left = 10; // Prevent clipping on small screens
+    let left = rect.right - 460;
+    if (left < 10) left = 10;
     tip.style.left = left + 'px';
 
     setTimeout(() => {
+        const cleanup = () => {
+            tip.remove();
+            document.removeEventListener('click', closer);
+            document.removeEventListener('keydown', keyCloser, true);
+        };
+
         const closer = (ev) => {
             if (!tip.contains(ev.target)) {
-                tip.remove();
-                document.removeEventListener('click', closer);
+                cleanup();
             }
         };
+
+        const keyCloser = (ev) => {
+            if (ev.key === 'Escape') {
+                ev.preventDefault();
+                ev.stopPropagation();
+                cleanup();
+            }
+        };
+
         document.addEventListener('click', closer);
+        document.addEventListener('keydown', keyCloser, true);
     }, 10);
 };
 
@@ -546,7 +560,7 @@ function myCloudRenderSearchResultsTable(dataOverride = null) {
 
     // Display "No results" message if empty.
     if (!items || items.length === 0) {
-        container.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-secondary);">' + myCloud_LANG.no_results + '</div>';'</div>';
+        container.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-secondary);">' + (typeof myCloud_LANG !== 'undefined' && myCloud_LANG.no_results ? myCloud_LANG.no_results : 'No results found') + '</div>';
         return;
     }
 

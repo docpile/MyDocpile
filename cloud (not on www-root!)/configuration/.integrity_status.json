@@ -1,0 +1,37 @@
+{
+    "data": {
+        "status": "failed",
+        "errors": [
+            "HASH_MISMATCH: cloud\/lang\/ko.php",
+            "HASH_MISMATCH: cloud\/lang\/fr.php",
+            "HASH_MISMATCH: cloud\/lang\/uk.php",
+            "HASH_MISMATCH: cloud\/lang\/pt.php",
+            "HASH_MISMATCH: cloud\/lang\/vi.php",
+            "HASH_MISMATCH: cloud\/lang\/bar.php",
+            "HASH_MISMATCH: cloud\/lang\/ru.php",
+            "HASH_MISMATCH: cloud\/lang\/de.php",
+            "HASH_MISMATCH: cloud\/lang\/fa.php",
+            "HASH_MISMATCH: cloud\/lang\/it.php",
+            "HASH_MISMATCH: cloud\/lang\/zh-cn.php",
+            "HASH_MISMATCH: cloud\/lang\/hi.php",
+            "HASH_MISMATCH: cloud\/lang\/es.php",
+            "HASH_MISMATCH: cloud\/lang\/tr.php",
+            "HASH_MISMATCH: cloud\/lang\/en.php",
+            "HASH_MISMATCH: cloud\/lang\/ar.php",
+            "HASH_MISMATCH: cloud\/lang\/pcm.php",
+            "HASH_MISMATCH: cloud\/lang\/ja.php",
+            "HASH_MISMATCH: cloud\/lang\/hes.php",
+            "HASH_MISMATCH: cloud\/modules.email.settings.php",
+            "HASH_MISMATCH: cloud\/modules.email.ui.php",
+            "MISSING_FILE: bin\/security.php",
+            "MISSING_FILE: bin\/geoip.php",
+            "MISSING_FILE: bin\/admin_web_request_handler.php",
+            "MISSING_FILE: cloud\/modules.email.alias_admin.php",
+            "MISSING_FILE: cloud\/controller.server.change_password.php",
+            "MISSING_FILE: cloud\/controller.server.email.alias_admin.php",
+            "MISSING_FILE: cloud\/modules.change_password.php"
+        ],
+        "last_run": 1789999672
+    },
+    "hmac": "0d255fa272516d26bb96a785d931c5cfd3d39b0eb955b9e7af77ad54a346ee79"
+}

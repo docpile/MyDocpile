@@ -144,12 +144,22 @@ window._emailExecuteSyncTasks = async function(tasks) {
 // --- MOBILE VIEW SWITCHER ---
 window._emailSetMobileView = function(view, isPopState) {
     myCloudEmailState.mobileView = view;
-    const t = document.getElementById('emailPaneTree');
-    const l = document.getElementById('emailPaneList');
-    const r = document.getElementById('emailPaneReading');
-    if(t) t.classList.toggle('mobile-active', view === 'tree');
-    if(l) l.classList.toggle('mobile-active', view === 'list');
-    if(r) r.classList.toggle('mobile-active', view === 'reading');
+    const updateDOM = () => {
+        const t = document.getElementById('emailPaneTree');
+        const l = document.getElementById('emailPaneList');
+        const r = document.getElementById('emailPaneReading');
+        if(t) t.classList.toggle('mobile-active', view === 'tree');
+        if(l) l.classList.toggle('mobile-active', view === 'list');
+        if(r) r.classList.toggle('mobile-active', view === 'reading');
+    };
+
+    // Trigger Native View Transition if supported and on a mobile width
+    if (document.startViewTransition && window.innerWidth < 768) {
+        document.startViewTransition(() => updateDOM());
+    } else {
+        updateDOM();
+    }
+
     if (!isPopState && (view === 'reading' || view === 'tree')) {
         window.history.pushState({ ce_email_view: view }, '', null);
         window.myCloudHistoryTrapped = true;
@@ -1059,6 +1069,50 @@ window.myCloudRenderEmailApp = function(container) {
     paneWrapper.appendChild(resizerList);
     paneWrapper.appendChild(paneReading);
 
+    // Native Two-Finger Multi-Select Gesture
+    let isTwoFingerDragging = false;
+    let lastToggledKey = null;
+
+    paneList.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 2) {
+            isTwoFingerDragging = true;
+            e.preventDefault(); // Stop native scrolling
+        }
+    }, { passive: false });
+
+    paneList.addEventListener('touchmove', (e) => {
+        if (isTwoFingerDragging && e.touches.length > 0) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const el = document.elementFromPoint(touch.clientX, touch.clientY);
+            if (!el) return;
+            
+            const listItem = el.closest('.ce-email-list-item');
+            if (listItem && listItem.dataset.msgKey !== lastToggledKey) {
+                lastToggledKey = listItem.dataset.msgKey;
+                
+                if (!myCloudEmailState.selectedMessages) myCloudEmailState.selectedMessages = [];
+                
+                // Toggle selection seamlessly while dragging
+                if (myCloudEmailState.selectedMessages.includes(lastToggledKey)) {
+                    myCloudEmailState.selectedMessages = myCloudEmailState.selectedMessages.filter(k => k !== lastToggledKey);
+                    listItem.classList.remove('selected');
+                } else {
+                    myCloudEmailState.selectedMessages.push(lastToggledKey);
+                    listItem.classList.add('selected');
+                }
+            }
+        }
+    }, { passive: false });
+
+    paneList.addEventListener('touchend', (e) => {
+        if (e.touches.length < 2) {
+            isTwoFingerDragging = false;
+            lastToggledKey = null;
+        }
+    });
+	
+
     // Initialize List View and Sort State
    if (myCloudState.settings) {
        if (myCloudState.settings.emailListFilter) {
@@ -1093,6 +1147,14 @@ window.myCloudRenderEmailApp = function(container) {
 
     container.appendChild(toolbarWrap);
     container.appendChild(paneWrapper);
+
+    // Inject Native Mobile FAB
+    const fabHtml = document.createElement('div');
+    fabHtml.innerHTML = 
+        '<button class="ce-email-mobile-only" onclick="myCloudShowEmailComposer()" style="position: fixed; bottom: 24px; right: 24px; width: 56px; height: 56px; border-radius: 50%; background: var(--accent-primary); color: #fff; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.3); display: flex; justify-content: center; align-items: center; z-index: 1000; cursor: pointer; transition: transform 0.1s; -webkit-tap-highlight-color: transparent;" onmousedown="this.style.transform=\'scale(0.92)\'" onmouseup="this.style.transform=\'scale(1)\'" ontouchstart="this.style.transform=\'scale(0.92)\'" ontouchend="this.style.transform=\'scale(1)\'">' +
+            '<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>' +
+        '</button>';
+    container.appendChild(fabHtml.firstChild);
 
     window._emailSetMobileView('list');
 
@@ -1185,8 +1247,27 @@ window.myCloudRenderEmailApp = function(container) {
                 runPoller();
             }
         });
+
+        // Native Background Sync Fallback: Process outbox instantly upon network recovery
+        window.addEventListener('online', () => {
+            fetch('', { method: 'POST', body: new URLSearchParams({ myCloud_action: 'email_process_outbox', myCloud_key: myCloudState.key, myCloud_token: window.myCloudCsrfToken }) }).catch(()=>{});
+            if ('serviceWorker' in navigator && navigator.serviceWorker.ready) {
+                navigator.serviceWorker.ready.then(reg => { if (reg.sync) reg.sync.register('outbox-sync').catch(()=>{}); });
+            }
+        });
         window._emailVisibilityBound = true;
     }
+
+    // Inject View Transition names dynamically
+    const transitionStyles = document.createElement('style');
+    transitionStyles.innerHTML = `
+        @media (max-width: 767px) {
+            .ce-email-list { view-transition-name: eml-list-pane; }
+            .ce-email-reading { view-transition-name: eml-reading-pane; }
+        }
+        ::view-transition-old(eml-reading-pane), ::view-transition-new(eml-reading-pane) { animation-duration: 0.25s; }
+    `;
+    document.head.appendChild(transitionStyles);
 
     // ResizeObserver for main toolbar labels
     const mainTbWrap = document.getElementById('ceEmlMainToolbarWrap');
@@ -1216,6 +1297,107 @@ window.myCloudRenderEmailApp = function(container) {
         window._emlMainTbResizeObs.observe(mainTbWrap);
         checkMainWrap();
     }
+	
+// --- PULL TO REFRESH (SWIPE DOWN) IMPLEMENTATION ---
+    let ptrStartY = 0;
+    let ptrCurrentY = 0;
+    let ptrIsPulling = false;
+    const ptrThreshold = 60; // Pixels needed to trigger the refresh
+
+    paneList.addEventListener('touchstart', (e) => {
+        const listContent = document.getElementById('ceEmailListContent');
+        // Only trigger if touching inside the list content and it is scrolled to the very top
+        if (listContent && listContent.contains(e.target) && listContent.scrollTop <= 0) {
+            ptrStartY = e.touches[0].clientY;
+            ptrCurrentY = ptrStartY;
+            ptrIsPulling = true;
+            
+            let ptrIndicator = document.getElementById('ceEmlPtr');
+            if (!ptrIndicator) {
+                ptrIndicator = document.createElement('div');
+                ptrIndicator.id = 'ceEmlPtr';
+                // Placed right above the list content
+                ptrIndicator.style.cssText = 'height: 0px; overflow: hidden; display: flex; justify-content: center; align-items: flex-end; padding-bottom: 10px; background: transparent; transition: height 0.2s ease-out; flex-shrink: 0; pointer-events: none;';
+                ptrIndicator.innerHTML = '<div style="color: var(--text-secondary); font-size: 13px; display: flex; align-items: center; gap: 8px;"><svg id="ceEmlPtrIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="transition: transform 0.2s;"><path d="M12 5v14M5 12l7 7 7-7"/></svg><span id="ceEmlPtrText">' + (typeof myCloud_LANG !== 'undefined' && myCloud_LANG.pull_to_refresh ? myCloud_LANG.pull_to_refresh : 'Pull to refresh') + '</span></div>';
+                listContent.parentNode.insertBefore(ptrIndicator, listContent);
+                
+                // Prevent native browser pull-to-refresh to avoid conflict
+                listContent.style.overscrollBehaviorY = 'contain';
+            }
+            ptrIndicator.style.transition = 'none';
+        }
+    }, { passive: true });
+
+    paneList.addEventListener('touchmove', (e) => {
+        if (!ptrIsPulling) return;
+        const listContent = document.getElementById('ceEmailListContent');
+        if (!listContent) return;
+
+        ptrCurrentY = e.touches[0].clientY;
+        let pullDistance = ptrCurrentY - ptrStartY;
+
+        // If pulling down and at the top
+        if (pullDistance > 0 && listContent.scrollTop <= 0) {
+            // Apply a friction multiplier (0.45) so it feels natural and springy
+            let visualDistance = Math.min(pullDistance * 0.45, ptrThreshold + 25);
+            
+            const ptrIndicator = document.getElementById('ceEmlPtr');
+            if (ptrIndicator) {
+                ptrIndicator.style.height = visualDistance + 'px';
+                
+                const icon = document.getElementById('ceEmlPtrIcon');
+                const text = document.getElementById('ceEmlPtrText');
+                
+                if (visualDistance >= ptrThreshold) {
+                    if (icon) icon.style.transform = 'rotate(180deg)';
+                    if (text) text.textContent = (typeof myCloud_LANG !== 'undefined' && myCloud_LANG.release_to_refresh ? myCloud_LANG.release_to_refresh : 'Release to refresh');
+                } else {
+                    if (icon) icon.style.transform = 'rotate(0deg)';
+                    if (text) text.textContent = (typeof myCloud_LANG !== 'undefined' && myCloud_LANG.pull_to_refresh ? myCloud_LANG.pull_to_refresh : 'Pull to refresh');
+                }
+            }
+        } else if (pullDistance < 0) {
+            // User scrolled down into the list instead, abort pull
+            ptrIsPulling = false;
+            const ptrIndicator = document.getElementById('ceEmlPtr');
+            if (ptrIndicator) {
+                ptrIndicator.style.transition = 'height 0.2s ease-out';
+                ptrIndicator.style.height = '0px';
+            }
+        }
+    }, { passive: true });
+
+    const endPull = () => {
+        if (!ptrIsPulling) return;
+        ptrIsPulling = false;
+        
+        let pullDistance = ptrCurrentY - ptrStartY;
+        const ptrIndicator = document.getElementById('ceEmlPtr');
+        
+        if (ptrIndicator) {
+            ptrIndicator.style.transition = 'height 0.3s ease-out';
+            ptrIndicator.style.height = '0px';
+        }
+
+        // If pulled past the threshold, trigger the refresh
+        if (pullDistance * 0.45 >= ptrThreshold) {
+            // 1. Update the folder unread badges silently
+            if (typeof window.myCloudEmailFetchFolders === 'function') {
+                window.myCloudEmailFetchFolders(true);
+            }
+            // 2. Exact same soft-refresh call used by the standard Refresh button
+            if (typeof window.myCloudEmailFetchMessages === 'function' && window.myCloudEmailState.activeFolder) {
+                window.myCloudEmailFetchMessages(window.myCloudEmailState.activeFolder, false);
+            }
+        }
+        
+        ptrStartY = 0;
+        ptrCurrentY = 0;
+    };
+
+    paneList.addEventListener('touchend', endPull, { passive: true });
+    paneList.addEventListener('touchcancel', endPull, { passive: true });
+	
 };
 
 window.myCloudEmailLoadAccounts = function() {
@@ -4334,7 +4516,54 @@ window.myCloudEmailReadMessage = function(msgId, meta) {
     reading.style.height = '100%';
     reading.style.overflow = 'hidden';
 
+    // Native Edge-Swipe to Go Back
+    let edgeStartX = 0;
+    let edgeCurrentX = 0;
+    
+    reading.addEventListener('touchstart', (e) => {
+        // Only register if the touch starts within the first 30px of the left edge
+        if (e.touches[0].clientX < 30) {
+            edgeStartX = e.touches[0].clientX;
+        } else {
+            edgeStartX = 0; 
+        }
+    }, { passive: true });
+
+    reading.addEventListener('touchmove', (e) => {
+        if (!edgeStartX) return;
+        edgeCurrentX = e.touches[0].clientX;
+        let deltaX = edgeCurrentX - edgeStartX;
+        
+        // Physically slide the pane to follow the finger
+        if (deltaX > 0) {
+            reading.style.transform = `translateX(${deltaX}px)`;
+            reading.style.transition = 'none';
+        }
+    }, { passive: true });
+
+    reading.addEventListener('touchend', (e) => {
+        if (!edgeStartX) return;
+        let deltaX = edgeCurrentX - edgeStartX;
+        
+        reading.style.transition = 'transform 0.25s ease-out';
+        if (deltaX > 100) { // Threshold reached, trigger back navigation
+            if(window.history.state && window.history.state.ce_email_view) {
+                window.history.back();
+            } else {
+                window._emailSetMobileView('list');
+            }
+            // Reset transform after transition
+            setTimeout(() => { reading.style.transform = ''; }, 250);
+        } else {
+            // Snap back if threshold not met
+            reading.style.transform = 'translateX(0px)';
+            setTimeout(() => { reading.style.transform = ''; }, 250);
+        }
+        edgeStartX = 0;
+    }, { passive: true });
+
     const targetAcc = meta.account_id || myCloudEmailState.activeAccount;
+	
     const targetFolder = meta.folder || myCloudEmailState.activeFolder;
     const msgKey = targetAcc + '|' + targetFolder + '|' + msgId;
     
@@ -4951,6 +5180,22 @@ window.myCloudEmailReadMessage = function(msgId, meta) {
                             iframeScale += (dist - iframeStartDist) * 0.01; iframeScale = Math.max(0.3, Math.min(iframeScale, 5));
                             iframeDoc.body.style.transformOrigin = "top left"; iframeDoc.body.style.transform = "scale(" + iframeScale + ")"; iframeDoc.body.style.width = (100 / iframeScale) + "%"; iframeStartDist = dist;
                         }
+                    }, {passive: false});
+
+                    let lastIframeTap = 0;
+                    iframeDoc.addEventListener("touchend", e => {
+                        const currentTime = new Date().getTime();
+                        const tapLength = currentTime - lastIframeTap;
+                        if (tapLength < 300 && tapLength > 0) {
+                            e.preventDefault();
+                            iframeScale = (iframeScale > 1.2) ? 1 : 2.5; // Toggle Zoom
+                            iframeDoc.body.style.transformOrigin = "top left";
+                            iframeDoc.body.style.transition = "transform 0.3s ease, width 0.3s ease";
+                            iframeDoc.body.style.transform = "scale(" + iframeScale + ")";
+                            iframeDoc.body.style.width = (100 / iframeScale) + "%";
+                            setTimeout(() => { iframeDoc.body.style.transition = 'none'; }, 300);
+                        }
+                        lastIframeTap = currentTime;
                     }, {passive: false});
 
                     iframeDoc.addEventListener('click', (e) => {

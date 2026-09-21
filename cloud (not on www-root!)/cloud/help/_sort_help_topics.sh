@@ -23,6 +23,8 @@ sort_help_topics() {
         "favorites"      # Favorites & Bookmarks
         "vaults"         # Sichere Tresore (Verschlüsselung)
         "mail_setup"     # Mail Setup
+		"mail_composer"  # Mail Composer
+		"mailbox_security_general"  # Mail Security General
         "mail_security"  # Mail Security
         "prop"           # Dialog: Properties
         "multi_rename"   # Batch Rename

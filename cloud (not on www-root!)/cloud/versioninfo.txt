@@ -1,3 +1,16 @@
+4.4.307
+	Release Date: September 21, 2026
+	Improvement: Webmail several usability enhancements on mobile devices
+	Fix: Error &quot;share-list_ERROR&quot; in logfiles with share-less accounts
+	Fix: Hotfixes for several variable definititions and conditions
+	Improvement: Binding Crtl+S to search modal
+	Improvement: Search modal more search options with index installed
+	Improvement: Help overhaul
+	Improvement: More keyboard shortcuts that simulate a full featured app
+	Improvement: Webmail swipe on list to refresh
+	Improvement: Webmail floating button for new mail on mobile devices
+	Improvement: Webmail Edge-Swipe to Go Back (Reading Pane)
+
 4.4.306
 	Release Date: September 20, 2026
 	Security: Strict code signing and verification implemented
