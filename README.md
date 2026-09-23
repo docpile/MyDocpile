@@ -171,9 +171,9 @@ The MyDocpile software is designed to have **the least depenencies possible**. S
   * Floating toolbars for paging and scaling natively.
   * Arrows to navigate between files without leaving the preview 
 * **Full Document Editing:**
-  * OnlyOffice integration: Edit any Office document
-  * Image Editor: Convert and edit any picture, including several RAW formats
-  * Text Editor: Edit any text file with the built-in text editor 
+  * **OnlyOffice integration:** Edit any Office document
+  * **Image Editor:** Convert and edit any picture, including several RAW formats
+  * **Text Editor:** Edit any text file with the built-in text editor 
 
 ### 5. Advanced System & Power User Tools
 * **Integrated SSH Terminal:**
