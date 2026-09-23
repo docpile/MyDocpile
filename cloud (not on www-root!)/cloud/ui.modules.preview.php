@@ -182,6 +182,13 @@ function myCloudOpenPreview(url, filename, path) {
         iconHD +
         '</div>';
     }
+
+    if (isImage && window.myCloudActionAllowed('modify')) {
+        modalInnerHtml += 
+        '<div class="myCloud-floating-action-edit" style="position: absolute; top: 11px; inset-inline-end: 230px; width: 40px; height: 40px; background: rgba(0, 0, 0, 0.4); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; cursor: pointer; z-index: 100; transition: background 0.2s; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1);" onmouseover="this.style.background=\'rgba(0,0,0,0.8)\'" onmouseout="this.style.background=\'rgba(0,0,0,0.4)\'" onclick="myCloudClosePreview(); setTimeout(() => myCloudShowImageEditor(\'' + path.replace(/'/g, "\\'") + '\'), 400);" title="' + (typeof myCloud_LANG !== 'undefined' && myCloud_LANG.image_convert ? myCloud_LANG.image_convert : 'Edit Image') + '">' +
+            '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 6.1l-2.4-2.4c-.8-.8-2-.8-2.8 0L3.1 16.9c-.3.3-.5.7-.6 1.1l-1.4 4.1c-.2.5.3 1 .8.8l4.1-1.4c.4-.1.8-.3 1.1-.6L20.3 8.9c.8-.8.8-2 0-2.8z"></path></svg>' +
+        '</div>';
+    }
     
     modalInnerHtml += 
     '<div id="myCloudShareBtn" class="myCloud-floating-share" style="display:none;" onclick="myCloudNativeShare()" title="' + (typeof myCloud_LANG !== 'undefined' && myCloud_LANG.share_file ? myCloud_LANG.share_file : 'Share') + '">' +
@@ -1427,9 +1434,14 @@ async function myCloudPrefetchNavTokens() {
             const resp = await fetch(window.location.pathname, { method: 'POST', body: fd }).then(r => r.json());
 
             if (resp.status === 'OK') {
-                myCloudGetDecryptedUrl(path, window.location.pathname + '?myCloud_token=' + resp.token).then(finalUrl => {
-                    st.previewCache[cacheKey] = finalUrl;
-                });
+            const tokenUrl = window.location.pathname + '?myCloud_token=' + resp.token;
+                const ext = path.split('.').pop().toLowerCase();
+                const isImgType = typeof imageExts !== 'undefined' ? imageExts.includes(ext) : ['jpg','jpeg','png','gif','webp','bmp','svg'].includes(ext);
+                if (isImgType) {
+                    ceFetchPreviewBlob(tokenUrl, path).then(blob => {
+                        st.previewCache[cacheKey] = URL.createObjectURL(blob);
+                    }).catch(e => console.warn("Prefetch failed", e));
+                }
             }
         } catch (e) {
             console.warn("Prefetch failed for:", path);
@@ -2149,9 +2161,12 @@ async function myCloudToggleQuality(btn, path) {
 
         if (resp.status === 'OK') {
             const newUrl = reqUrl + '?myCloud_token=' + resp.token;
-            myCloudGetDecryptedUrl(path, newUrl).then(finalUrl => {
-                st.previewCache[cacheKey] = finalUrl;
-                performSwap(finalUrl);
+            ceFetchPreviewBlob(newUrl, path).then(blob => {
+                const objUrl = URL.createObjectURL(blob);
+                st.previewCache[cacheKey] = objUrl;
+                performSwap(objUrl);
+            }).catch(e => {
+                if (spinner) spinner.style.display = 'none';
             });
        } else {
             if (spinner) spinner.style.display = 'none';
@@ -2293,10 +2308,11 @@ window.myCloudFilmstripObserver = new IntersectionObserver((entries, obs) => {
             fetch(reqUrl, { method: 'POST', body: fd }).then(r=>r.json()).then(res => {
                 if (res.status === 'OK') {
                     const url = reqUrl + '?myCloud_token=' + res.token;
-                    myCloudGetDecryptedUrl(path, url).then(finalUrl => {
-                        myCloudState.previewCache[cacheKey] = finalUrl;
-                        img.src = finalUrl;
-                    });
+                    ceFetchPreviewBlob(url, path).then(blob => {
+                        const objUrl = URL.createObjectURL(blob);
+                        myCloudState.previewCache[cacheKey] = objUrl;
+                        img.src = objUrl;
+                    }).catch(e => console.error(e));
                 }
             });
         }

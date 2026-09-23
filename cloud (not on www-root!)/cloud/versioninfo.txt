@@ -1,3 +1,23 @@
+4.5.313
+	Release Date: September 23, 2026
+	Improvement: Image editor pseudo HDR added, also hotfixes
+	Fix: Webmail phishing filter bugfix, was too aggressive
+
+4.5.312
+	Release Date: September 23, 2026
+	Release Date: September 22, 2026
+	Fix: Image editor bugfixes
+
+4.5.311
+	Release Date: September 22, 2026
+	Fix: Preview HTTP 410 errors
+	Feature: New Image Converter
+
+4.4.310
+	Release Date: September 22, 2026
+	Fix: Printing of several files not working since one of the last updates
+	Improvement: Support for several further picture file formats
+
 4.4.309
 	Release Date: September 21, 2026
 	Release Date: September 21, 2026

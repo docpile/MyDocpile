@@ -137,11 +137,11 @@ const myCloud_I18N = {
 // Main configuration for file handling and icon mapping.
 // Used throughout the app to determine file types and capabilities.
 const myCloudConfig = {
-    preview: ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'txt', 'log', 'docx', 'xlsx', 'mp4', 'webm', 'ogg', 'mov', 'mkv', 'mp3', 'wav', 'm4a', 'flac', 'epub', 'ttf', 'woff', 'woff2', 'kml', 'kmz', 'eml'],
-    previewIcons: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'ico', 'txt', 'ini', 'md', 'json', 'xml', 'html', 'css', 'js', 'php', 'sql', 'log', 'conf', 'sh', 'py', 'pdf', 'docx', 'xlsx', 'mp4', 'webm', 'ogg', 'mov', 'mkv', 'avi', 'mpg', 'mpeg', 'mp3', 'wav', 'm4a', 'flac', 'epub', 'ttf', 'woff', 'woff2', 'kml', 'kmz', 'eml'],
-    navigable: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'pdf', 'txt', 'log', 'docx', 'xlsx', 'mp4', 'webm', 'mp3', 'wav', 'ogg', 'm4a', 'epub', 'ttf', 'woff', 'woff2', 'kml', 'kmz', 'eml'],
+    preview: ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'cr2', 'nef', 'arw', 'dng', 'tif', 'tiff', 'psd', 'txt', 'log', 'docx', 'xlsx', 'mp4', 'webm', 'ogg', 'mov', 'mkv', 'mp3', 'wav', 'm4a', 'flac', 'epub', 'ttf', 'woff', 'woff2', 'kml', 'kmz', 'eml'],
+    previewIcons: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'cr2', 'nef', 'arw', 'dng', 'tif', 'tiff', 'psd', 'ico', 'txt', 'ini', 'md', 'json', 'xml', 'html', 'css', 'js', 'php', 'sql', 'log', 'conf', 'sh', 'py', 'pdf', 'docx', 'xlsx', 'mp4', 'webm', 'ogg', 'mov', 'mkv', 'avi', 'mpg', 'mpeg', 'mp3', 'wav', 'm4a', 'flac', 'epub', 'ttf', 'woff', 'woff2', 'kml', 'kmz', 'eml'],
+    navigable: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'cr2', 'nef', 'arw', 'dng', 'tif', 'tiff', 'psd', 'pdf', 'txt', 'log', 'docx', 'xlsx', 'mp4', 'webm', 'mp3', 'wav', 'ogg', 'm4a', 'epub', 'ttf', 'woff', 'woff2', 'kml', 'kmz', 'eml'],
     edit: ['htm', 'html', 'css', 'php', 'reg', 'ini', 'js', 'url', 'c', 'cpp', 'h', 'md', 'json', 'xml', 'csv', 'tsv', 'yaml', 'yml', 'cfg', 'conf', 'config', 'log', 'txt', 'sh', 'py', 'hpp', 'sql', 'ps1', 'bat', 'cmd'],
-    image: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'],
+    image: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'cr2', 'nef', 'arw', 'dng', 'tif', 'tiff', 'psd'],
     video: ['mp4', 'webm', 'ogg', 'mov', 'mkv'],
     audio: ['mp3', 'wav', 'm4a', 'flac', 'aac'],
     binary: ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'ico', 'mp4', 'webm', 'ogg', 'mov', 'mkv', 'mp3', 'wav', 'm4a', 'flac', 'docx', 'xlsx', 'zip', 'tar', 'gz', '7z', 'rar', 'epub', 'ttf', 'woff', 'woff2', 'kml', 'kmz'],
@@ -212,6 +212,7 @@ const myCloudSvg = {
     clear_selection: _ceSvgS + '<rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/>' + _ceSvgE,
     download: _ceSvgS + '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>' + _ceSvgE,
     upload: _ceSvgS + '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>' + _ceSvgE,
+    image_convert: _ceSvgS + '<path d="M21.5 6.1l-2.4-2.4c-.8-.8-2-.8-2.8 0L3.1 16.9c-.3.3-.5.7-.6 1.1l-1.4 4.1c-.2.5.3 1 .8.8l4.1-1.4c.4-.1.8-.3 1.1-.6L20.3 8.9c.8-.8.8-2 0-2.8z"></path>' + _ceSvgE,
     terminal: _ceSvgS + '<polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>' + _ceSvgE,
     palette: _ceSvgS + '<circle cx="12" cy="12" r="10"/><circle cx="8" cy="10" r="1"/><circle cx="12" cy="7" r="1"/><circle cx="16" cy="10" r="1"/><path d="M14 16.5c-1 0-1-1.5-2-1.5s-1 1.5-2 1.5c-1.5 0-2.5-1-2.5-2.5a4.5 4.5 0 0 1 9 0c0 1.5-1 2.5-2.5 2.5z"/>' + _ceSvgE,
     view: _ceSvgS + '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>' + _ceSvgE,

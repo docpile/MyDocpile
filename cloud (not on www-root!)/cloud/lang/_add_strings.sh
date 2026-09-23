@@ -5,44 +5,58 @@
 # CONFIGURATION
 # ==============================================================================
 
-TARGET_ANCHOR="unencrypted"
+TARGET_ANCHOR="share_not_supported"
 
 # ==============================================================================
 # ARRAYS
 # ==============================================================================
 
 # 2. The Keys
-# 2. The Keys
 KEYS=(
-    "set_default_mail"
-    "pull_to_refresh"
-    "release_to_refresh"
-    "prep_sharing"
-    "share_not_supported"
+    "image_convert"
+    "ie_color_light"
+    "ie_brightness"
+    "ie_contrast"
+    "ie_saturation"
+    "ie_gamma"
+	"ie_hdr"
+    "ie_transform_crop"
+    "ie_rotate"
+    "ie_draw_crop"
+    "ie_export_settings"
+    "ie_format"
+    "ie_quality"
+    "ie_compression"
+    "ie_color_depth"
+    "ie_resize_w"
+    "ie_resize_h"
+    "ie_auto"
+    "ie_reset"
+    "ie_save_copy"
 )
 
 declare -A TRANSLATIONS
 
-TRANSLATIONS[en]="Set as Default Mail App|Pull to refresh|Release to refresh|Preparing for sharing...|File sharing not supported on this browser."
-TRANSLATIONS[de]="Als Standard-Mail-App festlegen|Zieh zum Aktualisieren|Lass los zum Aktualisieren|Bereite zum Teilen vor...|Dateifreigabe wird von diesem Browser nicht unterstützt."
-TRANSLATIONS[es]="Establecer como app de correo predeterminada|Desliza para actualizar|Suelta para actualizar|Preparando para compartir...|Compartir archivos no es compatible en este navegador."
-TRANSLATIONS[fr]="Définir comme appli de messagerie par défaut|Tire pour actualiser|Relâche pour actualiser|Préparation pour le partage...|Le partage de fichiers n'est pas pris en charge sur ce navigateur."
-TRANSLATIONS[it]="Imposta come app di posta predefinita|Tira per aggiornare|Rilascia per aggiornare|Preparazione per la condivisione...|Condivisione file non supportata su questo browser."
-TRANSLATIONS[pt]="Definir como app de e-mail padrão|Puxe para atualizar|Solte para atualizar|Preparando para compartilhar...|Compartilhamento de arquivos não suportado neste navegador."
-TRANSLATIONS[ru]="Сделать почтовым приложением по умолчанию|Потяни для обновления|Отпусти для обновления|Подготовка к отправке...|Отправка файлов не поддерживается в этом браузере."
-TRANSLATIONS[tr]="Varsayılan Posta Uygulaması Yap|Yenilemek için çek|Yenilemek için bırak|Paylaşım için hazırlanıyor...|Dosya paylaşımı bu tarayıcıda desteklenmiyor."
-TRANSLATIONS[zh-cn]="设为默认邮件应用|下拉刷新|释放刷新|正在准备分享...|此浏览器不支持文件共享。"
-TRANSLATIONS[ja]="デフォルトのメールアプリに設定|引っ張って更新|離して更新|共有の準備中...|このブラウザはファイル共有をサポートしていません。"
-TRANSLATIONS[ko]="기본 메일 앱으로 설 |당겨서 새로 침|놓아서 새로 침|공  준비 중...|이 브라우 에서는 파일 공 가 지원되지 않습니다."
-TRANSLATIONS[ar]="تعيين كتطبيق البريد الافتراضي|اسحب للتحديث|أفلت للتحديث|جاري التحضير للمشاركة...|مشاركة الملفات غير مدعومة في هذا المتصفح."
-TRANSLATIONS[fa]="تنظیم به عنوان برنامه ایمیل پیش‌فرض|برای بروزرسانی بکش|برای بروزرسانی رها کن|در حال آماده‌سازی برای اشتراک‌گذاری...|اشتراک‌گذاری فایل در این مرورگر پشتیبانی نمی‌شود."
-TRANSLATIONS[hi]="डिफ़ॉल्ट मेल ऐप सेट करें|रिफ्रेश करने के लिए खींचो|रिफ्रेश करने के लिए छोड़ दो|शेयर करने के लिए तैयार कर रहा है...|इस ब्राउज़र पर फ़ाइल शेयरिंग समर्थित नहीं है।"
-TRANSLATIONS[vi]="Đặt l m ứng dụng thư mặc định|Kéo để l m mới|Thả ra để l m mới|Đang chuẩn bị chia sẻ...|Trình duyệt n y không hỗ trợ chia sẻ tệp."
-TRANSLATIONS[uk]="Зробити поштовою програмою за замовчуванням|Потягни для оновлення|Відпусти для оновлення|Підготовка до відправки...|Відправка файлів не підтримується у цьому браузері."
-TRANSLATIONS[bar]="Ois Standard-Mail-App festlegn|Ziang zum Aktualisiern|Loslassn zum Aktualisiern|Richt zum Teiln her...|Dateifreigabe geht in dem Browser ned."
-TRANSLATIONS[hes]="Als Standard-Mail-App festleje|Zieh zum Aktualisiere|Loslasse zum Aktualisiere|Machs bereit zum Teile...|Dateifreigabe geht in dem Browser net."
-TRANSLATIONS[lb]="Als Standard-Mail-App festleeën|Zéi fir ze aktualiséieren|Lassloosse fir ze aktualiséieren|Gëtt fir d'Deelen virbereet...|Dateifreigabe gëtt an dësem Browser net ënnerstëtzt."
-TRANSLATIONS[pcm]="Set am as default mail app|Draw down to refresh|Leave am to refresh|De prepare to share...|Dis browser no gree make you share files."
+TRANSLATIONS[en]="Image Editor|Color & Light|Brightness|Contrast|Saturation|Gamma|Virtual HDR|Transform & Crop|Rotate|Draw Crop|Export Settings|Format|Quality|Compression|Color Depth|Resize W (opt)|Resize H (opt)|Auto|Reset|Save Copy"
+TRANSLATIONS[de]="Bildbearbeitung|Farbe & Licht|Helligkeit|Kontrast|Sättigung|Gamma|Virtuelles HDR|Transformieren & Zuschneiden|Drehen|Rahmen aufziehen|Export-Einstellungen|Format|Qualität|Kompression|Farbtiefe|Breite (opt)|Höhe (opt)|Auto|Zurücksetzen|Kopie speichern"
+TRANSLATIONS[es]="Editor de imágenes|Color y Luz|Brillo|Contraste|Saturación|Gamma|HDR Virtual|Transformar y Recortar|Rotar|Dibujar Recorte|Ajustes de Exportación|Formato|Calidad|Compresión|Profundidad de color|Redimensionar W (opc)|Redimensionar H (opc)|Auto|Restablecer|Guardar Copia"
+TRANSLATIONS[fr]="Éditeur d'images|Couleur et Lumière|Luminosité|Contraste|Saturation|Gamma|HDR Virtuel|Transformer et Recadrer|Faire pivoter|Tracer le recadrage|Paramètres d'exportation|Format|Qualité|Compression|Profondeur de couleur|Redimensionner L (opt)|Redimensionner H (opt)|Auto|Réinitialiser|Enregistrer une copie"
+TRANSLATIONS[it]="Editor di immagini|Colore e Luce|Luminosit |Contrasto|Saturazione|Gamma|HDR Virtuale|Trasforma e Ritaglia|Ruota|Disegna Ritaglio|Impostazioni di Esportazione|Formato|Qualit |Compressione|Profondit  colore|Ridimensiona L (opz)|Ridimensiona A (opz)|Auto|Ripristina|Salva Copia"
+TRANSLATIONS[pt]="Editor de imagens|Cor e Luz|Brilho|Contraste|Saturação|Gama|HDR Virtual|Transformar e Cortar|Rodar|Desenhar Corte|Configurações de Exportação|Formato|Qualidade|Compressão|Profundidade de cor|Redimensionar L (opc)|Redimensionar A (opc)|Auto|Redefinir|Salvar Cópia"
+TRANSLATIONS[ru]=" едактор изображений|Цвет и Свет|Яркость|Контрастность|Насыщенность|Гамма|Вирт. HDR|Трансформация и Обрезка|Повернуть|Выделить область|Настройки экспорта|Формат|Качество|Сжатие|Глубина цвета|Ширина (опц)|Высота (опц)|Авто|Сброс|Сохранить копию"
+TRANSLATIONS[tr]="Görüntü Düzenleyici|Renk ve Işık|Parlaklık|Kontrast|Doygunluk|Gama|Sanal HDR|Dönüştür ve Kırp|Döndür|Kırpma Çiz|Dışa Aktarma Ayarları|Format|Kalite|Sıkıştırma|Renk Derinliği|Genişliği Değiştir (ops)|Yüksekliği Değiştir (ops)|Oto|Sıfırla|Kopyasını Kaydet"
+TRANSLATIONS[zh-cn]="图像编辑器|色彩与光线|亮度|对比度|饱和度|伽马|虚拟HDR|变换与裁剪|旋转|绘制裁剪|导出设置| 式|质量|压缩|颜色深度|调整宽度 (可选)|调整高度 (可选)|自动|重置|保存副本"
+TRANSLATIONS[ja]="画像エディター|色と光|明るさ|コントラスト|彩度|ガンマ|仮想HDR|変形と切り抜き|回転|切り抜きを描画|エクスポート設定|フォーマット|品質|圧縮|色深度|幅をリサイズ (任意)|高さをリサイズ (任意)|自動|リセット|コピーを保存"
+TRANSLATIONS[ko]="이미지 편집기|색상 및 조명|밝기|대비|채도|감마|가상 HDR|변형 및 자르기|회 |자르기 그리기|내보내기 설 |형식|품질|압축|색상 심도|너비 크기 조  ( 택)|높이 크기 조  ( 택)|자동|초기화|사본  장"
+TRANSLATIONS[ar]="محرر الصور|اللون والإضاءة|السطوع|التباين|التشبع|جاما|HDR افتراضي|تحويل واقتصاص|تدوير|رسم الاقتصاص|إعدادات التصدير|التنسيق|الجودة|ضغط|عمق اللون|تغيير العرض (اختياري)|تغيير الارتفاع (اختياري)|تلقائي|إعادة تعيين|حفظ نسخة"
+TRANSLATIONS[fa]="ویرایشگر تصویر|رنگ و نور|روشنایی|کنتراست|اشباع|گاما|HDR مجازی|تغییر و برش|چرخش|کشیدن برش|تنظیمات خروجی|فرمت|کیفیت|فشرده‌سازی|عمق رنگ|تغییر عرض (اختیاری)|تغییر ارتفاع (اختیاری)|خودکار|بازنشانی|ذخیره یک کپی"
+TRANSLATIONS[hi]="चित्र संपादक|रंग और प्रकाश|चमक|कंट्रास्ट|संतृप्ति|गामा|वर्चुअल HDR|ट्रांसफ़ॉर्म और क्रॉप|घुमाएँ|क्रॉप ड्रा करें|निर्यात सेटिंग्स|प्रारूप|गुणवत्ता|संपीड़न|रंग की गहराई|चौड़ाई बदलें (वैकल्पिक)|ऊँचाई बदलें (वैकल्पिक)|ऑटो|रीसेट|प्रतिलिपि सहेजें"
+TRANSLATIONS[vi]="Trình chỉnh sửa ảnh|M u sắc & Ánh sáng|Độ sáng|Độ tương phản|Độ bão hòa|Gamma|HDR ảo|Chuyển đổi & Cắt ảnh|Xoay|Vẽ vùng cắt|C i đặt Xuất|Định dạng|Chất lượng|Nén|Độ sâu m u|Đổi kích cỡ Rộng (tùy chọn)|Đổi kích cỡ Cao (tùy chọn)|Tự động|Đặt lại|Lưu bản sao"
+TRANSLATIONS[uk]=" едактор зображень|Колір і Світло|Яскравість|Контрастність|Насиченість|Гамма|Вірт. HDR|Трансформація та Обрізка|Повернути|Намалювати обрізку|Налаштування експорту|Формат|Якість|Стиснення|Глибина кольору|Змінити ширину (дод)|Змінити висоту (дод)|Авто|Скинути|Зберегти копію"
+TRANSLATIONS[bar]="Buidlbearbatung|Foarb & Liacht|Hejigkeit|Kontrast|Sättigung|Gamma|Virtuells HDR|Transformiern & Zuaschneidn|Drahn|Rahma aufziang|Export-Eistellunga|Format|Qualität|Kompression|Foarbtiafn|Broadn (opt)|Hechn (opt)|Auto|Zrucksetzn|Kopie speichan"
+TRANSLATIONS[hes]="Bildbearweidung|Faab & Licht|Helligkeit|Kontrast|Sättigung|Gamma|Virtuells HDR|Transformiern & Zuschniede|Drehe|Rahme uffziehe|Export-Eistellunge|Format|Qualität|Kompression|Faabdiefe|Braad (opt)|Heeh (opt)|Auto|Zuricksetze|Kopie speichere"
+TRANSLATIONS[lb]="Bildbeaarbechtung|Faarf & Liicht|Hellegkeet|Kontrast|Sättigung|Gamma|Virtuellen HDR|Transforméieren & Ausschneiden|Dréien|Kader zéien|Export-Astellungen|Format|Qualitéit|Kompressioun|Faarfdéift|Breet (opt)|Héicht (opt)|Auto|Zerécksetzen|Kopie späicheren"
+TRANSLATIONS[pcm]="Picture Editor|Color & Light|Brightness|Contrast|Saturation|Gamma|Virtual HDR|Transform & Crop|Turn am|Draw Crop|Export Settings|Format|Quality|Compression|Color Depth|Resize Width (opt)|Resize Height (opt)|Auto|Reset|Save Copy"
 #
 # ==============================================================================
 # EXECUTION ENGINE

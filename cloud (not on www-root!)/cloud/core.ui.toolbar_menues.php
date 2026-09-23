@@ -70,7 +70,7 @@ function getActionStatus(action) {
         targetPath = (side === 'left') ? st.commanderLeft.dir : st.commanderRight.dir;
     }
 
-    const itemActions = ['rename', 'delete', 'copy', 'move', 'duplicate', 'download', 'preview', 'edit_file', 'properties', 'zip_copy', 'share', 'change_vault_pwd', 'fix_encryption', 'pdf_stack_menu', 'pdf_toolkit', 'pdf_combine_images', 'pdf_unstack'];
+    const itemActions = ['rename', 'delete', 'copy', 'move', 'duplicate', 'download', 'preview', 'edit_file', 'properties', 'zip_copy', 'share', 'change_vault_pwd', 'fix_encryption', 'pdf_stack_menu', 'pdf_toolkit', 'pdf_combine_images', 'pdf_unstack', 'image_convert'];
     if (itemActions.includes(action) && st.selectedFiles && st.selectedFiles.length > 0) {
         targetPath = st.selectedFiles[0]; 
     }
@@ -213,6 +213,10 @@ function getActionStatus(action) {
                 return printExts.includes(f.split('.').pop().toLowerCase());
             });
             disabled = !allPrintable;
+            break;
+        case 'image_convert':
+            const isSingleImg = selCount === 1 && typeof imageExts !== 'undefined' && imageExts.includes(st.selectedFiles[0].split('.').pop().toLowerCase());
+            disabled = !isSingleImg || isCurrentDirEncrypted;
             break;
 		default:
             disabled = false;
@@ -932,7 +936,8 @@ function myCloudRenderToolbar() {
         download: myCloud_LANG.download,
         upload: myCloud_LANG.upload, 
         print: myCloud_LANG.print || 'Print',
-        pdf_stack_menu: myCloud_LANG.pdf_stack || 'Stack PDFs'
+        pdf_stack_menu: myCloud_LANG.pdf_stack || 'Stack PDFs',
+        image_convert: myCloud_LANG.image_convert || 'Image Editor'
     };
 
     const createBtn = function(action, type = 'flat') {
@@ -1107,6 +1112,7 @@ function myCloudRenderToolbar() {
                     rows: [
                         [{ act: 'preview', type: 'full' }], 
                         [{ act: 'edit_file', type: 'full' }],
+                        [{ act: 'image_convert', type: 'full' }],
                         [{ act: 'print', type: 'full' }], 
                     ]
                 },
@@ -1584,10 +1590,9 @@ function myCloudHandleToolbarClick(action) {
             break;
         case 'edit_file': 
             if (st.selectedFiles.length === 1) window.myCloudAction_EditFile(st.selectedFiles[0]);
+			break;
         case 'print':
-            if (typeof myCloudOpenOnlyOffice === 'function') {
-                if (st.selectedFiles.length > 0) window.myCloudAction_Print(st.selectedFiles);
-            }
+            if (st.selectedFiles.length > 0) window.myCloudAction_Print(st.selectedFiles);
             break;
 		case 'pdf_stack_menu': window.myCloudAction_PdfStackMenu(); break;
         case 'download': myCloudAction_DownloadBatch(); break;
@@ -2873,7 +2878,7 @@ function myCloudShowContextMenu(e, item, isTree) {
     });
     const allJpgPng = isMulti && st.selectedFiles.every(f => {
         const px = f.toLowerCase().split('.').pop();
-        return px === 'jpg' || px === 'jpeg' || px === 'png';
+        return typeof imageExts !== 'undefined' ? imageExts.includes(px) : ['jpg', 'jpeg', 'png'].includes(px);
     });
     
     // Strict Guard: Abort if multiple files are selected but they aren't purely stackable or images
@@ -2898,6 +2903,7 @@ function myCloudShowContextMenu(e, item, isTree) {
     const isEditable = !isDir && typeof myCloudIsFileEditable === 'function' && myCloudIsFileEditable(item.name, isInsideZip);
 	const isOfficeDoc = typeof officeExts !== 'undefined' && officeExts.includes(ext);
     const isPrintable = !isDir && typeof myCloudHasOnlyOffice !== 'undefined' && myCloudHasOnlyOffice === true && (isOfficeDoc || ext === 'pdf') && window.myCloudActionAllowed('print');
+    const isImage = !isDir && (typeof imageExts !== 'undefined' ? imageExts.includes(ext) : ['jpg','jpeg','png','gif','webp','bmp','svg','cr2','nef','arw','dng','tif','tiff','psd'].includes(ext));
 
     let encryptLabel = typeof myCloud_LANG !== 'undefined' && myCloud_LANG.encrypt_short ? myCloud_LANG.encrypt_short : 'Encrypt';
     if (typeof myCloudCrypto !== 'undefined') {
@@ -3023,7 +3029,7 @@ function myCloudShowContextMenu(e, item, isTree) {
         { label: myCloud_LANG.pdf_unstack || 'Unstack file', icon: '<svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zM7 10h2v7H7zm4-3h2v10h-2zm4 6h2v4h-2z" fill="currentColor"/></svg>', act: 'pdf_unstack', show: isPreviewable && ext === 'pdf' && !isMulti && !isRecycleBin && window.myCloudActionAllowed('pdf_unstack') && !isInsideZip },
         { label: myCloud_LANG.pdf_stack || 'Stack PDFs', icon: '<svg viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z" fill="currentColor"/></svg>', act: 'pdf_stack_menu', show: allStackable && !isRecycleBin && window.myCloudActionAllowed('pdf_stack_menu') && !isInsideZip },
         { label: myCloud_LANG.pdf_tools || 'PDF Toolkit...', icon: '<svg viewBox="0 0 24 24"><path d="M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z" fill="currentColor"/></svg>', act: 'pdf_toolkit', show: ext === 'pdf' && !isMulti && !isRecycleBin && window.myCloudActionAllowed('pdf_tools') && !isInsideZip },
-        { label: myCloud_LANG.pdf_combine_images || 'Combine to PDF', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><circle cx="10" cy="13" r="2"/><polyline points="6 17 11 12 18 19"/></svg>', act: 'pdf_combine_images', show: isMulti && st.selectedFiles.every(f => { const px = f.toLowerCase().split('.').pop(); return px === 'jpg' || px === 'jpeg' || px === 'png'; }) && !isRecycleBin && window.myCloudActionAllowed('pdf_combine_images') && !isInsideZip },
+        { label: myCloud_LANG.pdf_combine_images || 'Combine to PDF', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><circle cx="10" cy="13" r="2"/><polyline points="6 17 11 12 18 19"/></svg>', act: 'pdf_combine_images', show: isMulti && st.selectedFiles.every(f => { const px = f.toLowerCase().split('.').pop(); return typeof imageExts !== 'undefined' ? imageExts.includes(px) : ['jpg', 'jpeg', 'png'].includes(px); }) && !isRecycleBin && window.myCloudActionAllowed('pdf_combine_images') && !isInsideZip },
         
         { label: myCloud_LANG.share_btn || 'Share', icon: myCloudSvg.share || '', act: 'share', show: !isMulti && !isInsideZip && !isRecycleBin && typeof window.myCloudAction_Share === 'function' && window.myCloudActionAllowed('share') },
         { label: myCloud_LANG.edit || 'Edit', icon: myCloudSvg.edit_file, act: 'edit_file', show: isEditable && !isMulti && !isRecycleBin && window.myCloudActionAllowed('edit_file') },
@@ -3048,6 +3054,7 @@ function myCloudShowContextMenu(e, item, isTree) {
                 { label: myCloud_LANG.new_folder, icon: myCloudSvg.newfolder, act: 'newfolder', show: window.myCloudActionAllowed('newfolder') }
             ]
         },
+        { label: myCloud_LANG.image_convert || 'Convert/Edit Image', icon: myCloudSvg.image_convert || '', act: 'image_convert', show: !isMulti && isImage && !isRecycleBin && !isInsideZip && window.myCloudActionAllowed('modify') },
 
         { label: myCloud_LANG.permissions || 'Permissions', icon: myCloudSvg.permissions, act: 'permissions', show: window.myCloudActionAllowed('permissions') && !isInsideZip && myCloudUserRole === 'admin_mode' && !isRecycleBin && !isTree },
         { label: myCloud_LANG.properties, icon: '<svg viewBox="0 0 24 24"><path d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>', act: 'properties', show: isDir && !isMulti && !isRecycleBin && window.myCloudActionAllowed('properties') },
@@ -3059,7 +3066,7 @@ function myCloudShowContextMenu(e, item, isTree) {
         switch(act) {
             case 'preview':  myCloudDownloadFile(item.name, filename, true); break;
            case 'edit_file': window.myCloudAction_EditFile(item.name); break;
-            case 'print':    window.myCloudAction_Print(item.name); break;
+            case 'print':    window.myCloudAction_Print(isMulti ? st.selectedFiles : item.name); break;
             case 'download': isMulti ? myCloudAction_DownloadBatch() : myCloudDownloadFile(item.name, filename, false); break;
             case 'refresh':  myCloudFetchDirectory(st.currentDir); break;
             case 'newfolder':myCloudAction_NewFolder(); break;
@@ -3098,6 +3105,7 @@ function myCloudShowContextMenu(e, item, isTree) {
                 break;
             case 'pdf_toolkit': window.myCloudShowPdfToolkit(item.name); break;
             case 'pdf_combine_images': window.myCloudAction_PdfCombineImages(); break;
+            case 'image_convert': if(typeof myCloudShowImageEditor === 'function') myCloudShowImageEditor(item.name); break;
             case 'delete':   myCloudAction_Delete(); break;
             case 'restore':  myCloudAction_Restore(); break;
             case 'restore_to': myCloudAction_RestoreTo(); break;

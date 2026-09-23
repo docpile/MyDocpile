@@ -98,8 +98,11 @@ const listIconObserver = new IntersectionObserver((entries, obs) => {
                     fetch('', { method: 'POST', body: fd }).then(r=>r.json()).then(resp => {
                         if (resp.status === 'OK') {
                             const url = '?myCloud_token=' + resp.token;
-                            st.previewCache[cacheKey] = url;
-                            img.src = url;
+                            fetch(url).then(r => r.blob()).then(blob => {
+                                const objUrl = URL.createObjectURL(blob);
+                                st.previewCache[cacheKey] = objUrl;
+                                img.src = objUrl;
+                            }).catch(() => {});
                         }
                     }).catch(() => {});
                 };
@@ -123,9 +126,12 @@ const listIconObserver = new IntersectionObserver((entries, obs) => {
             .then(resp => {
                 if (resp.status === 'OK') {
                     const url = '?myCloud_token=' + resp.token;
-                    if(!st.previewCache) st.previewCache = {};
-                    st.previewCache[cacheKey] = url;
-                    applyImg(url);
+                    fetch(url).then(r => r.blob()).then(blob => {
+                        const objUrl = URL.createObjectURL(blob);
+                        if(!st.previewCache) st.previewCache = {};
+                        st.previewCache[cacheKey] = objUrl;
+                        applyImg(objUrl);
+                    }).catch(() => {});
                 }
             })
             .catch(() => {}); // Keep icon on error
@@ -1402,6 +1408,13 @@ function myCloudRenderUI() {
                     }));
                 }
 
+                const isImageFile = typeof imageExts !== 'undefined' ? imageExts.includes(ext) : ['jpg','jpeg','png','gif','webp','bmp','svg','cr2','nef','arw','dng','tif','tiff','psd'].includes(ext);
+                if (isImageFile && window.myCloudActionAllowed('modify', itemRole) && !isInsideZip) {
+                    grp1.appendChild(createAction('ce-act-image-edit', (typeof myCloudSvg !== 'undefined' && myCloudSvg.image_convert) ? myCloudSvg.image_convert : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 6.1l-2.4-2.4c-.8-.8-2-.8-2.8 0L3.1 16.9c-.3.3-.5.7-.6 1.1l-1.4 4.1c-.2.5.3 1 .8.8l4.1-1.4c.4-.1.8-.3 1.1-.6L20.3 8.9c.8-.8.8-2 0-2.8z"></path></svg>', (typeof myCloud_LANG !== 'undefined' && myCloud_LANG.image_convert) ? myCloud_LANG.image_convert : 'Edit Image', function() {
+                        if (typeof myCloudShowImageEditor === 'function') myCloudShowImageEditor(i.name);
+                    }));
+                }
+
                 // --- GROUP 2: Rename, Duplicate, Copy, Move ---
                 if (i.name !== '/') {
                     if (window.myCloudActionAllowed('rename', itemRole) && !isInsideZip) {
@@ -2540,7 +2553,7 @@ function renderCommanderRow(item, tbody, paneState, side) {
     // [FIX 3] Thumbnail Logic
     const devKey = myCloudGetCurrentDeviceKey();
     const showThumbs = myCloudState.settings && myCloudState.settings[devKey] && myCloudState.settings[devKey].showListThumbnails;
-    const isImage = ['jpg','jpeg','png'].includes(ext);
+    const isImage = typeof imageExts !== 'undefined' ? imageExts.includes(ext) : ['jpg','jpeg','png'].includes(ext);
     const isLink = item.isLink === true;
 
     if (isDir || isRecycleBin) {

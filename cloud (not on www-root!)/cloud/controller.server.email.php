@@ -1602,26 +1602,52 @@ private function runIncrementalMigration() {
         ];
         $buzzPattern = implode('|', array_map(function($w) { return preg_quote($w, '/'); }, $buzzwords));
         
+        // Dictionary of known false positives where buzzword + brand = legitimate word
+        $falsePositives = ['banking', 'shopping', 'booking', 'marketing', 'meeting', 'tracking', 'shipping'];
+
         $spoofedBrand = null;
+        $subjectString = $fromNameLower . ' ' . $email;
+
         foreach ($monitoredBrands as $brand => $officialDomains) {
-            // Allow the brand name to be seamlessly connected to digits or known phishing buzzwords 
-            // (e.g., "ups3523", "orangebonus", "paypalupdate") without triggering false positives 
-            // on completely unrelated dictionary words (like "surfing" for "ing").
-            $mod = '(?:\d+|' . $buzzPattern . ')';
+            // Allow the brand name to be connected to digits or buzzwords (optionally separated by -, _, or .)
+            $mod = '(?:[\.\-\_]?(?:\d+|' . $buzzPattern . ')[\.\-\_]?)';
             $pattern = '/\b' . $mod . '*' . preg_quote($brand, '/') . $mod . '*\b/i';
             
-            if (preg_match($pattern, $fromNameLower) || preg_match($pattern, $email)) {
-                // Check if the actual domain matches any official domain for that brand
-                $isOfficial = false;
-                foreach ($officialDomains as $official) {
-                    if ($domain === $official || substr($domain, -strlen('.' . $official)) === '.' . $official) {
-                        $isOfficial = true;
+            if (preg_match_all($pattern, $subjectString, $matches)) {
+                $isSpoofing = false;
+                
+                foreach ($matches[0] as $match) {
+                    $cleanMatch = strtolower(str_replace(['.', '-', '_'], '', $match));
+                    
+                    // Skip if it forms a known dictionary false positive
+                    if (in_array($cleanMatch, $falsePositives)) {
+                        continue;
+                    }
+                    
+                    // Short Brand Protection: For brands <= 3 chars (like 'ing', 'o2', 'dpd'), 
+                    // pure alphabetic concatenation (e.g. "bank" + "ing") is too risky.
+                    // We only flag short brands if the match is EXACT, or contains numbers/hyphens (e.g. "o2-bonus", "dpd352").
+                    if (strlen($brand) <= 3 && $cleanMatch !== $brand && ctype_alpha($cleanMatch)) {
+                        continue;
+                    }
+                    
+                    $isSpoofing = true;
+                    break;
+                }
+
+                if ($isSpoofing) {
+                    // Check if the actual domain matches any official domain for that brand
+                    $isOfficial = false;
+                    foreach ($officialDomains as $official) {
+                        if ($domain === $official || substr($domain, -strlen('.' . $official)) === '.' . $official) {
+                            $isOfficial = true;
+                            break;
+                        }
+                    }
+                    if (!$isOfficial) {
+                        $spoofedBrand = ucfirst($brand);
                         break;
                     }
-                }
-                if (!$isOfficial) {
-                    $spoofedBrand = ucfirst($brand);
-                    break;
                 }
             }
         }

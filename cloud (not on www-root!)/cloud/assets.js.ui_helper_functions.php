@@ -1480,8 +1480,29 @@ async function _cloudExProceedDownload(path, filename, isPreview) {
 			}
         }
 
+        // Fetch standard blob for preview to cache it safely and avoid 410 errors on reuse
+        if (!isEncrypted && isPreview && !isDir) {
+            const ext = finalFilename.split('.').pop().toLowerCase();
+			const isImgType = typeof imageExts !== 'undefined' ? imageExts.includes(ext) : ['jpg','jpeg','png','gif','webp','bmp','svg'].includes(ext);
+            if (isImgType) {
+                try {
+                    const r = await fetch(downloadUrl);
+                    if (r.ok) {
+                        const normalBlob = await r.blob();
+                        downloadUrl = URL.createObjectURL(normalBlob);
+                    }
+                } catch (fetchErr) {
+                    console.warn("Failed to fetch image blob for cache", fetchErr);
+                }
+            }
+        }
+
         if (isPreview) {
-            myCloudState.previewCache[cacheKey] = downloadUrl;
+            if (downloadUrl.startsWith('blob:')) {
+                myCloudState.previewCache[cacheKey] = downloadUrl;
+            } else {
+                delete myCloudState.previewCache[cacheKey]; // Force fresh token for videos
+            }
             myCloudState.previewPath = path;
             myCloudState.selectedFiles = [path];
 

@@ -73,7 +73,7 @@ class myCloudHousekeeper {
         $this->loadConfig();
         
         // Flip extensions for O(1) lookup speed (PDF REMOVED as requested)
-        $exts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'tiff', 'tif', 'mp4', 'webm', 'mov', 'mkv', 'avi'];
+        $exts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'tiff', 'tif', 'cr2', 'nef', 'arw', 'dng', 'psd', 'mp4', 'webm', 'mov', 'mkv', 'avi'];
         $this->validExts = array_fill_keys($exts, true);
         
         // Detect CPUs and set Workers (N-1)

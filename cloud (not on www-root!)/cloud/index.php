@@ -129,7 +129,7 @@ if (isset($GLOBALS['user_details']) && is_array($GLOBALS['user_details'])) {
 $moduleRegistry = [
 	'core' => [
 		'css' => ['css.core.theme.php', 'css.core.styles.php', 'css.ui.views.icon_view.php', 'css.ui.modules.settings.php', 'css.ui.modules.help_ui.php', 'css.ui.modules.multi_rename.php', 'css.ui.modules.search.php', 'css.ui.modules.preview.php'],
-		'js'  => ['assets.js.core_engine.php', 'assets.js.crypto_engine.php', 'core.ui.main_explorer_ui.php', 'assets.js.ui_helper_functions.php', 'ui.views.icon_view.php', 'core.ui.toolbar_menues.php', 'ui.modules.settings.php', 'ui.modules.multi_rename.php', 'ui.modules.preview.php', 'ui.modules.search.php', 'ui.modules.first_run_assistant.php']
+		'js'  => ['assets.js.core_engine.php', 'assets.js.crypto_engine.php', 'core.ui.main_explorer_ui.php', 'assets.js.ui_helper_functions.php', 'ui.views.icon_view.php', 'core.ui.toolbar_menues.php', 'ui.modules.settings.php', 'ui.modules.multi_rename.php', 'ui.modules.preview.php', 'ui.modules.imageedit.php', 'ui.modules.search.php', 'ui.modules.first_run_assistant.php']
 	],
 	'editor' => [
 		'css' => ['css.ui.modules.editor.php'],

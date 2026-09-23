@@ -784,7 +784,8 @@ class MyCloudServer {
             'pdf_get_raw' => 'preview',
             'get_download_token' => (isset($_POST['preview']) && $_POST['preview'] === 'true') ? 'preview' : 'download'
         ];
-        if (isset($actionMap[$action])) $effectiveAction = $actionMap[$action];
+        if ($action === 'image_convert') $effectiveAction = 'modify';
+		if (isset($actionMap[$action])) $effectiveAction = $actionMap[$action];
 
         // Map all advanced PDF sidecar manipulations to the specific toolkit right
         $pdfToolkitActions = ['pdf_shrink', 'pdf_keep_pages', 'pdf_rotate', 'pdf_unlock', 'pdf_extract_text', 'pdf_ocr_text', 'pdf_extract_images', 'pdf_flatten', 'pdf_encrypt', 'pdf_repair', 'pdf_fill_form', 'pdf_get_form_fields'];
@@ -822,7 +823,7 @@ class MyCloudServer {
 
         // Release session lock for heavy I/O operations
         // Prevents the entire app from freezing in other tabs while processing large files
-        $heavyActions = ['upload', 'zip', 'unzip', 'copy', 'move', 'delete', 'batch_rename', 'empty_bin'];
+        $heavyActions = ['upload', 'zip', 'unzip', 'copy', 'move', 'delete', 'batch_rename', 'empty_bin', 'image_convert'];
         if (in_array($action, $heavyActions) && session_status() === PHP_SESSION_ACTIVE) {
             session_write_close();
         }
@@ -964,7 +965,8 @@ class MyCloudServer {
                     case 'share-delete': $this->actionShareDelete(); break;
                     case 'commit_share': $this->actionCommitShare(); break;
                     case 'cancel_share': $this->actionCancelShare(); break;
-                    case 'cloud_ingest_temp': $this->actionCloudIngestTemp(); break;
+                    case 'image_convert': $this->actionImageConvert(); break;
+					case 'cloud_ingest_temp': $this->actionCloudIngestTemp(); break;
 					case 'cloud_ingest_att': $this->actionCloudIngestAtt(); break;
 					default:  $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Unknown action: ' . $action ]);
                 }
@@ -1561,6 +1563,7 @@ class MyCloudServer {
 			'ui.modules.editor.php',
 			'ui.modules.onlyoffice.php', 
 			'ui.modules.first_run_assistant.php',
+			'ui.modules.imageedit.php',
 		];
 
         if ($hasEmailInterface) {
@@ -4788,7 +4791,213 @@ class MyCloudServer {
         $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Failed to update encryption keys.']);
     }
 
+    private function actionImageConvert() {
+        $src = $this->resolve($_POST['src'] ?? '');
+        if (!$src || !is_file($src)) $this->sendJsonAndExit(['status'=>'ERR','msg'=>'Invalid source file.']);
+        
+        $srcRole = $this->getEffectiveRoleForAbsPath($src);
+        if ($this->isActionBlocked('download', $srcRole)) {
+            $this->sendJsonAndExit(['status'=>'ERR','msg'=>'Permission denied for reading source.']);
+        }
+        
+        $destDir = dirname($src);
+        $destRole = $this->getEffectiveRoleForAbsPath($destDir);
+        if ($this->isActionBlocked('upload', $destRole)) {
+            $this->sendJsonAndExit(['status'=>'ERR','msg'=>'Permission denied for writing to directory.']);
+        }
+        
+        if ($this->isAnyCloudRoot($src)) $this->sendJsonAndExit(['status'=>'ERR','msg'=>'Cannot modify cloud root.']);
+        
+        if (file_exists($destDir . '/.mycloud_crypto_salt') || substr($src, -4) === '.enc') {
+            $this->sendJsonAndExit(['status'=>'ERR','msg'=>'Server-side image conversion is disabled for E2E encrypted vaults.']);
+        }
+        
+        $format = strtolower($_POST['format'] ?? 'jpg');
+        $validFormats = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'ico', 'tiff', 'tif'];
+        if (!in_array($format, $validFormats)) $format = 'jpg';
+        
+        $format_opt = $_POST['format_opt'] ?? '';
+        $rotate = (float)($_POST['rotate'] ?? 0);
 
+        $brightness = (float)($_POST['brightness'] ?? 0);
+        $contrast = (float)($_POST['contrast'] ?? 0);
+        $gamma = (float)($_POST['gamma'] ?? 1.0);
+        $saturation = (float)($_POST['saturation'] ?? 100);
+		$hdr = (float)($_POST['hdr'] ?? 0);
+        
+        $cropXPct = (float)($_POST['cropXPct'] ?? 0);
+        $cropYPct = (float)($_POST['cropYPct'] ?? 0);
+        $cropWPct = (float)($_POST['cropWPct'] ?? 0);
+        $cropHPct = (float)($_POST['cropHPct'] ?? 0);
+        
+        $resizeW = (int)($_POST['resizeW'] ?? 0);
+        $resizeH = (int)($_POST['resizeH'] ?? 0);
+        
+        $info = pathinfo($src);
+        $baseName = $info['filename'];
+        $newName = $this->sanitizeAndValidateName($baseName . ' (edited).' . $format, true);
+        $dest = $this->getUniqueName($destDir . '/' . $newName);
+        
+        if (class_exists('Imagick')) {
+            try {
+                $im = new Imagick($src);
+				$im->autoOrient();
+                if ($rotate != 0) {
+                    $im->rotateImage(new ImagickPixel('transparent'), $rotate);
+					$im->setImagePage(0, 0, 0, 0);
+                }
+                if ($brightness != 0 || $contrast != 0) {
+                    $im->brightnessContrastImage($brightness, $contrast);
+                }
+                if ($gamma != 1.0 && $gamma > 0) {
+                    $im->gammaImage($gamma);
+                }
+                if ($saturation != 100) {
+                    $im->modulateImage(100, $saturation, 100);
+                }
+                if ($hdr > 0) {
+                    $amount = $hdr / 100;
+                    
+                    // 1. True Clarity / Local Contrast (Rich depth, no washing out)
+                    if (method_exists($im, 'localContrastImage')) {
+                        $im->localContrastImage(50.0, 100.0 * $amount);
+                    } else {
+                        $im->unsharpMaskImage(0, 20.0, 5.0 * $amount, 0); 
+                    }
+                    // 2. Rich Color Pop (No gray haze)
+                    $im->modulateImage(100, 100 + (25 * $amount), 100);
+                }
+                if ($cropWPct > 0 && $cropHPct > 0) {
+                    $w = $im->getImageWidth();
+                    $h = $im->getImageHeight();
+                    
+                    $cropW = max(1, round($w * $cropWPct));
+                    $cropH = max(1, round($h * $cropHPct));
+                    $cropX = max(0, round($w * $cropXPct));
+                    $cropY = max(0, round($h * $cropYPct));
+                    $im->cropImage((int)$cropW, (int)$cropH, (int)$cropX, (int)$cropY);
+                    $im->setImagePage(0, 0, 0, 0);
+                }
+                if ($resizeW > 0 && $resizeH > 0) {
+                    $im->resizeImage($resizeW, $resizeH, Imagick::FILTER_LANCZOS, 1);
+                }
+                
+                $im->setImageFormat($format);
+                if (in_array($format, ['jpg', 'jpeg', 'webp'])) {
+                    $q = $format_opt !== '' ? max(1, min(100, (int)$format_opt)) : 85;
+                    $im->setImageCompressionQuality($q);
+                } elseif ($format === 'png') {
+                    $comp = $format_opt !== '' ? max(0, min(9, (int)$format_opt)) : 6;
+                    $im->setImageCompressionQuality($comp * 10 + 5);
+                } elseif ($format === 'tiff' || $format === 'tif') {
+                    $comp = strtoupper($format_opt);
+                    if ($comp === 'LZW') $im->setImageCompression(Imagick::COMPRESSION_LZW);
+                    elseif ($comp === 'ZIP') $im->setImageCompression(Imagick::COMPRESSION_ZIP);
+                    elseif ($comp === 'JPEG') $im->setImageCompression(Imagick::COMPRESSION_JPEG);
+                    elseif ($comp === 'NONE') $im->setImageCompression(Imagick::COMPRESSION_NO);
+                } elseif ($format === 'ico') {
+                    $depth = (int)$format_opt;
+                    if ($depth === 8) {
+                        $im->quantizeImage(256, Imagick::COLORSPACE_SRGB, 0, false, false);
+                        $im->setImageDepth(8);
+                    } elseif ($depth === 24) {
+                        $im->setImageType(Imagick::IMGTYPE_TRUECOLOR);
+                    } elseif ($depth === 32) {
+                        $im->setImageType(Imagick::IMGTYPE_TRUECOLORMATTE);
+                    }
+                }
+				$im->stripImage();
+                
+                $im->writeImage($dest);
+                $im->clear();
+                $im->destroy();
+                
+                $this->log('IMAGE_CONVERT', $src, $dest);
+                $this->sendJsonAndExit(['status'=>'OK', 'newPath' => '/' . ltrim(substr($dest, strlen($this->cloud_path)), '/')]);
+            } catch (Exception $e) {
+                $this->sendJsonAndExit(['status'=>'ERR','msg'=>'Image processing failed: ' . $e->getMessage()]);
+            }
+        } elseif (extension_loaded('gd')) {
+            $srcImg = null;
+            $srcExt = strtolower($info['extension'] ?? '');
+            switch($srcExt) {
+                case 'jpg': case 'jpeg': $srcImg = @imagecreatefromjpeg($src); break;
+                case 'png': $srcImg = @imagecreatefrompng($src); break;
+                case 'webp': $srcImg = @imagecreatefromwebp($src); break;
+                case 'gif': $srcImg = @imagecreatefromgif($src); break;
+            }
+            if (!$srcImg) $this->sendJsonAndExit(['status'=>'ERR','msg'=>'Unsupported format for GD fallback.']);
+            
+            if ($rotate != 0) {
+                $bg = imagecolorallocatealpha($srcImg, 0, 0, 0, 127);
+                $srcImg = imagerotate($srcImg, -$rotate, $bg);
+            }
+
+            if ($brightness != 0) {
+                imagefilter($srcImg, IMG_FILTER_BRIGHTNESS, round($brightness * 2.55));
+            }
+            if ($contrast != 0) {
+                imagefilter($srcImg, IMG_FILTER_CONTRAST, -$contrast);
+            }
+            if ($gamma != 1.0 && $gamma > 0) {
+                imagegammacorrect($srcImg, 1.0, $gamma);
+            }
+            if ($hdr > 0) {
+                // GD Fallback: Clean contrast boost without washed-out colorize
+                imagefilter($srcImg, IMG_FILTER_CONTRAST, -(int)round($hdr * 0.40));
+            }
+			
+            if ($cropWPct > 0 && $cropHPct > 0) {
+                $w = imagesx($srcImg);
+                $h = imagesy($srcImg);
+                $cropW = max(1, round($w * $cropWPct));
+                $cropH = max(1, round($h * $cropHPct));
+                $cropX = max(0, round($w * $cropXPct));
+                $cropY = max(0, round($h * $cropYPct));
+                
+                $cropped = imagecrop($srcImg, ['x' => $cropX, 'y' => $cropY, 'width' => $cropW, 'height' => $cropH]);
+                if ($cropped !== false) {
+                    imagedestroy($srcImg);
+                    $srcImg = $cropped;
+                }
+            }
+            
+            if ($resizeW > 0 && $resizeH > 0) {
+                $w = imagesx($srcImg);
+                $h = imagesy($srcImg);
+                $resized = imagecreatetruecolor($resizeW, $resizeH);
+                imagealphablending($resized, false);
+                imagesavealpha($resized, true);
+                imagecopyresampled($resized, $srcImg, 0, 0, 0, 0, $resizeW, $resizeH, $w, $h);
+                imagedestroy($srcImg);
+                $srcImg = $resized;
+            }
+
+            switch($format) {
+                case 'jpg': case 'jpeg': 
+                    $q = $format_opt !== '' ? max(1, min(100, (int)$format_opt)) : 85;
+                    imagejpeg($srcImg, $dest, $q); 
+                    break;
+                case 'png': 
+                    $q = $format_opt !== '' ? max(0, min(9, (int)$format_opt)) : 6;
+                    imagepng($srcImg, $dest, $q); 
+                    break;
+                case 'webp': 
+                    $q = $format_opt !== '' ? max(1, min(100, (int)$format_opt)) : 85;
+                    imagewebp($srcImg, $dest, $q); 
+                    break;
+                case 'gif': imagegif($srcImg, $dest); break;
+                case 'bmp': imagebmp($srcImg, $dest); break;
+                case 'ico': case 'tiff': case 'tif': imagepng($srcImg, $dest, 9); break; // Fallback if GD lacks support
+            }
+            imagedestroy($srcImg);
+            
+            $this->log('IMAGE_CONVERT_GD', $src, $dest);
+            $this->sendJsonAndExit(['status'=>'OK', 'newPath' => '/' . ltrim(substr($dest, strlen($this->cloud_path)), '/')]);
+        } else {
+            $this->sendJsonAndExit(['status'=>'ERR','msg'=>'Server lacks Imagick and GD extensions.']);
+        }
+    }
 
     // =========================================================
     // ONLYOFFICE SERVER-TO-SERVER BRIDGE
