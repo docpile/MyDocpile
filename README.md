@@ -161,7 +161,7 @@ The MyDocpile software is designed to have **the least depenencies possible**. S
 * **Native Archive Browsing:** The file tree and list views can "step into" `.zip` files and browse their internal file structure identically to standard folders without extracting them to disk.
 * **Surgical Extraction:** Extract specific files from within a `.zip` directly to the active folder, or extract the entire archive natively.
 
-### 4. Media & Document Previews
+### 4. Media & Document Previews and Editing
 * **High-Performance Smart Thumbnails:** Generates lightweight thumbnail caches on the server to prevent CPU load on repeat visits.
 * **EXIF Metadata Reader:** Extracts and displays rich photography data in a native modal (Camera Make/Model, Exposure Time, Aperture `f/`, ISO, Dimensions, and Original Date).
 * **Native Video/Audio Streaming:** Supports scrub and stream of `.mp4`, `.mkv`, `.webm`, and `.mp3` files natively.
@@ -170,6 +170,10 @@ The MyDocpile software is designed to have **the least depenencies possible**. S
   * Renders e.g. `.pdf`, `.eml`, `.docx` and `.xlsx` as well
   * Floating toolbars for paging and scaling natively.
   * Arrows to navigate between files without leaving the preview 
+* **Full Document Editing:**
+  * OnlyOffice integration: Edit any Office document
+  * Image Editor: Convert and edit any picture, including several RAW formats
+  * Text Editor: Edit any text file with the built-in text editor 
 
 ### 5. Advanced System & Power User Tools
 * **Integrated SSH Terminal:**
