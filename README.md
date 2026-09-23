@@ -30,7 +30,7 @@ Of course, I'd be more than happy to receive some kind of a feedback - this prod
     - [1. Layouts, UI & Navigation](#1-layouts-ui--navigation)
     - [2. Core File & Directory Management](#2-core-file--directory-management)
     - [3. Archiving & Compression](#3-archiving--compression)
-    - [4. Media & Document Previews](#4-media--document-previews)
+    - [4. Media & Document Previews and Editing](#4-media--document-previews-and-editing)
     - [5. Advanced System & Power User Tools](#5-advanced-system--power-user-tools)
     - [6. Webmail](#6-webmail)
     - [7. Security Infrastructure](#7-security-infrastructure)
