@@ -13,34 +13,7 @@
 ?><script>
 // +++ SETTINGS MODULE +++
  
-// Default configuration settings for various device types.
-// Defines initial UI state like tree visibility, theme, and font size.
-const myCloudDefaultSettings = {
-    desktop: { 
-        treeOpen: true, darkMode: false, fontSize: 1, hideDisabled: true, singleClick: false,
-        stackedToolbar: true, showCheckboxes: true, showHoverMenu: true, clickToPreview: true, showFilmstrip: false,
-        rememberLastFolder: false, warnLargePreview: true, sidebarSize: 280, officePreviewWidth: 400, symbolDarkMode: false,
-        showListThumbnails: false, symbolSize: 'medium', commanderSplit: 0.5, startInCommander: {}, isOfficeMode: false, ribbonPinned: false
-    },
-    tablet: { 
-        treeOpen: true, darkMode: false, fontSize: 2, hideDisabled: true, singleClick: false,
-        stackedToolbar: true, showCheckboxes: true, showHoverMenu: false, clickToPreview: true, showFilmstrip: false,
-        rememberLastFolder: false, warnLargePreview: true, sidebarSize: 250, officePreviewWidth: 350, symbolDarkMode: false,
-        showListThumbnails: false, symbolSize: 'medium', commanderSplit: 0.5, startInCommander: {}, isOfficeMode: false, ribbonPinned: false
-    },
-    phone: { 
-        treeOpen: false, darkMode: false, fontSize: 3, hideDisabled: true, singleClick: false, 
-        stackedToolbar: true, showCheckboxes: true, showHoverMenu: false, clickToPreview: true, showFilmstrip: false,
-        rememberLastFolder: false, warnLargePreview: true, sidebarSize: 200, officePreviewWidth: 0, symbolDarkMode: false,
-        showListThumbnails: false, symbolSize: 'medium', commanderSplit: 0.5, startInCommander: {}, isOfficeMode: false, ribbonPinned: false
-    },
-    showHelpOnStart: true,
-	enableRecycleBin: true,
-	fra_completed: false,
-	tagNames: {},
-	visibleTags: ['#e81123', '#0078d4', '#107c10', '#f0ad4e', '#888888'],
-	tagOrder: ['#e81123', '#0078d4', '#107c10', '#f0ad4e', '#888888', '#673ab7', '#e91e63', '#009688', '#795548', '#607d8b'],
-};
+
 
 // Determines the current settings profile key based on device characteristics.
 // Returns 'phone', 'tablet', or 'desktop'.

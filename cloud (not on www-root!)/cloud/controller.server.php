@@ -350,6 +350,26 @@ class MyCloudServer {
         }
     }
 
+    private function healShares($oldAbs, $newAbs = null) {
+        $shares = $this->loadShares();
+        $changed = false;
+        $oldPrefixAbs = rtrim(str_replace('\\', '/', $oldAbs), '/') . '/';
+        $newPrefixAbs = $newAbs ? rtrim(str_replace('\\', '/', $newAbs), '/') . '/' : null;
+
+        foreach ($shares as $guid => &$s) {
+            $sharePath = str_replace('\\', '/', $s['path']);
+            if ($sharePath === rtrim($oldPrefixAbs, '/')) {
+                if ($newAbs === null) unset($shares[$guid]);
+                else $s['path'] = rtrim($newPrefixAbs, '/');
+                $changed = true;
+            } elseif (strpos($sharePath . '/', $oldPrefixAbs) === 0) {
+                if ($newAbs === null) unset($shares[$guid]);
+                else $s['path'] = $newPrefixAbs . ltrim(substr($sharePath, strlen($oldPrefixAbs)), '/');
+                $changed = true;
+            }
+        }
+        if ($changed) $this->saveShares($shares);
+    }
 
     private function log($action, $src, $tgt = '-', $result = 'OK', $timestamp = null) {
         global $cloud_logfile;
@@ -693,7 +713,15 @@ class MyCloudServer {
 
 
         // 4. Handle POST Actions
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST' || empty($_POST['myCloud_action'])) {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            // Allow specific GET bypasses for the Email Module (Drag-and-Drop EML)
+            if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['myCloud_action'] ?? '') === 'email_dl_eml') {
+                $_POST['myCloud_action'] = 'email_dl_eml';
+            } else {
+                return;
+            }
+        }
+        if (empty($_POST['myCloud_action']) && empty($_GET['myCloud_action'])) {
             return;
         }
         
@@ -798,7 +826,7 @@ class MyCloudServer {
         }
         
         $effectiveRole = $this->role;
-        $pathlessActions = ['load_settings', 'save_settings', 'switch_language', 'change_password', 'reset_settings', 'get_help_data', 'refresh_csrf', 'load_views', 'load_favorites', 'load_tags', 'load_paths', 'check_office_state', 'batch_rename', 'pdf_stack', 'pdf_combine_images', 'share-list', 'share-update', 'share-delete'];
+        $pathlessActions = ['load_settings', 'save_settings', 'switch_language', 'change_password', 'reset_settings', 'get_help_data', 'refresh_csrf', 'load_views', 'load_favorites', 'load_tags', 'load_paths', 'check_office_state', 'batch_rename', 'pdf_stack', 'pdf_combine_images', 'share-list', 'share-update', 'share-delete', 'fav_toggle'];
         
         if (!in_array($effectiveAction, $pathlessActions) && strpos($effectiveAction, 'email_') !== 0) {
             $rawPath = $_POST['path'] ?? $_POST['dir'] ?? $_POST['dest'] ?? $_POST['parent'] ?? $_POST['src'] ?? '/';
@@ -818,7 +846,13 @@ class MyCloudServer {
         }
 
         if ($this->isActionBlocked($effectiveAction, $effectiveRole)) {
-			$this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Permission denied: Action restricted by effective rights level (' . $effectiveRole . ').']);
+            // Bypass router block ONLY IF it's a file retrieval AND the user has print rights.
+            $canPrint = !$this->isActionBlocked('print', $effectiveRole);
+            if (!($canPrint && in_array($effectiveAction, ['preview', 'download']))) {
+                if ($action === 'load_favorites') $this->sendJsonAndExit(['status' => 'OK', 'favorites' => []]);
+                if ($action === 'share-list') $this->sendJsonAndExit(['status' => 'OK', 'data' => []]);
+                $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Permission denied: Action restricted by effective rights level (' . $effectiveRole . ').']);
+            }
         }
 
         // Release session lock for heavy I/O operations
@@ -1021,7 +1055,8 @@ class MyCloudServer {
         
         $fp = @fopen($rateFile, 'c+');
         if ($fp && @flock($fp, LOCK_EX)) {
-            $size = filesize($rateFile);
+            $fstat = fstat($fp);
+            $size = $fstat['size'] ?? 0;
             $data = ($size > 0) ? (@json_decode(fread($fp, $size), true) ?: []) : [];
             $now = time();
             
@@ -1326,7 +1361,9 @@ class MyCloudServer {
 
         $duration = time() - $startTime;
         $success = ($bytesSent == ($end - $start + 1)) ? 'SUCCESS' : 'PARTIAL/FAILED';
-        if (!$preview) {
+        if (!empty($info['is_pdf_print'])) {
+            $this->log('PRINT', $fullPath, '-', "$success ($bytesSent bytes, {$duration}s)");
+        } elseif (!$preview) {
             if ($duration > 10) {
                 $this->log('DOWNLOAD_START', $fullPath, '-', 'Started', $startTime);
                 $this->log('DOWNLOAD_END', $fullPath, '-', "$success ($bytesSent bytes, {$duration}s)");
@@ -1810,16 +1847,21 @@ class MyCloudServer {
         $pHash = md5($this->cloud_path);
 
         $fileRole = $this->getEffectiveRoleForAbsPath($fullPath);
-        if ($fileRole === 'no-access' || $fileRole === 'hidden' || $this->isActionBlocked('download', $fileRole)) {
-            $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Permission denied: Missing download rights.']);
+        $canDownload = !$this->isActionBlocked('download', $fileRole);
+        $canPreview  = !$this->isActionBlocked('preview', $fileRole);
+        $canPrint    = !$this->isActionBlocked('print', $fileRole);
+
+        if ($fileRole === 'no-access' || $fileRole === 'hidden' || (!$canDownload && !$canPreview && !$canPrint)) {
+            $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Permission denied: Missing download/preview/print rights.']);
         }
 
 		$isTempFile = (strpos(basename($fullPath), '.myCloud_temp_') === 0);
-        $this->dl_tokens[$token] = [
+        $isPrintJob = (isset($_POST['is_print_job']) && $_POST['is_print_job'] === 'true') || $isTempFile;
+		$this->dl_tokens[$token] = [
             'path' => $fullPath, 'filename' => $_POST['filename'] ?? basename($relPath),
             'preview' => $isPreview, 'is_icon' => !empty($_POST['is_icon']), 
             'expires' => time() + 300, 'user_hash' => $uHash, 'path_hash' => $pHash, 'rel_dir' => dirname($relPath),
-            'is_temp' => $isTempFile, 'is_pdf_print' => $isTempFile
+            'is_temp' => $isTempFile, 'is_pdf_print' => $isPrintJob
         ];
         session_write_close();
         $this->sendJsonAndExit(['status' => 'OK', 'token' => $token]);
@@ -2282,7 +2324,7 @@ class MyCloudServer {
         if (!isset($settings['appLaunchCount'])) $settings['appLaunchCount'] = 0;
         if (isset($_POST['inc_launch']) && $_POST['inc_launch'] === '1') { $settings['appLaunchCount']++; $needsSave = true; }            
         if ($settings['appLaunchCount'] > 3 && !isset($settings['showHelpOnStart'])) $settings['showHelpOnStart'] = false;
-        if ($needsSave) @file_put_contents($file, json_encode($settings));
+        if ($needsSave) @file_put_contents($file, json_encode($settings), LOCK_EX);
         $this->sendJsonAndExit(['status' => 'OK', 'settings' => $settings]);
     }
 
@@ -2453,7 +2495,8 @@ class MyCloudServer {
             $items = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($this->recycle_dir, RecursiveDirectoryIterator::SKIP_DOTS), RecursiveIteratorIterator::CHILD_FIRST);
             foreach ($items as $item) { $item->isDir() ? @rmdir($item->getRealPath()) : @unlink($item->getRealPath()); }
         }
-        $this->sendJsonAndExit(['status'=>'OK']);
+        $this->log('EMPTY_BIN', $this->recycle_dir);
+		$this->sendJsonAndExit(['status'=>'OK']);
     }
 
     private function actionRestore() {
@@ -2571,6 +2614,7 @@ class MyCloudServer {
             if (file_exists($target) && $target !== $src) $target = $this->getUniqueName($target);
             if (@rename($src, $target)) {
                 $this->healSubfolderPaths($src, $target);
+				$this->healShares($src, $target);
                 $res[] = basename($target);
             } else $errs[] = "Failed: {$item['src']}";
         }
@@ -2601,6 +2645,7 @@ class MyCloudServer {
             $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Failed']);
         } else {
             $this->healSubfolderPaths($src, $dest);
+			$this->healShares($src, $dest);
         }
         
         $this->log('RENAME', $_POST['src'], dirname($_POST['src']) . '/' . $newName);
@@ -2701,6 +2746,7 @@ class MyCloudServer {
                 $meta = ['origin' => '/' . ltrim(substr($src, strlen($this->cloud_path)), '/'), 'time' => time()];
                 file_put_contents($target . '.meta', json_encode($meta));
 				$this->healSubfolderPaths($src, $target); // Route rule pointing into recycle bin
+				$this->healShares($src, null); // Kill active shares on recycle!
                 $this->log('RECYCLE', $_POST['src']);
                 $this->sendJsonAndExit(['status' => 'OK', 'recycled' => '/.recycle_bin/' . basename($target)]);
             } else {
@@ -2715,6 +2761,7 @@ class MyCloudServer {
             @rmdir($src);
         } else { @unlink($src); }
 		$this->healSubfolderPaths($src, null); // Wipe permanent deletions from config
+		$this->healShares($src, null); // Wipe permanent deletions from shares
         
         $this->log('DELETE', $_POST['src']);
         $this->sendJsonAndExit(['status' => 'OK']);
@@ -2727,6 +2774,11 @@ class MyCloudServer {
         $srcRole = $this->getEffectiveRoleForAbsPath($src);
         if ($srcRole === 'no-access' || $srcRole === 'hidden' || $this->isActionBlocked($mode, $srcRole)) {
             $this->sendJsonAndExit(['status' => 'ERR', 'msg' => "Permission denied: Missing {$mode} rights for source."]);
+        }
+
+        // NEW: Moving an object requires delete rights on the source!
+        if ($mode === 'move' && $this->isActionBlocked('delete', $srcRole)) {
+            $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Permission denied: Missing delete rights for source.']);
         }
 
         if ($mode === 'move' && $this->isAnyCloudRoot($src)) $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Cannot move a cloud root container']);
@@ -2750,6 +2802,7 @@ class MyCloudServer {
                     $meta = ['origin' => '/' . ltrim(substr($src, strlen($this->cloud_path)), '/'), 'time' => time()];
                     file_put_contents($target . '.meta', json_encode($meta));
 					$this->healSubfolderPaths($src, $target);
+					this->healShares($src, $target);
                     $this->sendJsonAndExit(['status' => 'OK', 'recycled' => '/.recycle_bin/' . basename($target)]);
                 }
             }
@@ -2814,6 +2867,7 @@ class MyCloudServer {
                             copy("zip://" . $zipFile . "#" . $innerPath, $finalDest);
                         }
                         $zip->close();
+						$this->log('EXTRACT_FROM_ZIP', $innerPath, $finalDest);
                         $this->sendJsonAndExit(['status' => 'OK']);
                     }
                     $zip->close();
@@ -2843,6 +2897,7 @@ class MyCloudServer {
                 $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Move failed']);
             } else {
                 $this->healSubfolderPaths($src, $dest);
+				$this->healShares($src, $dest);
             }
         } else {
             if (is_dir($src)) {
@@ -3043,8 +3098,8 @@ class MyCloudServer {
 
         if (copy($realTmpPath, $finalDest)) {
             $this->log('EMAIL_INGEST_ATT', basename($finalDest), $destDirRel);
-			$this->sendJsonAndExit(['status' => 'OK']);
 			@unlink($realTmpPath);
+			$this->sendJsonAndExit(['status' => 'OK']);
         } else {
             $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Server failed to copy file to cloud.']);
         }
@@ -3182,6 +3237,8 @@ class MyCloudServer {
             }
             $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($src, RecursiveDirectoryIterator::SKIP_DOTS), RecursiveIteratorIterator::CHILD_FIRST);
             foreach ($it as $f) $f->isDir() ? @rmdir($f->getRealPath()) : @unlink($f->getRealPath());
+            $this->healSubfolderPaths($src, null);
+            $this->healShares($src, null);
             @rmdir($src);
         }
         $this->log('ZIP', $_POST['src'], basename($zipTarget));
@@ -3244,17 +3301,20 @@ class MyCloudServer {
             // 2. --- CENTRAL GATEKEEPER ---
             // Prevent malicious files hidden inside ZIPs from touching the disk
             $baseName = basename($name);
+			$sanitizedName = $name;
             if ($baseName !== '') {
                 $val = validateFilename($baseName);
                 if (!$val['valid']) { $sendMsg(0, 'Invalid file name in archive', 'ERR'); exit; }
-                $baseName = $this->sanitizeAndValidateName($baseName, false);
+                $safeBaseName = $this->sanitizeAndValidateName($baseName, false);
+                $dirPart = dirname($name);
+                $sanitizedName = ($dirPart === '.' || $dirPart === '\\' || $dirPart === '') ? $safeBaseName : $dirPart . '/' . $safeBaseName;
             }
 
             // SECURITY: Use stream copy to prevent symlink construction (Zip Slip Variant)
-            if (substr($name, -1) === '/') { @mkdir($target . '/' . $name, 0755, true); }
+            if (substr($name, -1) === '/') { @mkdir($target . '/' . $sanitizedName, 0755, true); }
             else {
-                @mkdir(dirname($target . '/' . $name), 0755, true);
-                copy("zip://" . $src . "#" . $name, $target . '/' . $name);
+                @mkdir(dirname($target . '/' . $sanitizedName), 0755, true);
+                copy("zip://" . $src . "#" . $name, $target . '/' . $sanitizedName);
             }
             if ($i % 10 === 0) $sendMsg(round(($i/$total)*100), "Extracting...");
         }
@@ -3362,8 +3422,9 @@ class MyCloudServer {
         }
 
         $destRole = $this->getEffectiveRoleForAbsPath($destAbs);
-        if ($this->isActionBlocked('pdf_stack', $destRole)) {
-            $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Permission denied for destination folder.']);
+        $requiredPerm = (isset($_POST['is_print_job']) && $_POST['is_print_job'] === 'true') ? 'print' : 'pdf_stack';
+        if ($this->isActionBlocked($requiredPerm, $destRole)) {
+			$this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Permission denied for destination folder.']);
         }
 
         // 1. Resolve and validate all files
@@ -3440,11 +3501,19 @@ class MyCloudServer {
                 if ($f !== $destRel) {
                     $fAbs = $this->resolve($f);
                     if ($fAbs && is_file($fAbs)) {
-                        @unlink($fAbs);
+                        $srcRole = $this->getEffectiveRoleForAbsPath($fAbs);
+                        if (!$this->isActionBlocked('delete', $srcRole)) {
+                            @unlink($fAbs);
+                            $this->healSubfolderPaths($fAbs, null);
+                            $this->healShares($fAbs, null);
+                        }
                     }
                 }
             }
         }
+
+        $logMode = (isset($_POST['is_print_job']) && $_POST['is_print_job'] === 'true') ? 'PRINT_STACK' : 'PDF_STACK';
+        $this->log($logMode, count($filesRel) . ' files merged', $destAbs);
 
         $this->sendJsonAndExit(['status' => 'OK', 'dest' => $destRel]);
     }
@@ -3815,7 +3884,8 @@ class MyCloudServer {
 
         if(count($validFiles) > 50) $this->sendJsonAndExit(['status'=>'ERR','msg'=>'Maximum 50 images allowed per batch.']);
         
-        $dest = dirname(str_replace(["'", '"'], "", $validFiles[0])) . DIRECTORY_SEPARATOR . 'Combined_Images.pdf';
+        $firstRawPath = $this->resolve($files[0]);
+        $dest = dirname($firstRawPath) . DIRECTORY_SEPARATOR . 'Combined_Images.pdf';
         $dest = $this->getUniqueName($dest);
         
         $destRole = $this->getEffectiveRoleForAbsPath(dirname($dest));
@@ -4011,7 +4081,7 @@ class MyCloudServer {
 
     private function actionShareList() {
         if ($this->isActionBlocked('share_all')) {
-            $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Permission denied: Missing rights.']);
+            $this->sendJsonAndExit(['status' => 'OK', 'data' => []]);
         }
         $targetIsDir = false;
         if (!empty($_POST['check_path'])) {
@@ -4231,10 +4301,17 @@ class MyCloudServer {
     private function actionPdfGetRaw() {
         $src = $this->resolve($_POST['src'] ?? '');
         $effectiveRole = $this->getEffectiveRoleForAbsPath($src);
-        if ($effectiveRole === 'no-access' || $effectiveRole === 'hidden' || $this->isActionBlocked('download', $effectiveRole)) {
+        $canDownload = !$this->isActionBlocked('download', $effectiveRole);
+        $canPreview  = !$this->isActionBlocked('preview', $effectiveRole);
+        $canPrint    = !$this->isActionBlocked('print', $effectiveRole);
+
+        if ($effectiveRole === 'no-access' || $effectiveRole === 'hidden' || (!$canDownload && !$canPreview && !$canPrint)) {
             $this->sendJsonAndExit(['status'=>'ERR','msg'=>'Permission denied.']);
         }
         if ($src && is_file($src)) {
+            if (isset($_POST['is_print_job']) && $_POST['is_print_job'] === 'true') {
+                $this->log('PRINT', $src);
+            }
             header('Content-Type: application/pdf');
             // Prevent sensitive documents from persisting in local browser caches
             header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
@@ -5206,7 +5283,9 @@ class MyCloudServer {
 		$userEditing = null;
         if (file_exists($stateFile)) {
             $state = @json_decode(file_get_contents($stateFile), true);
-             if ($state && isset($state['username'])) {
+             if ($state && isset($state['expires']) && $state['expires'] < time()) {
+                 @unlink($stateFile);
+             } elseif ($state && isset($state['username'])) {
                  if ($state['username'] === $this->username) $ready = false;
                  $userEditing = $state['username'];
              }
@@ -5226,8 +5305,23 @@ class MyCloudServer {
         // SECURITY: Use a deterministic but cryptographically secure key (HMAC).
         // This ensures collaborative editing works (same file = same key) 
         // but prevents unauthenticated attackers from guessing the fetch URL.
-        $docKey = substr(hash_hmac('sha256', $path . filemtime($path), $this->officeSecret), 0, 32);
         $tempDir = $GLOBALS['temp_dir'] ?? sys_get_temp_dir();
+
+        // Reuse active session keys to prevent Co-Editing desyncs after a Force Save
+        $activeKey = null;
+        foreach (glob($tempDir . '/myCloud_office_*.json') as $sf) {
+            $st = @json_decode(file_get_contents($sf), true);
+            if ($st && isset($st['path']) && $st['path'] === $path) {
+                if (isset($st['expires']) && $st['expires'] < time()) {
+                    @unlink($sf);
+                } else {
+                    $activeKey = str_replace(['myCloud_office_', '.json'], '', basename($sf));
+                    break;
+                }
+            }
+        }
+        $docKey = $activeKey ?: substr(hash_hmac('sha256', $path . filemtime($path), $this->officeSecret), 0, 32);
+
         $stateFilePath = $tempDir . '/myCloud_office_' . $docKey . '.json';
         file_put_contents($stateFilePath, json_encode(['path' => $path, 'expires' => time() + 86400, 'username' => $this->username, 'key' => $this->key]));
         chmod($stateFilePath, 0600); // Only readable by the MyCloud web user
@@ -5289,8 +5383,12 @@ class MyCloudServer {
         if (!$path || is_dir($path)) $this->sendJsonAndExit(['status'=>'ERR','msg'=>'Invalid file']);
 
         $effectiveRole = $this->getEffectiveRoleForAbsPath($path);
-        if ($effectiveRole === 'no-access' || $effectiveRole === 'hidden' || $this->isActionBlocked('download', $effectiveRole)) {
-            $this->sendJsonAndExit(['status'=>'ERR','msg'=>'Permission denied.']);
+        $canDownload = !$this->isActionBlocked('download', $effectiveRole);
+        $canPrint = !$this->isActionBlocked('print', $effectiveRole);
+        $canStack = !$this->isActionBlocked('pdf_stack', $effectiveRole);
+
+        if ($effectiveRole === 'no-access' || $effectiveRole === 'hidden' || (!$canDownload && !$canPrint && !$canStack)) {
+			$this->sendJsonAndExit(['status'=>'ERR','msg'=>'Permission denied.']);
         }
 
         // ONLYOFFICE Request Logic
@@ -5312,16 +5410,16 @@ class MyCloudServer {
 
         $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
 
-        // Fulfill PDF/A preference for new creations except for interactive forms
+        // Fulfill PDF/A preference for new creations to embed fonts natively, except for interactive forms
         $outputType = 'pdfa';
         if (in_array($ext, ['docxf', 'oform'])) {
             $outputType = 'pdf';
         }
         
-		$fileUrl = $baseUrl . "/myCloudOfficeFetch/" . $docKey;
-		
+        $fileUrl = $baseUrl . "/myCloudOfficeFetch/" . $docKey;
+        
         $payload = [
-            "async" => false,
+            "async" => true,
             "filetype" => $ext,
             "key" => $docKey,
             "outputtype" => $outputType,
@@ -5332,20 +5430,56 @@ class MyCloudServer {
         $payload['token'] = $this->jwtEncode($payload, $this->officeSecret);
         $convertUrl = rtrim($this->officeInternalBase, '/') . '/ConvertService.ashx';
 
-        $ch = curl_init($convertUrl);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json', 'Accept: application/json']);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        $response = curl_exec($ch);
-        curl_close($ch);
+        @set_time_limit(0);
+        $maxWait = 60;
+        $start = time();
+        $fileUrlResult = null;
+        $lastError = 'Unknown';
+        $fallbackAttempted = false;
 
-        $resData = json_decode($response, true);
-        
-        if (!empty($resData['fileUrl'])) {
-            $fileUrlObj = parse_url($resData['fileUrl']);
+        while (time() - $start < $maxWait) {
+            $ch = curl_init($convertUrl);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json', 'Accept: application/json']);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+            $response = curl_exec($ch);
+            curl_close($ch);
+
+            $resData = json_decode($response, true);
+            
+            if (!empty($resData['fileUrl'])) {
+                $fileUrlResult = $resData['fileUrl'];
+                break;
+            }
+            if (isset($resData['error']) && $resData['error'] !== 0) {
+                // Strict PDF/A rendering fails on heavily formatted documents. Auto-fallback to standard PDF.
+                if (!$fallbackAttempted && $outputType === 'pdfa') {
+                    $outputType = 'pdf';
+                    $docKey = bin2hex(random_bytes(16));
+                    $stateFilePath = $tempDir . '/myCloud_office_' . $docKey . '.json';
+                    file_put_contents($stateFilePath, json_encode(['path' => $path, 'expires' => time() + 86400, 'username' => $this->username, 'key' => $this->key]));
+                    chmod($stateFilePath, 0600);
+                    
+                    $fileUrl = $baseUrl . "/myCloudOfficeFetch/" . $docKey;
+                    $payload['key'] = $docKey;
+                    $payload['url'] = $fileUrl;
+                    $payload['outputtype'] = $outputType;
+                    $payload['token'] = $this->jwtEncode($payload, $this->officeSecret);
+                    $fallbackAttempted = true;
+                    sleep(1);
+                    continue;
+                }
+                $lastError = $resData['error'];
+                break;
+            }
+            sleep(2);
+        }
+
+        if (!empty($fileUrlResult)) {
+            $fileUrlObj = parse_url($fileUrlResult);
             if (!$fileUrlObj || !isset($fileUrlObj['scheme']) || !preg_match('/^https?$/i', $fileUrlObj['scheme'])) {
                 $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Invalid fileUrl scheme']);
             }
@@ -5355,7 +5489,7 @@ class MyCloudServer {
             if ($urlHost !== $allowedInternal && $urlHost !== $allowedExternal) {
                 $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Unrecognized Document Server host']);
             }
-            $ch2 = curl_init($resData['fileUrl']);
+            $ch2 = curl_init($fileUrlResult);
             curl_setopt($ch2, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch2, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
             curl_setopt($ch2, CURLOPT_REDIR_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
@@ -5373,20 +5507,29 @@ class MyCloudServer {
                 $tmpRelPath = ltrim($parentDir . '/' . $tmpName, '/');
                 $tmpAbsPath = $this->resolve($tmpRelPath);
                 
-                file_put_contents($tmpAbsPath, $pdfContent);
-                $this->sendJsonAndExit(['status' => 'OK', 'tempPath' => '/' . $tmpRelPath]);
+                if ($tmpAbsPath !== false) {
+                    if (file_put_contents($tmpAbsPath, $pdfContent) !== false) {
+                        $this->log('CREATE_TEMP_PDF', $tmpAbsPath);
+						$this->sendJsonAndExit(['status' => 'OK', 'tempPath' => '/' . $tmpRelPath]);
+                    } else {
+                        $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Failed to write temporary PDF to disk. Check directory permissions.']);
+                    }
+                }
             }
         }
-        $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Conversion failed']);
+        $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Conversion failed (Code: ' . $lastError . ')']);
     }
-	
-	private function actionOfficeConvertPdf() {
+
+    private function actionOfficeConvertPdf() {
         $path = $this->resolve($_POST['path'] ?? '');
         if (!$path || is_dir($path)) $this->sendJsonAndExit(['status'=>'ERR','msg'=>'Invalid file']);
 
         $effectiveRole = $this->getEffectiveRoleForAbsPath($path);
-        if ($effectiveRole === 'no-access' || $effectiveRole === 'hidden' || $this->isActionBlocked('view_office', $effectiveRole)) {
-            $this->sendJsonAndExit(['status'=>'ERR','msg'=>'Permission denied.']);
+        $canView = !$this->isActionBlocked('view_office', $effectiveRole);
+        $canPrint = !$this->isActionBlocked('print', $effectiveRole);
+
+        if ($effectiveRole === 'no-access' || $effectiveRole === 'hidden' || (!$canView && !$canPrint)) {
+			$this->sendJsonAndExit(['status'=>'ERR','msg'=>'Permission denied.']);
         }
 
         // 1. Secure stateless reference for ONLYOFFICE Docker download
@@ -5410,7 +5553,7 @@ class MyCloudServer {
 
         $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
 
-        // Fulfill PDF/A preference for new creations except for interactive forms
+        // Fulfill PDF/A preference for new creations to embed fonts natively, except for interactive forms
         $outputType = 'pdfa';
         if (in_array($ext, ['docxf', 'oform'])) {
             $outputType = 'pdf';
@@ -5418,7 +5561,7 @@ class MyCloudServer {
 
         // 3. Build payload for ONLYOFFICE Conversion API
         $payload = [
-            "async" => false,
+            "async" => true,
             "filetype" => $ext,
             "key" => $docKey,
             "outputtype" => $outputType,
@@ -5429,22 +5572,56 @@ class MyCloudServer {
         $payload['token'] = $this->jwtEncode($payload, $this->officeSecret);
         $convertUrl = rtrim($this->officeInternalBase, '/') . '/ConvertService.ashx';
 
-        // 4. Ask ONLYOFFICE to convert the file to PDF
-        $ch = curl_init($convertUrl);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json', 'Accept: application/json']);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        $response = curl_exec($ch);
-        curl_close($ch);
+        @set_time_limit(0);
+        $maxWait = 60;
+        $start = time();
+        $fileUrlResult = null;
+        $lastError = 'Unknown';
+        $fallbackAttempted = false;
 
-        $resData = json_decode($response, true);
+        while (time() - $start < $maxWait) {
+            $ch = curl_init($convertUrl);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json', 'Accept: application/json']);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+            $response = curl_exec($ch);
+            curl_close($ch);
+
+            $resData = json_decode($response, true);
+            
+            if (!empty($resData['fileUrl'])) {
+                $fileUrlResult = $resData['fileUrl'];
+                break;
+            }
+            if (isset($resData['error']) && $resData['error'] !== 0) {
+                if (!$fallbackAttempted && $outputType === 'pdfa') {
+                    $outputType = 'pdf';
+                    $docKey = bin2hex(random_bytes(16));
+                    $stateFilePath = $tempDir . '/myCloud_office_' . $docKey . '.json';
+                    file_put_contents($stateFilePath, json_encode(['path' => $path, 'expires' => time() + 86400, 'username' => $this->username, 'key' => $this->key]));
+                    chmod($stateFilePath, 0600);
+                    
+                    $fileUrl = $baseUrl . "/myCloudOfficeFetch/" . $docKey;
+                    $payload['key'] = $docKey;
+                    $payload['url'] = $fileUrl;
+                    $payload['outputtype'] = $outputType;
+                    $payload['token'] = $this->jwtEncode($payload, $this->officeSecret);
+                    $fallbackAttempted = true;
+                    sleep(1);
+                    continue;
+                }
+                $lastError = $resData['error'];
+                break;
+            }
+            sleep(2);
+        }
         
         // 5. Download the converted PDF and serve it via MyCloud's own token system (CSP safe)
-        if (!empty($resData['fileUrl'])) {
-            $fileUrlObj = parse_url($resData['fileUrl']);
+        if (!empty($fileUrlResult)) {
+            $fileUrlObj = parse_url($fileUrlResult);
             if (!$fileUrlObj || !isset($fileUrlObj['scheme']) || !preg_match('/^https?$/i', $fileUrlObj['scheme'])) {
                 $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Invalid fileUrl scheme']);
             }
@@ -5455,7 +5632,7 @@ class MyCloudServer {
                 $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Unrecognized Document Server host']);
             }
             // Proxy the PDF content using cURL to avoid allow_url_fopen restrictions
-            $ch2 = curl_init($resData['fileUrl']);
+            $ch2 = curl_init($fileUrlResult);
             curl_setopt($ch2, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch2, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
             curl_setopt($ch2, CURLOPT_REDIR_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
@@ -5465,23 +5642,25 @@ class MyCloudServer {
             curl_close($ch2);
 
             if ($pdfContent !== false) {
-                $tmpFile = $tempDir . '/myCloud_print_' . bin2hex(random_bytes(8)) . '.pdf';
-                file_put_contents($tmpFile, $pdfContent);
-
-                $token = bin2hex(random_bytes(20));
-                $this->dl_tokens[$token] = [
-                    'path' => $tmpFile, 
-                    'filename' => pathinfo($path, PATHINFO_FILENAME) . '.pdf', 
-                    'preview' => true,
-                    'expires' => time() + 300, 
-                    'is_temp' => true,
-                    'is_pdf_print' => true
-                ];
-                $this->sendJsonAndExit(['status' => 'OK', 'token' => $token]);
+                $tmpFile = sys_get_temp_dir() . '/myCloud_print_' . bin2hex(random_bytes(8)) . '.pdf';
+                if (file_put_contents($tmpFile, $pdfContent) !== false) {
+					$token = bin2hex(random_bytes(20));
+                    $this->dl_tokens[$token] = [
+                        'path' => $tmpFile, 
+                        'filename' => pathinfo($path, PATHINFO_FILENAME) . '.pdf', 
+                        'preview' => true,
+                        'expires' => time() + 300, 
+                        'is_temp' => true,
+                        'is_pdf_print' => true
+                    ];
+                    $this->sendJsonAndExit(['status' => 'OK', 'token' => $token]);
+                } else {
+                    $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Failed to write temporary PDF to print cache.']);
+                }
             }
         }
         
-        $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Print rendering failed (Code: ' . ($resData['error'] ?? 'Unknown') . ')']);
+        $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Print rendering failed (Code: ' . $lastError . ')']);
     }
 	
     private function handleOfficeFetch() {

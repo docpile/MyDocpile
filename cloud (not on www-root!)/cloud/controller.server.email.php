@@ -117,6 +117,25 @@ class MyCloudEmailServer {
         }
     }
 	
+    // --- SYNCED HELPER: Secure Shell Argument Wrapper ---
+    private function safeShellArg($arg) {
+        if (strpos($arg, "\0") !== false) {
+            $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Command execution blocked: Null byte detected.']);
+        }
+        return escapeshellarg($arg);
+    }
+
+    // --- SYNCED HELPER: Audit Logging ---
+    private function log($action, $src, $tgt = '-', $result = 'OK', $timestamp = null) {
+        global $cloud_logfile;
+        if (empty($cloud_logfile)) return;
+        $safe_src = str_replace(["\r", "\n", "\t"], " ", $src);
+        $safe_tgt = str_replace(["\r", "\n", "\t"], " ", $tgt);
+        $timeStr = $timestamp ? date('Y-m-d H:i:s', $timestamp) : date('Y-m-d H:i:s');
+        $entry = "$timeStr\t{$this->username}\t{$this->key}\t$action\t$safe_src\t$safe_tgt\t$result\n";
+        @file_put_contents($cloud_logfile, $entry, FILE_APPEND | LOCK_EX);
+    }	
+	
     // --- UNIFIED SSRF GUARDIAN ---
     private function validateZeroTrustTarget($host, $port = null) {
         $ip = gethostbyname($host);
@@ -357,7 +376,7 @@ class MyCloudEmailServer {
             }
             $configs = $merged;
         }
-        file_put_contents($this->config_file, json_encode($configs, JSON_PRETTY_PRINT));
+        file_put_contents($this->config_file, json_encode($configs, JSON_PRETTY_PRINT), LOCK_EX);
     }
 
     private function loadContacts() {
@@ -372,7 +391,7 @@ class MyCloudEmailServer {
     }
 
     private function saveContacts($contacts) {
-        file_put_contents($this->contacts_file, $this->encryptData(json_encode($contacts), 'v4'));
+        file_put_contents($this->contacts_file, $this->encryptData(json_encode($contacts), 'v4'), LOCK_EX);
     }
 
     private function loadAutoContacts() {
@@ -393,7 +412,7 @@ class MyCloudEmailServer {
         $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length('AES-256-GCM'));
         $tag = '';
         $encrypted = openssl_encrypt($json, 'AES-256-GCM', $key, OPENSSL_RAW_DATA, $iv, $tag);
-        file_put_contents($this->auto_contacts_file, $this->encryptData(json_encode($contacts), 'v4'));
+        file_put_contents($this->auto_contacts_file, $this->encryptData(json_encode($contacts), 'v4'), LOCK_EX);
  }
 
     private function autoCollectContacts($to, $cc, $bcc) {
@@ -452,7 +471,7 @@ class MyCloudEmailServer {
     }
 
     private function saveTemplates($templates) {
-        file_put_contents($this->templates_file, $this->encryptData(json_encode($templates), 'v4'));
+        file_put_contents($this->templates_file, $this->encryptData(json_encode($templates), 'v4'), LOCK_EX);
     }
 
     // --- SAFE ENCODING HELPERS ---
@@ -1729,18 +1748,20 @@ private function runIncrementalMigration() {
             $_POST['folder'] = preg_replace('/[^a-zA-Z0-9.\-_\/ ]/', '', $_POST['folder']);
         }
 
-        switch ($action) {
-            // --- ALIAS MANAGER MODULE INTERCEPT ---
-            case (preg_match('/^email_alias_/', $action) ? true : false):
-                $aliasModulePath = __DIR__ . '/controller.server.email.alias_admin.php';
-                if (file_exists($aliasModulePath) && $this->actionAllowed('mailbox_administration')) {
-                    require_once $aliasModulePath;
-                    $aliasServer = new MyCloudEmailAliasServer($this->key, $this->username);
-                    $aliasServer->handleAliasRequest($action);
-                }
-                $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Alias manager module unavailable or access denied.']);
-                break;
+        $user = trim($_POST['login_user'] ?? '');
 
+        // --- ALIAS MANAGER MODULE INTERCEPT (Moved outside switch to prevent type-juggling bypasses) ---
+        if (strpos($action, 'email_alias_') === 0) {
+            $aliasModulePath = __DIR__ . '/controller.server.email.alias_admin.php';
+            if (file_exists($aliasModulePath) && $this->actionAllowed('mailbox_administration')) {
+                require_once $aliasModulePath;
+                $aliasServer = new MyCloudEmailAliasServer($this->key, $this->username);
+                $aliasServer->handleAliasRequest($action);
+            }
+            $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Alias manager module unavailable or access denied.']);
+        }
+
+        switch ($action) {
 
             // --- FIRE-AND-FORGET OUTBOX TRIGGER ---
             case 'email_process_outbox':
@@ -1887,7 +1908,6 @@ private function runIncrementalMigration() {
 
             case 'email_sync_password':
                 $configs = $this->loadConfigs();
-                $user = trim($_POST['login_user'] ?? '');
                 $newPass = $_POST['new_password'] ?? '';
                 if (empty($user) || empty($newPass)) $this->sendJsonAndExit(['status' => 'ERR', 'msg' => 'Missing data.']);
                 
@@ -1901,6 +1921,8 @@ private function runIncrementalMigration() {
                     }
                 }
                 unset($acc);
+				
+				$this->log('EMAIL_SYNC_PASSWORD', $accLogin);
                 
                 if ($updated) $this->saveConfigs($configs);
                 $this->sendJsonAndExit(['status' => 'OK']);
@@ -1990,13 +2012,21 @@ private function runIncrementalMigration() {
                     }
                     if (is_dir($cloud_gpg_dir)) {
                         $wkdHash = $this->getWkdHash(trim($configs[$id]['email'] ?? ''));
-                        if ($wkdHash && ctype_alnum($wkdHash)) { // ZERO TRUST: Prevent LFI via crafted email payloads
-                              file_put_contents(rtrim($cloud_gpg_dir, '/\\') . '/' . $wkdHash, $pubKey);
-                        }
+                        if ($wkdHash && ctype_alnum($wkdHash)) {
+                            $domain = preg_replace('/[^a-z0-9.-]/', '', explode('@', strtolower(trim($configs[$id]['email'] ?? '')))[1] ?? 'localhost');
+                            $domainDir = rtrim($cloud_gpg_dir, '/\\') . '/' . $domain;
+                            if (!is_dir($domainDir)) @mkdir($domainDir, 0755, true);
+                            file_put_contents($domainDir . '/' . $wkdHash, $pubKey);
+                       }
                         foreach ($configs[$id]['aliases'] as $al) {
-							  $alEmail = is_array($al) ? ($al['email'] ?? '') : $al;
-                              $alWkdHash = $this->getWkdHash(trim($alEmail));
-                              if ($alWkdHash && ctype_alnum($alWkdHash)) file_put_contents(rtrim($cloud_gpg_dir, '/\\') . '/' . $alWkdHash, $pubKey);
+                            $alEmail = is_array($al) ? ($al['email'] ?? '') : $al;
+                            $alWkdHash = $this->getWkdHash(trim($alEmail));
+                            if ($alWkdHash && ctype_alnum($alWkdHash)) {
+                                $alDomain = preg_replace('/[^a-z0-9.-]/', '', explode('@', strtolower(trim($alEmail)))[1] ?? 'localhost');
+                                $alDomainDir = rtrim($cloud_gpg_dir, '/\\') . '/' . $alDomain;
+                                if (!is_dir($alDomainDir)) @mkdir($alDomainDir, 0755, true);
+                                file_put_contents($alDomainDir . '/' . $alWkdHash, $pubKey);
+                            }
                         }
                     }
                 }
@@ -2013,6 +2043,7 @@ private function runIncrementalMigration() {
                     $scope = rawurlencode('https://outlook.office.com/IMAP.AccessAsUser.All https://outlook.office.com/SMTP.Send offline_access');
                     $response['oauth_url'] = "https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=" . $MYCLOUD_O365_CLIENT_ID . "&response_type=code&redirect_uri=".rawurlencode($redirectUri)."&response_mode=query&scope={$scope}&state={$stateStr}";
                 }
+				$this->log('EMAIL_ACCOUNT_CHANGE', $this->username);
                 $this->sendJsonAndExit($response);
                 break;
 
@@ -2034,6 +2065,7 @@ private function runIncrementalMigration() {
                     }
 
                 }
+				$this->log('EMAIL_ACCOUNT_DELETION', $id);
                 $this->sendJsonAndExit(['status' => 'OK']);
                 break;
 				
@@ -2181,7 +2213,7 @@ private function runIncrementalMigration() {
                         $domain = explode('@', $se)[1] ?? 'localhost';
                         $domainDir = rtrim($cloud_gpg_dir, '/\\') . '/' . preg_replace('/[^a-z0-9.-]/', '', $domain);
                         
-                        if ($wkdHash) {
+                        if ($wkdHash && ctype_alnum($wkdHash)) {
                             if (!is_dir($domainDir)) @mkdir($domainDir, 0755, true);
                             if (file_put_contents($domainDir . '/' . $wkdHash, $pubKey) !== false) {
                                 $published++;
@@ -2226,7 +2258,7 @@ private function runIncrementalMigration() {
                         $domain = explode('@', $se)[1] ?? 'localhost';
                         $domainDir = rtrim($cloud_gpg_dir, '/\\') . '/' . preg_replace('/[^a-z0-9.-]/', '', $domain);
                         
-                        if ($wkdHash) {
+                        if ($wkdHash && ctype_alnum($wkdHash)) {
                             $path = $domainDir . '/' . $wkdHash;
                             if (file_exists($path) && @unlink($path)) {
                                 $deleted++;
@@ -2264,8 +2296,9 @@ private function runIncrementalMigration() {
 
                 // 1. Check Local WKD first (Zero HTTP overhead)
                 global $cloud_gpg_dir;
-                if (!empty($cloud_gpg_dir) && is_dir($cloud_gpg_dir)) {
-                    $path = rtrim($cloud_gpg_dir, '/\\') . '/' . $hash;
+                if (!empty($cloud_gpg_dir) && is_dir($cloud_gpg_dir) && $hash && ctype_alnum($hash)) {
+                    $domainDir = rtrim($cloud_gpg_dir, '/\\') . '/' . preg_replace('/[^a-z0-9.-]/', '', $domain);
+                    $path = $domainDir . '/' . $hash;
                     if (file_exists($path)) {
                         $pubKey = file_get_contents($path);
                         $source = 'Local Server Directory';
@@ -3620,7 +3653,7 @@ private function runIncrementalMigration() {
                     if (!$usedOnlyOffice || !file_exists($mainPdf) || filesize($mainPdf) == 0) {
                         $wkPaths = ['wkhtmltopdf --disable-smart-shrinking --zoom 1.25 -T 15mm -B 15mm -L 15mm -R 15mm', '/usr/bin/wkhtmltopdf --disable-smart-shrinking -T 15mm -B 15mm -L 15mm -R 15mm', '/usr/local/bin/wkhtmltopdf --disable-smart-shrinking -T 15mm -B 15mm -L 15mm -R 15mm'];
 						foreach ($wkPaths as $wk) {
-                            @exec($wk . " --encoding utf-8 " . escapeshellarg($mainHtml) . " " . escapeshellarg($mainPdf) . " 2>&1");
+                            @exec($wk . " --encoding utf-8 " . $this->safeShellArg($mainHtml) . " " . $this->safeShellArg($mainPdf) . " 2>&1");
                             if (file_exists($mainPdf) && filesize($mainPdf) > 0) break;
                         }
                     }
@@ -3641,14 +3674,14 @@ private function runIncrementalMigration() {
                         
                         $imPaths = ['convert', '/usr/bin/convert', '/usr/local/bin/convert'];
                         foreach ($imPaths as $im) {
-                            @exec($im . " -background white -fill black -pointsize 14 text:" . escapeshellarg($txtFile) . " " . escapeshellarg($mainPdf) . " 2>&1");
+                            @exec($im . " -background white -fill black -pointsize 14 text:" . $this->safeShellArg($txtFile) . " " . $this->safeShellArg($mainPdf) . " 2>&1");
                             if (file_exists($mainPdf) && filesize($mainPdf) > 0) break;
                         }
                     }
 
                     if (!file_exists($mainPdf) || filesize($mainPdf) == 0) {
                         $safeTitle = preg_replace('/[^a-zA-Z0-9.\-_ ]/', '_', $subject);
-                        @exec("convert -size 595x842 xc:white -pointsize 14 -fill black -annotate +50+50 'Email: " . escapeshellarg($safeTitle) . "\n\n(HTML to PDF conversion tools missing.\nAttachments appended below.)' " . escapeshellarg($mainPdf) . " 2>&1");
+                        @exec("convert -size 595x842 xc:white -pointsize 14 -fill black -annotate +50+50 'Email: " . $this->safeShellArg($safeTitle) . "\n\n(HTML to PDF conversion tools missing.\nAttachments appended below.)' " . $this->safeShellArg($mainPdf) . " 2>&1");
                     }
 
                     if (!file_exists($mainPdf) || filesize($mainPdf) == 0) {
@@ -3691,8 +3724,8 @@ private function runIncrementalMigration() {
                             $imFormat = $imFormatMap[$realMime] ?? 'jpeg';
 
                             $imgPdf = $tmpPath . '.pdf';
-                            @exec("magick convert " . escapeshellarg($imFormat . ':' . $tmpPath) . " " . escapeshellarg($imgPdf) . " 2>&1", $mOut, $mRet);
-                            if ($mRet !== 0) @exec("convert " . escapeshellarg($imFormat . ':' . $tmpPath) . " " . escapeshellarg($imgPdf) . " 2>&1");
+                            @exec("magick convert " . $this->safeShellArg($imFormat . ':' . $tmpPath) . " " . $this->safeShellArg($imgPdf) . " 2>&1", $mOut, $mRet);
+                            if ($mRet !== 0) @exec("convert " . $this->safeShellArg($imFormat . ':' . $tmpPath) . " " . $this->safeShellArg($imgPdf) . " 2>&1");
                             
                             if (file_exists($imgPdf)) $processedPdfs[] = ['name' => $attName, 'path' => $imgPdf];
                             else $attachFiles[] = ['name' => $attName, 'path' => $tmpPath];
@@ -3743,17 +3776,17 @@ private function runIncrementalMigration() {
 
                     $mergedPdf = $tmpDir . '/merged.pdf';
                     if (count($mergePdfs) > 1) {
-                        @exec("pdftk " . implode(' ', array_map('escapeshellarg', $mergePdfs)) . " cat output " . escapeshellarg($mergedPdf) . " 2>&1");
+                        @exec("pdftk " . implode(' ', array_map([$this, 'safeShellArg'], $mergePdfs)) . " cat output " . $this->safeShellArg($mergedPdf) . " 2>&1");
                         if (!file_exists($mergedPdf) || filesize($mergedPdf) == 0) {
-                            $qArgs = []; foreach($mergePdfs as $m) { $qArgs[] = escapeshellarg($m) . " 1-z"; }
-                            @exec("qpdf --empty --pages " . implode(' ', $qArgs) . " -- " . escapeshellarg($mergedPdf) . " 2>&1");
+                            $qArgs = []; foreach($mergePdfs as $m) { $qArgs[] = $this->safeShellArg($m) . " 1-z"; }
+                            @exec("qpdf --empty --pages " . implode(' ', $qArgs) . " -- " . $this->safeShellArg($mergedPdf) . " 2>&1");
                         }
                         if (!file_exists($mergedPdf) || filesize($mergedPdf) == 0) {
-                            @exec("pdfunite " . implode(' ', array_map('escapeshellarg', $mergePdfs)) . " " . escapeshellarg($mergedPdf) . " 2>&1");
+                            @exec("pdfunite " . implode(' ', array_map([$this, 'safeShellArg'], $mergePdfs)) . " " . $this->safeShellArg($mergedPdf) . " 2>&1");
                         }
                         if (!file_exists($mergedPdf) || filesize($mergedPdf) == 0) {
-                            @exec("gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -dAutoRotatePages=/None -sOutputFile=" . escapeshellarg($mergedPdf) . " " . implode(' ', array_map('escapeshellarg', $mergePdfs)));
-                        }
+                            @exec("gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -dAutoRotatePages=/None -sOutputFile=" . $this->safeShellArg($mergedPdf) . " " . implode(' ', array_map([$this, 'safeShellArg'], $mergePdfs)));
+                       }
                         $basePdfForAttachment = file_exists($mergedPdf) ? $mergedPdf : $mainPdf;
                     } else {
                         $basePdfForAttachment = $mainPdf;
@@ -3761,8 +3794,8 @@ private function runIncrementalMigration() {
 
                     $finalPdf = $tmpDir . '/final.pdf';
                     if (count($attachFiles) > 0) {
-                        $attachPaths = array_column($attachFiles, 'path');$attachPaths = array_column($attachFiles, 'path');
-                        @exec("pdftk " . escapeshellarg($basePdfForAttachment) . " attach_files " . implode(' ', array_map('escapeshellarg', $attachPaths)) . " output " . escapeshellarg($finalPdf));
+                        $attachPaths = array_column($attachFiles, 'path');
+                        @exec("pdftk " . $this->safeShellArg($basePdfForAttachment) . " attach_files " . implode(' ', array_map([$this, 'safeShellArg'], $attachPaths)) . " output " . $this->safeShellArg($finalPdf));
                         if (!file_exists($finalPdf)) $finalPdf = $basePdfForAttachment;
                     } else {
                         $finalPdf = $basePdfForAttachment;
@@ -3942,7 +3975,7 @@ private function runIncrementalMigration() {
                 $configs = $this->loadConfigs();
                 $accId = $_POST['account_id'] ?? '';
                 $folder = str_replace(["\r", "\n", "*", "%"], '', $_POST['folder'] ?? '');
-                $name = str_replace(["\r", "\n"], '', $_POST['name'] ?? '');
+                $name = preg_replace('/[^a-zA-Z0-9.\-_ ]/', '', $_POST['name'] ?? ''); // Strict IMAP traversal block
                 if (!isset($configs[$accId])) $this->sendJsonAndExit(['status'=>'ERR','msg'=>'Account not found.']);
                 
                 list($client, $folderObj, $err) = $this->connectImap($configs[$accId], '', false);
@@ -3973,7 +4006,7 @@ private function runIncrementalMigration() {
                 $configs = $this->loadConfigs();
                 $accId = $_POST['account_id'] ?? '';
                 $folder = str_replace(["\r", "\n", "*", "%"], '', $_POST['folder'] ?? '');
-                $name = str_replace(["\r", "\n"], '', $_POST['name'] ?? '');
+                $name = preg_replace('/[^a-zA-Z0-9.\-_ ]/', '', $_POST['name'] ?? ''); // Strict IMAP traversal block
                 if (!isset($configs[$accId])) $this->sendJsonAndExit(['status'=>'ERR','msg'=>'Account not found.']);
                 
                 list($client, $folderObj, $err) = $this->connectImap($configs[$accId], $folder, false);

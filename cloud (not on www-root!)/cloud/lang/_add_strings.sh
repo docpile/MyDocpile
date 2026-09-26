@@ -5,7 +5,7 @@
 # CONFIGURATION
 # ==============================================================================
 
-TARGET_ANCHOR="share_not_supported"
+TARGET_ANCHOR="ie_save_copy"
 
 # ==============================================================================
 # ARRAYS
@@ -13,50 +13,36 @@ TARGET_ANCHOR="share_not_supported"
 
 # 2. The Keys
 KEYS=(
-    "image_convert"
-    "ie_color_light"
-    "ie_brightness"
-    "ie_contrast"
-    "ie_saturation"
-    "ie_gamma"
-	"ie_hdr"
-    "ie_transform_crop"
-    "ie_rotate"
-    "ie_draw_crop"
-    "ie_export_settings"
-    "ie_format"
-    "ie_quality"
-    "ie_compression"
-    "ie_color_depth"
-    "ie_resize_w"
-    "ie_resize_h"
-    "ie_auto"
-    "ie_reset"
-    "ie_save_copy"
+    "pin_qa"
+    "qa_remove_tip"
+    "qa_already_pinned"
+    "qa_limit_title"
+    "qa_limit_msg"
 )
 
 declare -A TRANSLATIONS
 
-TRANSLATIONS[en]="Image Editor|Color & Light|Brightness|Contrast|Saturation|Gamma|Virtual HDR|Transform & Crop|Rotate|Draw Crop|Export Settings|Format|Quality|Compression|Color Depth|Resize W (opt)|Resize H (opt)|Auto|Reset|Save Copy"
-TRANSLATIONS[de]="Bildbearbeitung|Farbe & Licht|Helligkeit|Kontrast|Sättigung|Gamma|Virtuelles HDR|Transformieren & Zuschneiden|Drehen|Rahmen aufziehen|Export-Einstellungen|Format|Qualität|Kompression|Farbtiefe|Breite (opt)|Höhe (opt)|Auto|Zurücksetzen|Kopie speichern"
-TRANSLATIONS[es]="Editor de imágenes|Color y Luz|Brillo|Contraste|Saturación|Gamma|HDR Virtual|Transformar y Recortar|Rotar|Dibujar Recorte|Ajustes de Exportación|Formato|Calidad|Compresión|Profundidad de color|Redimensionar W (opc)|Redimensionar H (opc)|Auto|Restablecer|Guardar Copia"
-TRANSLATIONS[fr]="Éditeur d'images|Couleur et Lumière|Luminosité|Contraste|Saturation|Gamma|HDR Virtuel|Transformer et Recadrer|Faire pivoter|Tracer le recadrage|Paramètres d'exportation|Format|Qualité|Compression|Profondeur de couleur|Redimensionner L (opt)|Redimensionner H (opt)|Auto|Réinitialiser|Enregistrer une copie"
-TRANSLATIONS[it]="Editor di immagini|Colore e Luce|Luminosit |Contrasto|Saturazione|Gamma|HDR Virtuale|Trasforma e Ritaglia|Ruota|Disegna Ritaglio|Impostazioni di Esportazione|Formato|Qualit |Compressione|Profondit  colore|Ridimensiona L (opz)|Ridimensiona A (opz)|Auto|Ripristina|Salva Copia"
-TRANSLATIONS[pt]="Editor de imagens|Cor e Luz|Brilho|Contraste|Saturação|Gama|HDR Virtual|Transformar e Cortar|Rodar|Desenhar Corte|Configurações de Exportação|Formato|Qualidade|Compressão|Profundidade de cor|Redimensionar L (opc)|Redimensionar A (opc)|Auto|Redefinir|Salvar Cópia"
-TRANSLATIONS[ru]=" едактор изображений|Цвет и Свет|Яркость|Контрастность|Насыщенность|Гамма|Вирт. HDR|Трансформация и Обрезка|Повернуть|Выделить область|Настройки экспорта|Формат|Качество|Сжатие|Глубина цвета|Ширина (опц)|Высота (опц)|Авто|Сброс|Сохранить копию"
-TRANSLATIONS[tr]="Görüntü Düzenleyici|Renk ve Işık|Parlaklık|Kontrast|Doygunluk|Gama|Sanal HDR|Dönüştür ve Kırp|Döndür|Kırpma Çiz|Dışa Aktarma Ayarları|Format|Kalite|Sıkıştırma|Renk Derinliği|Genişliği Değiştir (ops)|Yüksekliği Değiştir (ops)|Oto|Sıfırla|Kopyasını Kaydet"
-TRANSLATIONS[zh-cn]="图像编辑器|色彩与光线|亮度|对比度|饱和度|伽马|虚拟HDR|变换与裁剪|旋转|绘制裁剪|导出设置| 式|质量|压缩|颜色深度|调整宽度 (可选)|调整高度 (可选)|自动|重置|保存副本"
-TRANSLATIONS[ja]="画像エディター|色と光|明るさ|コントラスト|彩度|ガンマ|仮想HDR|変形と切り抜き|回転|切り抜きを描画|エクスポート設定|フォーマット|品質|圧縮|色深度|幅をリサイズ (任意)|高さをリサイズ (任意)|自動|リセット|コピーを保存"
-TRANSLATIONS[ko]="이미지 편집기|색상 및 조명|밝기|대비|채도|감마|가상 HDR|변형 및 자르기|회 |자르기 그리기|내보내기 설 |형식|품질|압축|색상 심도|너비 크기 조  ( 택)|높이 크기 조  ( 택)|자동|초기화|사본  장"
-TRANSLATIONS[ar]="محرر الصور|اللون والإضاءة|السطوع|التباين|التشبع|جاما|HDR افتراضي|تحويل واقتصاص|تدوير|رسم الاقتصاص|إعدادات التصدير|التنسيق|الجودة|ضغط|عمق اللون|تغيير العرض (اختياري)|تغيير الارتفاع (اختياري)|تلقائي|إعادة تعيين|حفظ نسخة"
-TRANSLATIONS[fa]="ویرایشگر تصویر|رنگ و نور|روشنایی|کنتراست|اشباع|گاما|HDR مجازی|تغییر و برش|چرخش|کشیدن برش|تنظیمات خروجی|فرمت|کیفیت|فشرده‌سازی|عمق رنگ|تغییر عرض (اختیاری)|تغییر ارتفاع (اختیاری)|خودکار|بازنشانی|ذخیره یک کپی"
-TRANSLATIONS[hi]="चित्र संपादक|रंग और प्रकाश|चमक|कंट्रास्ट|संतृप्ति|गामा|वर्चुअल HDR|ट्रांसफ़ॉर्म और क्रॉप|घुमाएँ|क्रॉप ड्रा करें|निर्यात सेटिंग्स|प्रारूप|गुणवत्ता|संपीड़न|रंग की गहराई|चौड़ाई बदलें (वैकल्पिक)|ऊँचाई बदलें (वैकल्पिक)|ऑटो|रीसेट|प्रतिलिपि सहेजें"
-TRANSLATIONS[vi]="Trình chỉnh sửa ảnh|M u sắc & Ánh sáng|Độ sáng|Độ tương phản|Độ bão hòa|Gamma|HDR ảo|Chuyển đổi & Cắt ảnh|Xoay|Vẽ vùng cắt|C i đặt Xuất|Định dạng|Chất lượng|Nén|Độ sâu m u|Đổi kích cỡ Rộng (tùy chọn)|Đổi kích cỡ Cao (tùy chọn)|Tự động|Đặt lại|Lưu bản sao"
-TRANSLATIONS[uk]=" едактор зображень|Колір і Світло|Яскравість|Контрастність|Насиченість|Гамма|Вірт. HDR|Трансформація та Обрізка|Повернути|Намалювати обрізку|Налаштування експорту|Формат|Якість|Стиснення|Глибина кольору|Змінити ширину (дод)|Змінити висоту (дод)|Авто|Скинути|Зберегти копію"
-TRANSLATIONS[bar]="Buidlbearbatung|Foarb & Liacht|Hejigkeit|Kontrast|Sättigung|Gamma|Virtuells HDR|Transformiern & Zuaschneidn|Drahn|Rahma aufziang|Export-Eistellunga|Format|Qualität|Kompression|Foarbtiafn|Broadn (opt)|Hechn (opt)|Auto|Zrucksetzn|Kopie speichan"
-TRANSLATIONS[hes]="Bildbearweidung|Faab & Licht|Helligkeit|Kontrast|Sättigung|Gamma|Virtuells HDR|Transformiern & Zuschniede|Drehe|Rahme uffziehe|Export-Eistellunge|Format|Qualität|Kompression|Faabdiefe|Braad (opt)|Heeh (opt)|Auto|Zuricksetze|Kopie speichere"
-TRANSLATIONS[lb]="Bildbeaarbechtung|Faarf & Liicht|Hellegkeet|Kontrast|Sättigung|Gamma|Virtuellen HDR|Transforméieren & Ausschneiden|Dréien|Kader zéien|Export-Astellungen|Format|Qualitéit|Kompressioun|Faarfdéift|Breet (opt)|Héicht (opt)|Auto|Zerécksetzen|Kopie späicheren"
-TRANSLATIONS[pcm]="Picture Editor|Color & Light|Brightness|Contrast|Saturation|Gamma|Virtual HDR|Transform & Crop|Turn am|Draw Crop|Export Settings|Format|Quality|Compression|Color Depth|Resize Width (opt)|Resize Height (opt)|Auto|Reset|Save Copy"
+TRANSLATIONS[en]="Pin to Quick Access|Right click to remove|Already pinned.|Limit Reached|You can pin a maximum of 5 items."
+TRANSLATIONS[de]="An Schnellzugriff anheften|Rechtsklick zum Entfernen|Bereits angeheftet.|Limit erreicht|Sie können maximal 5 Elemente anheften."
+TRANSLATIONS[es]="Anclar a acceso rápido|Clic derecho para quitar|Ya está anclado.|Límite alcanzado|Puedes anclar un máximo de 5 elementos."
+TRANSLATIONS[fr]="Épingler   l'accès rapide|Clic droit pour retirer|Déj  épinglé.|Limite atteinte|Vous pouvez épingler un maximum de 5 éléments."
+TRANSLATIONS[it]="Aggiungi ad Accesso rapido|Clic destro per rimuovere|Gi  aggiunto.|Limite raggiunto|Puoi aggiungere un massimo di 5 elementi."
+TRANSLATIONS[pt]="Afixar no Acesso Rápido|Clique com o botão direito para remover|Já afixado.|Limite atingido|Pode afixar um máximo de 5 itens."
+TRANSLATIONS[ru]="Закрепить в быстром доступе|Правый клик для удаления|Уже закреплено.|Лимит достигнут|Можно закрепить не более 5 элементов."
+TRANSLATIONS[tr]="Hızlı Erişime Sabitle|Kaldırmak için sağ tıklayın|Zaten sabitlenmiş.|Sınıra Ulaşıldı|En fazla 5 öğe sabitleyebilirsiniz."
+TRANSLATIONS[zh-cn]="固定到快速访问|右键单击以移除|已固定。|达到限制|您最多可以固定 5 个项目。"
+TRANSLATIONS[ja]="クイックアクセスにピン留め|右クリックで削除|すでにピン留めされています。|制限に達しました|最大5つのアイテ をピン留めできます。"
+TRANSLATIONS[ko]=" 른 액세스에   |우클릭하여  거|이미   되었습니다.| 한 도달|최대 5개의 항목만     수 있습니다."
+TRANSLATIONS[ar]="تثبيت في الوصول السريع|انقر بزر الماوس الأيمن للإزالة|مثبت بالفعل.|تم بلوغ الحد|يمكنك تثبيت 5 عناصر كحد أقصى."
+TRANSLATIONS[fa]="سنجاق به دسترسی سریع|برای حذف راست کلیک کنید|قبلاً سنجاق شده است.|رسیدن به محدودیت|شما می‌توانید حداکثر ۵ مورد را سنجاق کنید."
+TRANSLATIONS[hi]="त्वरित पहुँच में पिन करें|हटाने के लिए राइट-क्लिक करें|पहले से ही पिन किया हुआ है।|सीमा पहुँच गई|आप अधिकतम 5 आइटम पिन कर सकते हैं।"
+TRANSLATIONS[vi]="Ghim v o Truy cập nhanh|Nhấp chuột phải để xóa|Đã được ghim.|Đã đạt giới hạn|Bạn có thể ghim tối đa 5 mục."
+TRANSLATIONS[uk]="Закріпити у швидкому доступі|Правий клік для видалення|Вже закріплено.|Ліміт досягнуто|Можна закріпити не більше 5 елементів."
+TRANSLATIONS[bar]="An Schnejzuagriff oheftn|Rechtsklick zum Entferna|Scho ogeheft.|Limit erreicht|Du konnst maximal 5 Elemente oheftn."
+TRANSLATIONS[hes]="An de Schnellzugriff ahefte|Rechtsklick zum Entferne|Schun aageheft.|Limit erreicht|Du kannsch maximal 5 Elemente ahefte."
+TRANSLATIONS[lb]="Un de Schnellzougrëff upennen|Rietsklick fir ze läschen|Scho festgemaach.|Limit erreecht|Dir kënnt maximal 5 Elementer upennen."
+TRANSLATIONS[pcm]="Pin to Quick Access|Right click to remove|E don already pin.|Limit Reached|You fit pin maximum of 5 items."
+
 #
 # ==============================================================================
 # EXECUTION ENGINE

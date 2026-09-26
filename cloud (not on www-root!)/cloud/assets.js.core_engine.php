@@ -134,6 +134,36 @@ const myCloud_I18N = {
     cancel: myCloud_LANG.cancel
 };
 
+
+// Default configuration settings for various device types.
+// Defines initial UI state like tree visibility, theme, and font size.
+const myCloudDefaultSettings = {
+    desktop: { 
+        treeOpen: true, darkMode: false, fontSize: 1, hideDisabled: true, singleClick: false,
+        stackedToolbar: true, showCheckboxes: true, showHoverMenu: true, clickToPreview: true, showFilmstrip: false,
+        rememberLastFolder: false, warnLargePreview: true, sidebarSize: 280, officePreviewWidth: 400, symbolDarkMode: false,
+        showListThumbnails: false, symbolSize: 'medium', commanderSplit: 0.5, startInCommander: {}, isOfficeMode: false, ribbonPinned: false, quickAccess: ['upload', 'download']
+    },
+    tablet: { 
+        treeOpen: true, darkMode: false, fontSize: 2, hideDisabled: true, singleClick: false,
+        stackedToolbar: true, showCheckboxes: true, showHoverMenu: false, clickToPreview: true, showFilmstrip: false,
+        rememberLastFolder: false, warnLargePreview: true, sidebarSize: 250, officePreviewWidth: 350, symbolDarkMode: false,
+        showListThumbnails: false, symbolSize: 'medium', commanderSplit: 0.5, startInCommander: {}, isOfficeMode: false, ribbonPinned: false, quickAccess: ['upload', 'download']
+    },
+    phone: { 
+        treeOpen: false, darkMode: false, fontSize: 3, hideDisabled: true, singleClick: false, 
+        stackedToolbar: true, showCheckboxes: true, showHoverMenu: false, clickToPreview: true, showFilmstrip: false,
+        rememberLastFolder: false, warnLargePreview: true, sidebarSize: 200, officePreviewWidth: 0, symbolDarkMode: false,
+        showListThumbnails: false, symbolSize: 'medium', commanderSplit: 0.5, startInCommander: {}, isOfficeMode: false, ribbonPinned: false, quickAccess: ['preview', 'upload', 'download']
+    },
+    showHelpOnStart: true,
+	enableRecycleBin: true,
+	fra_completed: false,
+	tagNames: {},
+	visibleTags: ['#e81123', '#0078d4', '#107c10', '#f0ad4e', '#888888'],
+	tagOrder: ['#e81123', '#0078d4', '#107c10', '#f0ad4e', '#888888', '#673ab7', '#e91e63', '#009688', '#795548', '#607d8b'],
+};
+
 // Main configuration for file handling and icon mapping.
 // Used throughout the app to determine file types and capabilities.
 const myCloudConfig = {
@@ -619,7 +649,11 @@ async function myCloudStartExplorer(key = null) {
     myCloudClearSensitiveState();
 	
     myCloudUserRole = targetRights;
-    if (document.getElementById('myCloudToolbar')) document.getElementById('myCloudToolbar').style.display = 'none';
+    const tbInit = document.getElementById('myCloudToolbar');
+    if (tbInit) {
+        tbInit.style.display = 'none';
+        if (tbInit.parentElement && tbInit.parentElement.classList.contains('myCloudToolbar-wrapper')) tbInit.parentElement.style.display = 'none';
+    }
     if (document.getElementById('myCloudPinnedRibbon')) document.getElementById('myCloudPinnedRibbon').style.display = 'none';
 	
     myCloudState.key = key;
@@ -738,7 +772,9 @@ async function myCloudStartExplorer(key = null) {
         if (tb) {
             tb.style.display = 'flex';
             tb.style.opacity = '1';
-            tb.innerHTML = '<div class="ce-skeleton" style="width:200px; height:32px; margin:6px; opacity:0.3;"></div>';
+                if (tb.parentElement && tb.parentElement.classList.contains('myCloudToolbar-wrapper')) {
+                    tb.parentElement.style.display = 'flex';
+                }
         }
     } else if (!isAlreadyOpen) {
         myCloudShowLoading();

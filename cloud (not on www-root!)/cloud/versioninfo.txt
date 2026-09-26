@@ -1,3 +1,30 @@
+4.5.318
+	Release Date: September 26, 2026
+	Security: Security hotfixes for the interoperability between the cloud and the mail modules
+
+4.5.317
+	Release Date: September 26, 2026
+	Security: Zip extraction security vulnerabilities
+	Fix: Onlyoffice collaboration fix with multiuser same document editing
+	Fix: Shares for dirs and documents must be healed after moving or renaming the original shared object
+	Fix: PDF Combine Fails on Folders with Apostrophes
+	Fix: Several log fixes
+
+4.5.316
+	Release Date: September 24, 2026
+	Fix: Main menu must not be displayed in non-cloud tabs
+	Improvement: In list view, now the background changes slightly for folders with rights different to the cloud
+
+4.5.315
+	Release Date: September 24, 2026
+	Feature: Quick Access Buttons on the toolbar - user configurable
+
+4.5.314
+	Release Date: September 24, 2026
+	Fix: Print document errors with edit-print rights when multiple documents selected
+	Improvement: Main toolbar &quot;half&quot; items display hotfix
+	Security: Smaller rights management corrections to support full flexibility in rights management
+
 4.5.313
 	Release Date: September 23, 2026
 	Improvement: Image editor pseudo HDR added, also hotfixes

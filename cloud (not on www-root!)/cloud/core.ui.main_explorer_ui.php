@@ -1058,6 +1058,14 @@ function myCloudRenderUI() {
         var ext = realFilename.split('.').pop().toLowerCase();
          var isDirEntry = i.size === 'DIR';
          var isZip = ext === 'zip';
+
+         if (isDirEntry && typeof window.myCloudGetEffectiveRole === 'function') {
+             const baseRole = (typeof myCloudCloudConfig !== 'undefined' && myCloudCloudConfig[st.key]) ? (myCloudCloudConfig[st.key].rights || 'no-access') : 'no-access';
+             const itemRole = window.myCloudGetEffectiveRole(i.name);
+             if (itemRole !== baseRole) {
+                 row.classList.add('ce-custom-rights-row');
+             }
+         }
  
          // [NEW] Check if it's an encrypted directory/file
          var isEncrypted = i.name.endsWith('.enc') || i.isEncrypted === true || (typeof myCloudCrypto !== 'undefined' && myCloudCrypto.isDirEncrypted(i.name) && i.size === 'DIR');
@@ -2524,6 +2532,15 @@ function renderCommanderRow(item, tbody, paneState, side) {
     const ext = realFilename.split('.').pop().toLowerCase();
     const isDir = item.size === 'DIR';
     const isSelected = paneState.selectedFiles.includes(item.name);
+
+    if (isDir && typeof window.myCloudGetEffectiveRole === 'function') {
+        const baseRole = (typeof myCloudCloudConfig !== 'undefined' && myCloudCloudConfig[myCloudState.key]) ? (myCloudCloudConfig[myCloudState.key].rights || 'no-access') : 'no-access';
+        const itemRole = window.myCloudGetEffectiveRole(item.name);
+        if (itemRole !== baseRole) {
+            row.classList.add('ce-custom-rights-row');
+        }
+    }
+
     const isRecycleBin = (paneState.dir === '/.recycle_bin');
  
 

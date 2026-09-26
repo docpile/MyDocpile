@@ -246,9 +246,9 @@ function myCloudUpdateToolbarState() {
     const isStacked = toolbarEl && toolbarEl.classList.contains('ce-stacked-toolbar');
     const hideDisabled = config.hideDisabled === true && (!isStacked || devKey === 'phone');
 	
-    // Update Standard Buttons
-    document.querySelectorAll('.myCloudToolbar > button[data-action], #myCloudPinnedRibbon .ce-ribbon-sub-btn').forEach(function(btn) {
-        const status = getActionStatus(btn.dataset.action);
+    // Update Standard Buttons and Quick Access
+    document.querySelectorAll('.myCloudToolbar > button[data-action], #myCloudQuickAccess > button[data-action], #myCloudPinnedRibbon .ce-ribbon-sub-btn').forEach(function(btn) {
+	const status = getActionStatus(btn.dataset.action);
         
         btn.disabled = status.disabled;
         btn.style.display = (status.hidden || (hideDisabled && status.disabled)) ? 'none' : 'flex';
@@ -261,8 +261,8 @@ function myCloudUpdateToolbarState() {
     });
 	
     // Dynamic labeling for encrypt_dir in the toolbar
-    document.querySelectorAll('.myCloudToolbar > button[data-action="encrypt_dir"], .ce-floating-item[data-action="encrypt_dir"]').forEach(function(btn) {
-        if (myCloudState.selectedFiles.length === 1) {
+    document.querySelectorAll('.myCloudToolbar > button[data-action="encrypt_dir"], #myCloudQuickAccess > button[data-action="encrypt_dir"], .ce-floating-item[data-action="encrypt_dir"]').forEach(function(btn) {
+	if (myCloudState.selectedFiles.length === 1) {
             const isUnlocked = typeof myCloudCrypto !== 'undefined' && myCloudCrypto.isDirUnlocked(myCloudState.selectedFiles[0]);
             const isEnc = myCloudState.encryptedDirs && myCloudState.encryptedDirs.has(myCloudState.selectedFiles[0]);
             const labelSpan = btn.querySelector('span:last-child');
@@ -410,6 +410,7 @@ window.myCloudGenerateRibbonInnerDOM = function(container, tabData, createBtnFn,
             rowDiv.style.flexDirection = 'row';
             rowDiv.style.gap = '2px';
             let visibleItems = 0;
+			let hasHalf = false;
 
             row.forEach(itemConfig => {
                 if (itemConfig.type === 'divider') {
@@ -455,7 +456,13 @@ window.myCloudGenerateRibbonInnerDOM = function(container, tabData, createBtnFn,
                 } else {
                     itemBtn.style.justifyContent = 'flex-start';
                     itemBtn.style.padding = '4px 8px';
-                    itemBtn.style.flex = '1';
+                    if (itemConfig.type === 'half') {
+                        itemBtn.style.width = '100%';
+                        itemBtn.style.boxSizing = 'border-box';
+                        hasHalf = true;
+                    } else {
+                        itemBtn.style.flex = '1';
+                    }
                 }
 
                 rowDiv.appendChild(itemBtn);
@@ -463,6 +470,10 @@ window.myCloudGenerateRibbonInnerDOM = function(container, tabData, createBtnFn,
             });
 
             if (visibleItems > 0) {
+                if (hasHalf && visibleItems === 2) {
+                    rowDiv.style.display = 'grid';
+                    rowDiv.style.gridTemplateColumns = '1fr 1fr';
+                }
                 colDiv.appendChild(rowDiv);
                 visibleRows++;
             }
@@ -840,6 +851,16 @@ function myCloudRenderToolbar() {
     const toolbar = document.getElementById('myCloudToolbar');
     if (!toolbar) return;
 
+    // --- STRICT INTERFACE GUARD ---
+    // Prevent the explorer toolbar from rendering or displaying in virtual apps
+    if (myCloudState.interface === 'email' || myCloudState.interface === 'hidden') {
+        toolbar.style.display = 'none';
+        if (toolbar.parentElement && toolbar.parentElement.classList.contains('myCloudToolbar-wrapper')) {
+            toolbar.parentElement.style.display = 'none';
+        }
+        return;
+    }
+
     if (toolbar.parentElement && !toolbar.parentElement.classList.contains('myCloudToolbar-wrapper')) {
         const wrapper = document.createElement('div');
         wrapper.className = 'myCloudToolbar-wrapper';
@@ -1001,6 +1022,71 @@ function myCloudRenderToolbar() {
             myCloudHandleToolbarClick(action); 
             myCloudCloseFloatingMenu(); 
         };
+
+        btn.oncontextmenu = function(e) { 
+            e.stopPropagation(); 
+            if (btn.closest('#myCloudQuickAccess')) return;
+            
+            e.preventDefault(); 
+            
+            document.querySelectorAll('.myCloudContextMenu').forEach(m => m.remove());
+            const menu = document.createElement('div');
+			menu.id = 'myCloudContextMenu';
+            menu.className = 'myCloudContextMenu';
+            menu.style.position = 'fixed';
+            menu.style.zIndex = '2000000';
+           
+            const pinItem = document.createElement('div');
+            pinItem.className = 'myCloudContextItem';
+            pinItem.innerHTML = '<span class="myCloudIcon" style="width:16px;height:16px;margin-right:8px;"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5v6l1 1 1-1v-6h5v-2l-2-2z"/></svg></span>' + 
+                                '<span style="flex:1;">' + (typeof myCloud_LANG !== 'undefined' && myCloud_LANG.pin_qa ? myCloud_LANG.pin_qa : 'Pin to Quick Access') + '</span>';
+            
+            pinItem.onclick = (evt) => {
+                evt.stopPropagation();
+                menu.remove();
+                const devK = typeof myCloudGetCurrentDeviceKey === 'function' ? myCloudGetCurrentDeviceKey() : 'desktop';
+                if (!myCloudState.settings) myCloudState.settings = {};
+                if (!myCloudState.settings[devK]) myCloudState.settings[devK] = {};
+                const cfg = myCloudState.settings[devK];
+                if (!cfg.quickAccess) cfg.quickAccess = [];
+                
+                if (cfg.quickAccess.includes(action)) {
+                    if (typeof myCloudNotify === 'function') myCloudNotify(typeof myCloud_LANG !== 'undefined' && myCloud_LANG.qa_already_pinned ? myCloud_LANG.qa_already_pinned : 'Already pinned.');
+                    return;
+                }
+                if (cfg.quickAccess.length >= 5) {
+                    if (typeof myCloudShowAlert === 'function') myCloudShowAlert(
+                        typeof myCloud_LANG !== 'undefined' && myCloud_LANG.qa_limit_title ? myCloud_LANG.qa_limit_title : 'Limit Reached', 
+                        typeof myCloud_LANG !== 'undefined' && myCloud_LANG.qa_limit_msg ? myCloud_LANG.qa_limit_msg : 'You can pin a maximum of 5 items.'
+                    );
+                    return;
+                }
+                cfg.quickAccess.push(action);
+                if (typeof myCloudSaveSettings === 'function') myCloudSaveSettings();
+                myCloudRenderToolbar();
+            };
+            menu.appendChild(pinItem);
+            document.body.appendChild(menu);
+            
+            menu.style.left = e.clientX + 'px';
+            menu.style.top = e.clientY + 'px';
+            if (typeof myCloudApplyTheme === 'function') myCloudApplyTheme();
+            
+            setTimeout(() => {
+                const closer = (ev) => { 
+                    if (!menu.contains(ev.target)) { 
+                        menu.remove(); 
+                        document.removeEventListener('mousedown', closer, true); 
+                        document.removeEventListener('touchstart', closer, true);
+                        document.removeEventListener('contextmenu', closer, true); 
+                    } 
+                }; 
+                document.addEventListener('mousedown', closer, true); 
+                document.addEventListener('touchstart', closer, {capture: true, passive: true});
+                document.addEventListener('contextmenu', closer, true);
+            }, 10);
+        };
+
         return btn;
     };
 
@@ -1110,10 +1196,8 @@ function myCloudRenderToolbar() {
                 {
                     label: myCloud_LANG.open || 'Open',
                     rows: [
-                        [{ act: 'preview', type: 'full' }], 
-                        [{ act: 'edit_file', type: 'full' }],
-                        [{ act: 'image_convert', type: 'full' }],
-                        [{ act: 'print', type: 'full' }], 
+                        [{ act: 'preview', type: 'half' }, { act: 'edit_file', type: 'half' }],
+                        [{ act: 'image_convert', type: 'half' }, { act: 'print', type: 'half' }], 
                     ]
                 },
                 {
@@ -1439,16 +1523,115 @@ function myCloudRenderToolbar() {
         window._ceTempHelpBtn = btnHelp;
     }
 
+    // --- QUICK ACCESS TOOLBAR ---
+    const qaActions = config.quickAccess || [];
+    const quickAccessWrap = document.createElement('div');
+    quickAccessWrap.id = 'myCloudQuickAccess';
+    quickAccessWrap.style.display = 'flex';
+    quickAccessWrap.style.gap = '2px';
+    quickAccessWrap.style.background = 'var(--gray-15)'; 
+    quickAccessWrap.style.padding = '2px';
+    quickAccessWrap.style.borderRadius = '6px';
+    quickAccessWrap.style.alignItems = 'center';
+    quickAccessWrap.style.marginInlineEnd = '4px';
+
+    qaActions.forEach((act, idx) => {
+        const btn = createBtn(act, 'icon');
+        btn.style.height = isStacked ? '2.0em' : '36px';
+        btn.style.width = isStacked ? '2.0em' : '36px';
+        btn.style.minWidth = '0';
+        btn.style.padding = '4px';
+        btn.style.margin = '0';
+        const removeTip = typeof myCloud_LANG !== 'undefined' && myCloud_LANG.qa_remove_tip ? myCloud_LANG.qa_remove_tip : 'Right click to remove';
+        btn.title = (translations[act] || act) + ' - ' + removeTip;
+        
+        // Remove action (Right click)
+        btn.oncontextmenu = (e) => {
+            e.preventDefault(); e.stopPropagation();
+            config.quickAccess = config.quickAccess.filter((_, i) => i !== idx);
+            if (typeof myCloudSaveSettings === 'function') myCloudSaveSettings();
+            myCloudRenderToolbar();
+        };
+
+        // Long Click to Drag
+        let pressTimer;
+        const startDragReady = () => {
+            pressTimer = setTimeout(() => {
+                btn.draggable = true;
+                btn.style.opacity = '0.7';
+                btn.style.transform = 'scale(1.1)';
+            }, 400);
+        };
+        const cancelDragReady = () => {
+            clearTimeout(pressTimer);
+            btn.draggable = false;
+            btn.style.opacity = '';
+            btn.style.transform = '';
+        };
+
+        btn.addEventListener('mousedown', startDragReady);
+        btn.addEventListener('touchstart', startDragReady, {passive: true});
+        btn.addEventListener('mouseup', cancelDragReady);
+        btn.addEventListener('touchend', cancelDragReady);
+        btn.addEventListener('touchmove', cancelDragReady);
+
+        // Drag & Drop Events
+        btn.addEventListener('dragstart', (e) => {
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', idx);
+        });
+        btn.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            btn.style.borderLeft = '2px solid var(--accent-primary)';
+        });
+        btn.addEventListener('dragleave', (e) => {
+            btn.style.borderLeft = '';
+        });
+        btn.addEventListener('drop', (e) => {
+            e.preventDefault();
+            btn.style.borderLeft = '';
+            const fromIdx = parseInt(e.dataTransfer.getData('text/plain'));
+            if (!isNaN(fromIdx) && fromIdx !== idx) {
+                const item = config.quickAccess.splice(fromIdx, 1)[0];
+                config.quickAccess.splice(idx, 0, item);
+                if (typeof myCloudSaveSettings === 'function') myCloudSaveSettings();
+                myCloudRenderToolbar();
+            }
+        });
+
+        const status = getActionStatus(act);
+        btn.disabled = status.disabled;
+        if (status.hidden) btn.style.display = 'none';
+
+        quickAccessWrap.appendChild(btn);
+    });
+
     // Append utility buttons with a flex spacer if stacked
     if (isStacked) {
         const spacer = document.createElement('div');
         spacer.style.flex = '1';
         toolbar.appendChild(spacer);
+
+        if (qaActions.length > 0) {
+            toolbar.appendChild(quickAccessWrap);
+            const d = document.createElement('div'); d.className = 'myCloudDivider ce-stacked-divider';
+            toolbar.appendChild(d);
+        }
+
         if (window._ceTempFavBtn || window._ceTempSettingsBtn || window._ceTempHelpBtn) {
             const divEnd = document.createElement('div'); divEnd.className = 'myCloudDivider ce-stacked-divider';
             toolbar.appendChild(divEnd);
         }
     } else {
+        const spacer = document.createElement('div');
+        spacer.style.flex = '1';
+        toolbar.appendChild(spacer);
+
+        if (qaActions.length > 0) {
+            toolbar.appendChild(quickAccessWrap);
+        }
+
         const divEnd = document.createElement('div'); divEnd.className = 'myCloudDivider';
         toolbar.appendChild(divEnd);
     }
@@ -1500,10 +1683,16 @@ function myCloudRenderToolbar() {
         toolbar.style.display = 'none'; 
         const pinnedRibbon = document.getElementById('myCloudPinnedRibbon');
         if (pinnedRibbon) pinnedRibbon.style.display = 'none';
+        if (toolbar.parentElement && toolbar.parentElement.classList.contains('myCloudToolbar-wrapper')) {
+            toolbar.parentElement.style.display = 'none';
+        }
     } else {
         toolbar.classList.remove('gallery-hidden');
         toolbar.style.display = 'flex';
         toolbar.style.opacity = '1';
+        if (toolbar.parentElement && toolbar.parentElement.classList.contains('myCloudToolbar-wrapper')) {
+            toolbar.parentElement.style.display = 'flex';
+        }
     }
 	
     if (toolbar.updateIndicators) {

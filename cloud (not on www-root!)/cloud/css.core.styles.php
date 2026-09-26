@@ -1164,6 +1164,12 @@
         border-bottom: 1px solid transparent;
         transition: background 0.2s ease;
     }
+    .myCloudRow.ce-custom-rights-row:not(:hover):not(.selected) {
+        background-color: rgba(128, 128, 128, 0.09);
+    }
+    .ce-dark-mode .myCloudRow.ce-custom-rights-row:not(:hover):not(.selected) {
+        background-color: rgba(255, 255, 255, 0.05) !important;
+    }
     .myCloudRow:hover .ce-name-text {
         color: var(--accent-primary);
         transition: font-size 0.1s ease-in-out;
@@ -2741,6 +2747,22 @@ border: 1px solid var(--border-default) !important;
 .ce-dark-mode .ce-floating-item:not(:disabled):hover span:last-child {
     color: var(--ribbon-text-hover) !important;
 }
+
+/* --- QUICK ACCESS TOOLBAR OVERRIDES --- */
+#myCloudQuickAccess button:not(:disabled):hover {
+    background: var(--hover-bg-medium) !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+    transform: scale(1.05) !important;
+}
+/* Kill the round bubble effect on the inner icon */
+#myCloudQuickAccess button:not(:disabled):hover .myCloudIcon {
+    background-color: transparent !important;
+    box-shadow: none !important;
+    transform: none !important;
+}
+/* --- END OF QUICK ACCESS TOOLBAR OVERRIDES --- */
+
 
 .ce-dark-mode .myCloudIcon svg path[fill="#757575"],
 .ce-dark-mode .myCloudIcon svg path[fill="#555"],
