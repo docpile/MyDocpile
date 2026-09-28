@@ -2546,7 +2546,7 @@ window._emailHandleItemClick = function(item, m, e) {
                 if (oldCache.attachments && oldCache.attachments.length > 0) {
                     oldCache.attachments.forEach(att => { totalAttSize += parseInt(att.size || 0); });
                 }
-                if (totalAttSize > 5242880) { // 5MB Limit
+                if (totalAttSize > 31457280) { 
                     delete myCloudEmailState.bodyCache[oldKey];
                 }
             }
@@ -2557,6 +2557,22 @@ window._emailHandleItemClick = function(item, m, e) {
         const isAlreadyActive = (myCloudEmailState.activeMessageKey === msgKey);
 
         if (!isAlreadyActive) {
+            const isCurrentlyPrefetching = (myCloudEmailState.bodyCache && myCloudEmailState.bodyCache[msgKey] instanceof Promise);
+            
+            // Always cancel previous direct clicks to free up connection slots
+            if (myCloudEmailState.directFetchAbortController) {
+                myCloudEmailState.directFetchAbortController.abort();
+            }
+            myCloudEmailState.directFetchAbortController = new AbortController();
+
+            // ONLY kill background prefetches if they are fetching a DIFFERENT email than the one we just clicked
+            if (!isCurrentlyPrefetching) {
+                if (myCloudEmailState.prefetchAbortController) {
+                    myCloudEmailState.prefetchAbortController.abort();
+                }
+                myCloudEmailState.prefetchAbortController = new AbortController();
+            }
+
             myCloudEmailState.activeMessageKey = msgKey;
             myCloudEmailState.activeMessageOriginalRead = m.is_read;
             window._emailRenderMessageList(); // Re-render for read status updates if needed
@@ -2569,15 +2585,15 @@ window._emailHandleItemClick = function(item, m, e) {
         }
 
         if (!isAlreadyActive) {
-            // --- PREDICTIVE UX: 3-MESSAGE DOWNWARD AUTOLOADER ---
+            // --- PREDICTIVE UX: CONTINUOUS LOW-PRIORITY AUTOLOADER ---
             if (!myCloudEmailState.bodyCache) myCloudEmailState.bodyCache = {};
             
             const prefetchBody = (idx) => {
-                if (idx < 0 || idx >= listItems.length) return;
+                if (idx < 0 || idx >= listItems.length) return Promise.resolve();
                 const mKey = listItems[idx].dataset.msgKey;
                 const mObj = myCloudEmailState.currentMessages.find(msg => ((msg.account_id || myCloudEmailState.activeAccount) + '|' + (msg.folder || myCloudEmailState.activeFolder) + '|' + msg.id) === mKey);
                 
-                if (!mObj || myCloudEmailState.bodyCache[mKey]) return;
+                if (!mObj || myCloudEmailState.bodyCache[mKey]) return Promise.resolve();
                 
                 const fetchFd = new URLSearchParams({ 
                     myCloud_action: 'email_get_body', 
@@ -2588,7 +2604,107 @@ window._emailHandleItemClick = function(item, m, e) {
                     folder: mObj.folder || myCloudEmailState.activeFolder 
                 });
                 
-                myCloudEmailState.bodyCache[mKey] = fetch('', { method: 'POST', body: fetchFd }).then(myCloudCheckResponse).then(r => {
+                myCloudEmailState.bodyCache[mKey] = fetch('', { 
+                    method: 'POST', 
+                    body: fetchFd,
+                    signal: (window.myCloudEmailState.prefetchAbortController || (window.myCloudEmailState.prefetchAbortController = new AbortController())).signal
+                }).then(myCloudCheckResponse).then(r => {
+                    if (r.status === 'OK') {
+                        let totalAttSize = 0;
+                        if (r.attachments && r.attachments.length > 0) {
+                            r.attachments.forEach(att => { totalAttSize += parseInt(att.size || 0); });
+                        }
+                        if (totalAttSize <= 31457280) { // 30MB Limit
+                            myCloudEmailState.bodyCache[mKey] = r;
+                            // Silently preload images into the browser cache
+                            if (typeof window._emailPreloadImages === 'function') {
+                                window._emailPreloadImages(r.body, mObj.fromEmail);
+                            }
+                            return r;
+                        } else {
+                            delete myCloudEmailState.bodyCache[mKey];
+                            throw new Error('Attachments too large for cache');
+                        }
+                    } else {
+                        delete myCloudEmailState.bodyCache[mKey];
+                        throw new Error('Failed to load body');
+                    }
+                }).catch((e) => { 
+                    delete myCloudEmailState.bodyCache[mKey];
+                    throw e; // Ensure rejection bubbles up
+                });
+                return myCloudEmailState.bodyCache[mKey];
+            };
+
+            setTimeout(() => {
+                if (myCloudEmailState.activeMessageKey !== msgKey) return; // Abort if user moved on
+                
+                const processQueue = async () => {
+                    let prefetchedCount = 0;
+                    const maxPrefetch = 15;
+                    
+                    // Expand outwards to quietly cache the adjacent list in the background
+                    for (let offset = 1; offset <= listItems.length; offset++) {
+                        if (myCloudEmailState.activeMessageKey !== msgKey || prefetchedCount >= maxPrefetch) break;
+                        
+                        let fetched = false;
+                        // Prefetch downwards
+                        if (currentIndex + offset < listItems.length && !myCloudEmailState.bodyCache[listItems[currentIndex + offset].dataset.msgKey]) {
+                            await prefetchBody(currentIndex + offset);
+                            fetched = true;
+                            prefetchedCount++;
+                        }
+                        
+                        if (myCloudEmailState.activeMessageKey !== msgKey || prefetchedCount >= maxPrefetch) break;
+                        
+                        // Prefetch upwards
+                        if (currentIndex - offset >= 0 && !myCloudEmailState.bodyCache[listItems[currentIndex - offset].dataset.msgKey]) {
+                            await prefetchBody(currentIndex - offset);
+                            fetched = true;
+                            prefetchedCount++;
+                        }
+                        
+                        // Yield to browser and server to keep priority strictly low
+                        if (fetched) await new Promise(resolve => setTimeout(resolve, 1000));
+                    }
+                };
+                processQueue();
+            }, 1200); // Wait until the user is actually settling down to read the email
+            // -----------------------------------------------------------------------
+        }
+
+        myCloudEmailReadMessage(m.id, m);
+
+        if (item && item.parentElement) {
+            Array.from(item.parentElement.children).forEach(c => c.classList.remove('selected'));
+            item.classList.add('selected');
+        }
+
+        if (!isAlreadyActive) {
+            // --- PREDICTIVE UX: 3-MESSAGE DOWNWARD AUTOLOADER ---
+            if (!myCloudEmailState.bodyCache) myCloudEmailState.bodyCache = {};
+            
+            const prefetchBody = (idx) => {
+                if (idx < 0 || idx >= listItems.length) return Promise.resolve();
+                const mKey = listItems[idx].dataset.msgKey;
+                const mObj = myCloudEmailState.currentMessages.find(msg => ((msg.account_id || myCloudEmailState.activeAccount) + '|' + (msg.folder || myCloudEmailState.activeFolder) + '|' + msg.id) === mKey);
+                
+                if (!mObj || myCloudEmailState.bodyCache[mKey]) return Promise.resolve();
+                
+                const fetchFd = new URLSearchParams({ 
+                    myCloud_action: 'email_get_body', 
+                    myCloud_key: myCloudState.key, 
+                    myCloud_token: window.myCloudCsrfToken, 
+                    account_id: mObj.account_id || myCloudEmailState.activeAccount, 
+                    message_id: mObj.id, 
+                    folder: mObj.folder || myCloudEmailState.activeFolder 
+                });
+                
+                myCloudEmailState.bodyCache[mKey] = fetch('', { 
+                    method: 'POST', 
+                    body: fetchFd,
+                    signal: myCloudEmailState.prefetchAbortController.signal 
+                }).then(myCloudCheckResponse).then(r => {
                     if (r.status === 'OK') {
                         // ALWAYS cache on fetch. The >5MB purge happens when we click away.
                         myCloudEmailState.bodyCache[mKey] = r;
@@ -2646,17 +2762,47 @@ window._emailHandleItemClick = function(item, m, e) {
                 }).catch((e) => { 
                     delete myCloudEmailState.bodyCache[mKey];
                 });
+				return myCloudEmailState.bodyCache[mKey];
             };
 
             // Fire background fetches for the messages directly below the current one
-            // --- PREDICTIVE UX: VARIABLE-DRIVEN AUTOLOADER ---
-            const prefetchUp = 2;
-            const prefetchDown = 10;
-            for (let i = -prefetchUp; i <= prefetchDown; i++) {
-                if (i !== 0) prefetchBody(currentIndex + i);
-            }
+            // --- PREDICTIVE UX: CONTINUOUS LOW-PRIORITY AUTOLOADER ---
+            setTimeout(() => {
+                if (myCloudEmailState.activeMessageKey !== msgKey) return; // Abort if user moved on
+                
+                const processQueue = async () => {
+                    let prefetchedCount = 0;
+                    const maxPrefetch = 15;
+                    
+                    // Expand outwards to quietly cache the adjacent list in the background
+                    for (let offset = 1; offset <= listItems.length; offset++) {
+                        if (myCloudEmailState.activeMessageKey !== msgKey || prefetchedCount >= maxPrefetch) break;
+                        
+                        let fetched = false;
+                        // Prefetch downwards
+                        if (currentIndex + offset < listItems.length && !myCloudEmailState.bodyCache[listItems[currentIndex + offset].dataset.msgKey]) {
+                            await prefetchBody(currentIndex + offset);
+                            fetched = true;
+                            prefetchedCount++;
+                        }
+                        
+                        if (myCloudEmailState.activeMessageKey !== msgKey || prefetchedCount >= maxPrefetch) break;
+                        
+                        // Prefetch upwards
+                        if (currentIndex - offset >= 0 && !myCloudEmailState.bodyCache[listItems[currentIndex - offset].dataset.msgKey]) {
+                            await prefetchBody(currentIndex - offset);
+                            fetched = true;
+                            prefetchedCount++;
+                        }
+                        
+                        // Yield to browser and server to keep priority strictly low
+                        if (fetched) await new Promise(resolve => setTimeout(resolve, 1000));
+                    }
+                };
+                processQueue();
+            }, 1200); // Wait until the user is actually settling down to read the email
             // -----------------------------------------------------------------------
-
+			
             myCloudEmailReadMessage(m.id, m);
 
             if (myCloudEmailState.readTimer) clearTimeout(myCloudEmailState.readTimer);
@@ -2666,8 +2812,6 @@ window._emailHandleItemClick = function(item, m, e) {
                 const targetFolder = m.folder || myCloudEmailState.activeFolder;
 
                 myCloudEmailState.readTimer = setTimeout(() => {
-
-                    m.is_read = true;
                     let uidsToMark = [m.id];
                     let unreadCountToSubtract = 1;
         
@@ -3171,7 +3315,7 @@ window._emailRenderMessageList = function(isAppendOnly = false) {
         if (m.children && m.children.length > 0) {
             m.children.forEach(child => appendMsgToDom(child, true, m.thread_id_stable));
         }
-        if (i > 0 && i % 15 === 0) await new Promise(resolve => requestAnimationFrame(resolve));
+        if (i > 0 && i % 10 === 0) await new Promise(resolve => setTimeout(resolve, 2));
     }
     if (window._renderMessageListTask !== currentTask) return;
 
@@ -3221,8 +3365,9 @@ window._emailRenderMessageList = function(isAppendOnly = false) {
                             if (r.attachments && r.attachments.length > 0) {
                                 r.attachments.forEach(att => { totalAttSize += parseInt(att.size || 0); });
                             }
-                            if (totalAttSize <= 5242880) {
+                            if (totalAttSize <= 31457280) {
                                 myCloudEmailState.bodyCache[mKey] = r;
+								window._emailPreloadImages(r.body, mObj.fromEmail);
                                 return r;
                             } else {
                                 delete myCloudEmailState.bodyCache[mKey];
@@ -3247,46 +3392,43 @@ window._emailRenderMessageList = function(isAppendOnly = false) {
 window._emailHighlightRawSource = function(raw) {
     if (!raw) return typeof myCloud_LANG !== 'undefined' && myCloud_LANG.raw_not_avail ? myCloud_LANG.raw_not_avail : 'Raw message not available.';
     
-    // SECURITY FIX 4: Flawless strict text escaping. Everything is guaranteed plain text.
-    let text = String(raw).replace(/&/g, '&amp;')
-                          .replace(/</g, '&lt;')
-                          .replace(/>/g, '&gt;')
-                          .replace(/"/g, '&quot;')
-                          .replace(/'/g, '&#039;');
+    const isMassive = raw.length > 524288; // 512KB threshold
     
-    // Separate Headers and Body to prevent accidental highlighting in the payload
-    const splitIdx = text.indexOf('\n\n');
-    const splitIdxR = text.indexOf('\r\n\r\n');
+    const splitIdx = raw.indexOf('\n\n');
+    const splitIdxR = raw.indexOf('\r\n\r\n');
     const realSplitIdx = (splitIdxR !== -1 && (splitIdx === -1 || splitIdxR < splitIdx)) ? splitIdxR : splitIdx;
     
-    let headers = text;
+    let headers = String(raw);
     let body = '';
     if (realSplitIdx !== -1) {
-        headers = text.substring(0, realSplitIdx);
-        body = text.substring(realSplitIdx);
+        headers = raw.substring(0, realSplitIdx);
+        body = raw.substring(realSplitIdx);
     }
 
-    // Process Headers purely using safe CSS styling on the strictly escaped strings
-        // FORENSIC FIX: Do not strip colons, use $& to wrap the exact match perfectly
-        headers = headers.replace(/^([A-Za-z0-9\-]+:)/gm, '<span style="color:var(--accent-primary); font-weight:bold;">$&</span>');
-        headers = headers.replace(/\b(?:\d{1,3}\.){3}\d{1,3}\b/g, '<span style="color:#d84315; font-weight:600;">$&</span>');
-        
-        headers = headers.replace(/\b(dmarc|spf|dkim)=([a-z]+)/gi, (match, protocol, result) => {
-            let color = '#e81123'; // fail/softfail/neutral (Red)
-            let resLower = result.toLowerCase();
-            if (resLower === 'pass' || resLower === 'ok') color = '#107c10'; // Green
-            return `${protocol}=<span style="font-weight:bold; color:${color};">${result}</span>`;
-        });
-        
-        headers = headers.replace(/\b(pass)\b/gi, '<span style="color:#107c10; font-weight:bold;">$&</span>');
-        headers = headers.replace(/\b(fail|softfail|hardfail)\b/gi, '<span style="color:#e81123; font-weight:bold;">$&</span>');
-        headers = headers.replace(/([a-zA-Z0-9._-]+@[a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)+)/g, '<span style="color:var(--accent-primary); opacity:0.8;">$&</span>');
-		
-        // Process Body (MIME Part Boundaries)
-        // FORENSIC FIX: Lookahead for line endings ensures we do not consume \r or inject \n, preserving pristine payload data
+    // Ultra-fast single-pass escape
+    const esc = (s) => s.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+    
+    headers = esc(headers);
+    body = esc(body);
+
+    headers = headers.replace(/^([A-Za-z0-9\-]+:)/gm, '<span style="color:var(--accent-primary); font-weight:bold;">$&</span>');
+    headers = headers.replace(/\b(?:\d{1,3}\.){3}\d{1,3}\b/g, '<span style="color:#d84315; font-weight:600;">$&</span>');
+    headers = headers.replace(/\b(dmarc|spf|dkim)=([a-z]+)/gi, (match, protocol, result) => {
+        let color = '#e81123';
+        let resLower = result.toLowerCase();
+        if (resLower === 'pass' || resLower === 'ok') color = '#107c10';
+        return `${protocol}=<span style="font-weight:bold; color:${color};">${result}</span>`;
+    });
+    headers = headers.replace(/\b(pass)\b/gi, '<span style="color:#107c10; font-weight:bold;">$&</span>');
+    headers = headers.replace(/\b(fail|softfail|hardfail)\b/gi, '<span style="color:#e81123; font-weight:bold;">$&</span>');
+    headers = headers.replace(/([a-zA-Z0-9._-]+@[a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)+)/g, '<span style="color:var(--accent-primary); opacity:0.8;">$&</span>');
+
+    // PERFORMANCE FIX: Only apply the expensive MIME boundary regex if the body is not massive
+    if (!isMassive) {
         body = body.replace(/^(--[a-zA-Z0-9_=\-\.]+(--)?)(?=\r?$)/gm, 
             '<span style="display:inline-block; width:100%; background:var(--gray-10); color:var(--text-secondary); padding:4px 8px; border-left:3px solid var(--accent-primary); font-weight:bold; border-radius:0 4px 4px 0;">$1</span>'
         );
+    }
 
         return headers + body;
 };
@@ -4602,6 +4744,101 @@ window._emailSaveAttachmentToCloud = function(accId, folder, msgId, part, filena
     });
 };
 
+// --- THREAD 2: SECONDARY IMAGE PREFETCH QUEUE ---
+window.myCloudEmailState.imagePrefetchQueue = window.myCloudEmailState.imagePrefetchQueue || [];
+window.myCloudEmailState.isImagePrefetching = window.myCloudEmailState.isImagePrefetching || false;
+
+window._processImagePrefetchQueue = async function() {
+    if (window.myCloudEmailState.isImagePrefetching) return;
+    window.myCloudEmailState.isImagePrefetching = true;
+    
+    while (window.myCloudEmailState.imagePrefetchQueue.length > 0) {
+        const url = window.myCloudEmailState.imagePrefetchQueue.shift();
+        
+        // Fetch sequentially to use exactly 1 connection slot, keeping the rest free for email bodies
+        await new Promise(resolve => {
+            const img = new Image();
+            img.onload = resolve;
+            img.onerror = resolve;
+            img.src = url;
+        });
+        
+        // Yield briefly to let email body requests jump ahead in the browser's queue
+        await new Promise(r => setTimeout(r, 50));
+    }
+    
+    window.myCloudEmailState.isImagePrefetching = false;
+};
+
+// --- THREAD 2: SECONDARY IMAGE PREFETCH QUEUE ---
+window.myCloudEmailState = window.myCloudEmailState || {};
+window.myCloudEmailState.imagePrefetchQueue = window.myCloudEmailState.imagePrefetchQueue || [];
+window.myCloudEmailState.isImagePrefetching = window.myCloudEmailState.isImagePrefetching || false;
+
+window._processImagePrefetchQueue = async function() {
+    if (window.myCloudEmailState.isImagePrefetching) return;
+    window.myCloudEmailState.isImagePrefetching = true;
+    
+    while (window.myCloudEmailState.imagePrefetchQueue.length > 0) {
+        const url = window.myCloudEmailState.imagePrefetchQueue.shift();
+        
+        // Fetch sequentially to use exactly 1 connection slot, keeping the rest free for email bodies
+        await new Promise(resolve => {
+            const img = new Image();
+            img.onload = resolve;
+            img.onerror = resolve;
+            img.src = url;
+        });
+        
+        // Yield briefly to let email body requests jump ahead in the browser's queue
+        await new Promise(r => setTimeout(r, 50));
+    }
+    
+    window.myCloudEmailState.isImagePrefetching = false;
+};
+
+window._emailPreloadImages = function(htmlBody, fromEmail) {
+    if (!htmlBody) return;
+    const sDomain = (fromEmail || '').split('@').pop().toLowerCase();
+    const dKey = typeof myCloudGetCurrentDeviceKey === 'function' ? myCloudGetCurrentDeviceKey() : 'desktop';
+    const trusted = (myCloudState.settings && myCloudState.settings[dKey] && myCloudState.settings[dKey].trustedEmailDomains) || [];
+    const isTrusted = trusted.includes(sDomain);
+    const useProxy = (typeof window.myCloudEmailProxyEnabled !== 'undefined') ? window.myCloudEmailProxyEnabled : true;
+    
+    if (useProxy || isTrusted) {
+        const imgUrls = new Set();
+        const srcRegex = /(?:src|background)=(['"])(https?:\/\/[^\1>]+)\1/gi;
+        const urlRegex = /url\((['"]?)(https?:\/\/[^\1)]+)\1\)/gi;
+        let match;
+        
+        // Decode HTML entities so the preloader URL perfectly matches the iframe's parsed URL
+        const decodeEntities = (html) => {
+            const txt = document.createElement("textarea");
+            txt.innerHTML = html;
+            return txt.value;
+        };
+        
+        while ((match = srcRegex.exec(htmlBody)) !== null) imgUrls.add(decodeEntities(match[2]));
+        while ((match = urlRegex.exec(htmlBody)) !== null) imgUrls.add(decodeEntities(match[2]));
+        
+        imgUrls.forEach(url => {
+            const uLower = url.toLowerCase();
+            const isTracker = uLower.includes('track') || uLower.includes('pixel') || uLower.includes('open') || uLower.includes('collect') || uLower.includes('log') || uLower.includes('counter');
+            
+            if (!isTracker) {
+                const finalUrl = useProxy ? ('?myCloud_email_proxy_img=' + encodeURIComponent(btoa(url)) + '&proxy_token=' + window.myCloudCsrfToken) : url;
+                // Add to the separate thread queue instead of firing immediately
+                if (!window.myCloudEmailState.imagePrefetchQueue.includes(finalUrl)) {
+                    window.myCloudEmailState.imagePrefetchQueue.push(finalUrl);
+                }
+            }
+        });
+        
+        // Start the separate image downloading thread
+        window._processImagePrefetchQueue();
+    }
+};
+
 window.myCloudEmailReadMessage = function(msgId, meta) {
     const L = typeof myCloud_LANG !== 'undefined' ? myCloud_LANG : {};
     const reading = document.getElementById('emailPaneReading');
@@ -4948,7 +5185,7 @@ window.myCloudEmailReadMessage = function(msgId, meta) {
                 style.setAttribute('data-safe-style', css);
                 if (useProxy) {
                     css = css.replace(/url\(['"]?(https?:\/\/[^)'"]+)['"]?\)/gi, (match, url) => {
-                        return 'url("' + proxyUrl(url) + '&proxy_token=' + window.myCloudCsrfToken + '")';
+                    return 'url("' + proxyUrl(url) + '")'; // FIX: Removed duplicate proxy_token append
                     });
                 } else if (!isTrusted) {
                     css = css.replace(/url\(['"]?(?!data:|cid:)[^)'"]+['"]?\)/gi, 'url(data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACwAAAAAAQABAAACAkQBADs=)');
@@ -5828,7 +6065,11 @@ window.myCloudEmailReadMessage = function(msgId, meta) {
         reading.innerHTML = skeletonHtml;
         const fd = new URLSearchParams({ myCloud_action: 'email_get_body', myCloud_key: myCloudState.key, myCloud_token: window.myCloudCsrfToken, account_id: targetAcc, message_id: msgId, folder: targetFolder });
         
-        fetch('', { method: 'POST', body: fd }).then(myCloudCheckResponse).then(res => {
+        const fetchPromise = fetch('', { 
+            method: 'POST', 
+            body: fd,
+            signal: (window.myCloudEmailState.directFetchAbortController || (window.myCloudEmailState.directFetchAbortController = new AbortController())).signal
+        }).then(myCloudCheckResponse).then(res => {
             if (typeof myCloudHideLoading === 'function') myCloudHideLoading();
             
             if (res.status === 'OK') {
@@ -5839,13 +6080,22 @@ window.myCloudEmailReadMessage = function(msgId, meta) {
                     res.attachments.forEach(att => { totalAttSize += parseInt(att.size || 0); });
                 }
                 
-                if (totalAttSize <= 5242880) { // 5MB Limit
+                if (totalAttSize <= 31457280) { 
                     myCloudEmailState.bodyCache[msgKey] = res;
+                } else {
+                    delete myCloudEmailState.bodyCache[msgKey];
                 }
 
-                requestAnimationFrame(() => renderBodyPayload(res));
+                if (myCloudEmailState.activeMessageKey === msgKey) {
+                    window._emailPreloadImages(res.body, meta.fromEmail);
+					requestAnimationFrame(() => renderBodyPayload(res));
+                }
+				return res;
             } else {
-                reading.innerHTML = '<div class="ce-email-empty" style="color:var(--danger);">' + (L.error_prefix || 'Error:') + '<br><br>' + myCloudEscapeHtml(res.msg) + '</div>';
+                delete myCloudEmailState.bodyCache[msgKey];
+				if (myCloudEmailState.activeMessageKey === msgKey) {
+                    reading.innerHTML = '<div class="ce-email-empty" style="color:var(--danger);">' + (L.error_prefix || 'Error:') + '<br><br>' + myCloudEscapeHtml(res.msg) + '</div>';
+                }
 
                 // Auto-remove ghost messages from the UI and memory
                 if (res.code === 'MSG_NOT_FOUND') {
@@ -5854,8 +6104,15 @@ window.myCloudEmailReadMessage = function(msgId, meta) {
                     if (ghostItem) ghostItem.remove();
                     myCloudEmailState.selectedMessages = myCloudEmailState.selectedMessages.filter(k => k !== msgKey);
                 }
+				throw new Error(res.msg);
+            }
+        }).catch((err) => {
+            if (err.name === 'AbortError') {
+                delete myCloudEmailState.bodyCache[msgKey];
             }
         });
+        if (!myCloudEmailState.bodyCache) myCloudEmailState.bodyCache = {};
+        myCloudEmailState.bodyCache[msgKey] = fetchPromise;
     };
 
     // FIX: Completely bypass the skeleton render if the body is instantly available in cache.

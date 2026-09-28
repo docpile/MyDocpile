@@ -1035,7 +1035,7 @@ class MyCloudEmailServer {
         $ver = null;
         $decrypted = $this->decryptData($raw, $ver);
         if ($decrypted !== null) {
-            $inflated = @gzinflate($decrypted, 52428800);
+            $inflated = @gzinflate($decrypted, 104857600);
             if ($inflated === false) $inflated = $decrypted; // Fallback for raw JSON
             $data = [];
             foreach (explode("\n", trim($inflated)) as $line) {
@@ -1112,7 +1112,7 @@ private function runIncrementalMigration() {
             $decrypted = $this->decryptData($raw, $ver);
             
             if ($decrypted !== null && $ver !== ($isBody ? 'FCB' : 'FC')) {
-                $inflated = @gzinflate($decrypted, 52428800);
+                $inflated = @gzinflate($decrypted, 104857600);
                 if ($inflated === false) $inflated = $decrypted; // Fallback
                 
                 if ($isBody) {
@@ -1212,7 +1212,7 @@ private function runIncrementalMigration() {
          $ver = null;
          $decrypted = $this->decryptData($raw, $ver);
          if ($decrypted !== null) {
-             $inflated = @gzinflate($decrypted, 52428800);
+             $inflated = @gzinflate($decrypted, 104857600);
              if ($inflated === false) $inflated = $decrypted; // Fallback
              $data = json_decode($inflated, true);
              if (is_array($data)) {

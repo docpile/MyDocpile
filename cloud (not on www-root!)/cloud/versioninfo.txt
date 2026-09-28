@@ -1,3 +1,7 @@
+4.5.319
+	Release Date: September 28, 2026
+	Improvement: Webmail fetching and UX performance improvements
+
 4.5.318
 	Release Date: September 26, 2026
 	Security: Security hotfixes for the interoperability between the cloud and the mail modules
