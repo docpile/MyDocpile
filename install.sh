@@ -111,6 +111,7 @@ oo_subdomain="$oo_subdomain"
 oo_secret="$oo_secret"
 oo_url="$oo_url"
 setup_oo_proxy="$setup_oo_proxy"
+install_imap_pooler="$install_imap_pooler"
 EOF
     msg_success "State saved to $STATE_FILE."
 }
@@ -374,6 +375,10 @@ function gather_configuration() {
         fi
     fi
 
+    msg_ask "Install and start local IMAP Connection Pooler service? (Y/n): " 
+    read install_imap_pooler
+    install_imap_pooler=${install_imap_pooler:-Y}
+
     msg_ask "Office365 (Azure) Client ID (for webmail in outlook.com, leave blank to skip): " 
     read o365_client_id
     if [ -n "$o365_client_id" ]; then
@@ -586,7 +591,8 @@ function show_configuration_summary() {
     if [[ "$opt_cloud" =~ ^[Yy]$ ]]; then
         echo "  OCR Languages:     ${ocr_langs[*]}"
     fi
-    echo "  Install Mailparse: $opt_mailparse"
+    echo "  IMAP Pooler Srvc:  $install_imap_pooler"
+	echo "  Install Mailparse: $opt_mailparse"
     if [[ "$home_NAS_network" == "true" ]]; then
         echo "  Home NAS Mode:     Enabled (Autologin: $home_NAS_autologin)"
     fi
@@ -1022,6 +1028,36 @@ function install_plesk_pecl_apcu() {
     fi
 }
 
+function setup_imap_pooler_service() {
+    if [[ "$install_imap_pooler" =~ ^[Yy]$ ]]; then
+        msg_info "Installing IMAP Connection Pooler service..."
+        local service_file="$CLOUD_DIR/service.imap.pool.php"
+        # Fallback if placed in a bin directory
+        if [ ! -f "$service_file" ] && [ -f "$CLOUD_DIR/bin/service.imap.pool.php" ]; then 
+            service_file="$CLOUD_DIR/bin/service.imap.pool.php"
+        fi
+        
+        if [ -f "$service_file" ]; then
+            execute_logged "$PHP_BIN" "$service_file" --install --user="$wwwuser"
+            msg_success "IMAP Pooler installed and started."
+        else
+            msg_warn "Could not find service.imap.pool.php to install."
+        fi
+    fi
+}
+
+function remove_imap_pooler_service() {
+    msg_info "Removing IMAP Connection Pooler service..."
+    local service_file="$CLOUD_DIR/service.imap.pool.php"
+    if [ ! -f "$service_file" ] && [ -f "$CLOUD_DIR/bin/service.imap.pool.php" ]; then 
+        service_file="$CLOUD_DIR/bin/service.imap.pool.php"
+    fi
+    if [ -f "$service_file" ]; then
+        execute_logged "$PHP_BIN" "$service_file" --remove || true
+    fi
+}
+
+
 function setup_cronjobs() {
     msg_info "Setting up system cronjobs..."
     local cron_file="/etc/cron.d/mydocpile"
@@ -1094,7 +1130,7 @@ function update_onlyoffice_container() {
 
 function execute_uninstall() {
     msg_info "Removing Application Files..."
-    
+    remove_imap_pooler_service
     # Remove core cloud directory
     rm -rf "$CLOUD_DIR"
     msg_success "Removed $CLOUD_DIR"
@@ -1224,6 +1260,7 @@ case $MODE in
         install_composer_components
         if [[ "$opt_mailparse" =~ ^[Yy]$ ]]; then optional_component_mailparse; fi
 		setup_cronjobs
+		setup_imap_pooler_service
 		verify_initial_integrity
         save_state
         show_post_install_instructions
@@ -1246,6 +1283,7 @@ case $MODE in
         install_composer_components
         if [[ "$opt_mailparse" =~ ^[Yy]$ ]]; then optional_component_mailparse; fi
 		setup_cronjobs
+		setup_imap_pooler_service
 		verify_initial_integrity
         save_state
         show_post_install_instructions
@@ -1261,6 +1299,7 @@ case $MODE in
         install_composer_components
         if [[ "$opt_mailparse" =~ ^[Yy]$ ]]; then optional_component_mailparse; fi
 		setup_cronjobs
+		setup_imap_pooler_service
 		verify_initial_integrity
         msg_success "Refresh complete. Config was left untouched."
         show_post_install_instructions
@@ -1292,6 +1331,7 @@ case $MODE in
         deploy_application_files "-u"
         install_composer_components
         update_onlyoffice_container
+		setup_imap_pooler_service
 		verify_initial_integrity
         msg_success "Update complete."
         show_post_install_instructions

@@ -560,6 +560,34 @@ class MyCloudEmailServer {
         $enc = strtolower($acc['imap_enc'] ?? 'ssl');
         if ($enc === 'none') $enc = false;
 
+
+        // --- ZERO-TRUST IMAP CONNECTION POOLER INTERCEPT ---
+        // Bound to the OS user ID to prevent multi-tenant cross-talk
+        // FIX: Look for the token in the shared data directory.
+        // Adjust the __DIR__ relative path if this controller is deeply nested.
+        $tokenFile = __DIR__ . '/../data/.imap_pool_' . getmyuid() . '.token';
+        
+        if ($auth_type !== 'oauth2' && file_exists($tokenFile)) {
+            $proxyToken = @file_get_contents($tokenFile);
+            if (!empty($proxyToken)) {
+                // Bulletproof Liveness Check: Actually ping the socket to avoid stale file traps
+                $testSocket = @stream_socket_client("tcp://127.0.0.1:21143", $te, $ts, 0.1);
+                if ($testSocket) {
+                    fclose($testSocket);
+                    
+                    // Package the real upstream coordinates + Security Token into the username
+                    $proxyUser = base64_encode(json_encode([
+                        't'  => trim($proxyToken), // Zero-Trust Auth
+                        'u'  => !empty($acc['login_user']) ? $acc['login_user'] : $acc['email'],
+                        'p'  => $pass, 'h' => $host, 'pt' => $port, 'e' => $enc
+                    ]));
+                    
+                    // Reroute Webklex to the local standalone service
+                    $host = '127.0.0.1'; $port = 21143; $enc = false;
+                    $acc['login_user'] = $proxyUser; $pass = 'PROXY';
+                }
+            }
+        }
         $options = [
             'host'          => $host,
             'port'          => $port,
