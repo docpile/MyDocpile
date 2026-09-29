@@ -1,0 +1,37 @@
+name: Scheduled Security Audit Agent
+
+on:
+  schedule:
+    # Runs every Sunday at 00:00 UTC
+    - cron: '0 0 * * 0'
+  # Allows triggering the workflow manually on demand
+  workflow_dispatch:
+
+permissions:
+  # Enforces read-only repository access for the runner
+  contents: read
+
+jobs:
+  run-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        run: |
+          pip install --upgrade google-genai requests
+
+      - name: Execute Security Agent
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          REPO_TOKEN: ${{ secrets.SECURITY_ADVISORY_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: python .github/scripts/audit_agent.py
