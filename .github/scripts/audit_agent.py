@@ -59,7 +59,7 @@ Codebase context:
 """
 
     response = client.models.generate_content(
-        model="gemini-2.5-pro",
+        model="gemini-3.1-pro-preview",
         contents=prompt,
         config=types.GenerateContentConfig(
             temperature=0.1
