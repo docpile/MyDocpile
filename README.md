@@ -6,7 +6,7 @@
  - Since the AI hacking techniques have made such an incredible progress within the last few months, for security reasons, and for the time being, I decided to upload the code only in an encoded version (meaning closed source).
  - Unfortunately, I am not in a position to roll out hotfixes within a few hours at any time - just because a malicious AI did find a vulnerability.
  - As soon as AI hacking is more "under control" or, _reliable_ AI agents can help me, the code will be plain text again.
- - This never was intended, I always did open source. Therefore, **I'd be more than happy to supply you with the unencoded source** as long as you agree to not use any AI to analyze the code or, to publish it e.g. as a fork. **Simply contact me to get the code.** 
+ - This never was intended, I always did open source. Even now, **I'd be more than happy to supply you with the unencoded source** as long as you agree to not use any AI to analyze the code or, to publish it e.g. as a fork or so. **Simply contact me to get the sources.** I believe in open source, and yes, you should be able to look into the code base. But in my opinion, AI shouldn't. Again, simply contact me for the sources.
 
 **The principal idea for this whole app was security:**
  - As much zero trust as reasonably possible, especially also on server side. Don't trust anything...
