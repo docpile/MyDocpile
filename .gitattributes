@@ -1,0 +1,2 @@
+# Ensure PHP files are treated as raw binary/exact text to protect signatures
+*.php -text
