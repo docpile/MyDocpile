@@ -225,6 +225,16 @@ function gather_configuration() {
 
     echo ""
     msg_ask_nl "Welcome to the MyDocpile Configuration!"
+
+     msg_ask_nl "Before installing, you must read and agree to the Freeware Public Licence (FPL)."
+     msg_ask_nl "The full license text is available at: https://github.com/docpile/MyDocpile/blob/main/LICENSE.MD"
+     msg_ask "Do you agree to the terms of the license? (y/N): " 
+     read agree_license
+     if [[ ! "$agree_license" =~ ^[Yy]$ ]]; then
+         msg_error "You must agree to the license to install this software. Aborted."
+         exit 0
+     fi
+
     msg_ask_nl "Ensure you have a web server, PHP, and local mail server ready."
     msg_ask "Is your environment ready to proceed? (y/N): " 
     read agree_start
