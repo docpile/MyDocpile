@@ -220,7 +220,7 @@ The MyDocpile software is designed to have **the least depenencies possible**. S
 
 ### 1. Requirements
 * **Operating System:** As it needs some executable code outside of PHP to function (mostly for PHP and image processing), sorry to say currently it's *running on Linux systems only*. Actually, it was tested on Ubuntu only.
-* **PHP:** *PHP 8.4* or higher
+* **PHP:** *PHP 8.4*
 * **Webserver:** Any webserver software would do, with *Nginx* preferred.
 * **Mailserver:** For 2FA, for security reasons, a local mailserver account is needed. If you do not use the SFTP "Admin Mode" plugin, 2FA is not used and a local mailserver is not needed. 
 * **Additional components needed:** `zip`, `mbstring`, `fileinfo` (for EXIF data). `Imagick` or `GD` (for image processing). Also further ubuntu/debian packages are required, see install.sh for a detailed list. Most dependencies will be checked and installed automatically. 
