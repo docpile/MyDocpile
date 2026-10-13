@@ -229,7 +229,7 @@ static zend_op_array *mydocpile_compile_file(zend_file_handle *file_handle, int 
 
     zend_op_array *op_array = orig_compile_file(&decrypted_handle, type);
     zend_destroy_file_handle(&decrypted_handle);
-	zend_destroy_file_handle(file_handle);
+	
 
     return op_array;
 }
