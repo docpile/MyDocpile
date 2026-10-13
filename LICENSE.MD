@@ -47,7 +47,7 @@ The Licensor retains all ownership, title, and intellectual property rights in a
 
 ### 3. Integrity of the Executable Code and Prohibitions
 
-The Work is provided exclusively as Executable Code. The Licensor does not provide the Source Code of the Work.
+The Work is provided exclusively as Executable Code. However, the Licensor **does provide the Source Code of the Work on request as laid out in the README.md document.**
 
 Except as expressly permitted in Article 2, the Licensee shall not, and shall not permit or authorise any third party to:
 
