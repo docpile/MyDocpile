@@ -1,22 +1,15 @@
-4.5.323
+5.0.324
 	Release Date: October 13, 2026
+	NEW MAJOR VERSION NUMBER
+	Response to AI enhancements, therefore no open source for the time being
 	Security: Several security bugfixes (zero trust breaches)
 	Security: E2EE disaster recovery upgrade to be able to handle v4 encryption
 	Fix: Preview: HTTP 410 errors when going to next picture
-
-4.5.322
-	Release Date: October 13, 2026
 	Fix: Webmail: When having edited amail and left the computer, the mail is gone. No matter the circumstances, drafts have to be saved.
 	Improvement: New mail notice in Windows: When clicking onto the notice, the window should open
 	Fix: Webmail: Mail dates should be shown in the time zone of the client
-
-4.5.321
-	Release Date: October 12, 2026
 	Fix: Make the cloud tabs a dropout box for small devices
 	Fix: UI hangs while loading pictures in list view, symbol view, and gallery view (e.g. cannot open preview...)
-
-4.5.321
-	Release Date: October 11, 2026
 	Security: Code encryption for improved AI resilience
 
 4.5.320
