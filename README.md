@@ -94,7 +94,7 @@ Optional: **OnlyOffice integration** - makes the cloud almost a desktop replacem
 
 ![Options](https://github.com/docpile/MyDocpile/blob/main/images/12_options.png?raw=true)
 
-**Multilingual Support** - As many as 20 languages, also RTL. Mostly AI translated. If more are needed, simply request them. Or help out where the AI was lacking...
+**Multilingual Support** - As many as 20 languages, also RTL. These have been mostly AI translated, I don'T speak 20 languages... If more are needed, simply request them. Or help out where the AI was lacking...
 
 ![Multilingual](https://github.com/docpile/MyDocpile/blob/main/images/13_multilingual_with_rtl_support.png?raw=true)
 
