@@ -1,3 +1,9 @@
+4.5.323
+	Release Date: October 13, 2026
+	Security: Several security bugfixes (zero trust breaches)
+	Security: E2EE disaster recovery upgrade to be able to handle v4 encryption
+	Fix: Preview: HTTP 410 errors when going to next picture
+
 4.5.322
 	Release Date: October 13, 2026
 	Fix: Webmail: When having edited amail and left the computer, the mail is gone. No matter the circumstances, drafts have to be saved.
