@@ -1,3 +1,7 @@
+5.0.325
+	Release Date: October 14, 2026
+	Feature: Webmail: Full featured EAS mail implementation
+
 5.0.324
 	Release Date: October 13, 2026
 	NEW MAJOR VERSION NUMBER
