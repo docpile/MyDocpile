@@ -1,3 +1,7 @@
+5.0.327
+	Release Date: October 15, 2026
+	Fix: Webmail: Cannot set properties of null (setting &#039;value&#039;)
+
 5.0.326
 	Release Date: October 15, 2026
 	Fix: EAS: Saving of drafts produces several items instead of one; will not be automatically deleted on sending
