@@ -12,37 +12,40 @@ TARGET_ANCHOR="ie_save_copy"
 # ==============================================================================
 
 # 2. The Keys
+# 2. The Keys
 KEYS=(
-    "pin_qa"
-    "qa_remove_tip"
-    "qa_already_pinned"
-    "qa_limit_title"
-    "qa_limit_msg"
+    "deceptive_link_reason"
+    "deceptive_link_title"
+    "cloud_link_reason"
+    "cloud_link_title"
+    "deceptive_link_short"
+    "deceptive_link_desc"
+    "cloud_link_short"
+    "cloud_link_desc"
 )
 
 declare -A TRANSLATIONS
 
-TRANSLATIONS[en]="Pin to Quick Access|Right click to remove|Already pinned.|Limit Reached|You can pin a maximum of 5 items."
-TRANSLATIONS[de]="An Schnellzugriff anheften|Rechtsklick zum Entfernen|Bereits angeheftet.|Limit erreicht|Sie können maximal 5 Elemente anheften."
-TRANSLATIONS[es]="Anclar a acceso rápido|Clic derecho para quitar|Ya está anclado.|Límite alcanzado|Puedes anclar un máximo de 5 elementos."
-TRANSLATIONS[fr]="Épingler   l'accès rapide|Clic droit pour retirer|Déj  épinglé.|Limite atteinte|Vous pouvez épingler un maximum de 5 éléments."
-TRANSLATIONS[it]="Aggiungi ad Accesso rapido|Clic destro per rimuovere|Gi  aggiunto.|Limite raggiunto|Puoi aggiungere un massimo di 5 elementi."
-TRANSLATIONS[pt]="Afixar no Acesso Rápido|Clique com o botão direito para remover|Já afixado.|Limite atingido|Pode afixar um máximo de 5 itens."
-TRANSLATIONS[ru]="Закрепить в быстром доступе|Правый клик для удаления|Уже закреплено.|Лимит достигнут|Можно закрепить не более 5 элементов."
-TRANSLATIONS[tr]="Hızlı Erişime Sabitle|Kaldırmak için sağ tıklayın|Zaten sabitlenmiş.|Sınıra Ulaşıldı|En fazla 5 öğe sabitleyebilirsiniz."
-TRANSLATIONS[zh-cn]="固定到快速访问|右键单击以移除|已固定。|达到限制|您最多可以固定 5 个项目。"
-TRANSLATIONS[ja]="クイックアクセスにピン留め|右クリックで削除|すでにピン留めされています。|制限に達しました|最大5つのアイテ をピン留めできます。"
-TRANSLATIONS[ko]=" 른 액세스에   |우클릭하여  거|이미   되었습니다.| 한 도달|최대 5개의 항목만     수 있습니다."
-TRANSLATIONS[ar]="تثبيت في الوصول السريع|انقر بزر الماوس الأيمن للإزالة|مثبت بالفعل.|تم بلوغ الحد|يمكنك تثبيت 5 عناصر كحد أقصى."
-TRANSLATIONS[fa]="سنجاق به دسترسی سریع|برای حذف راست کلیک کنید|قبلاً سنجاق شده است.|رسیدن به محدودیت|شما می‌توانید حداکثر ۵ مورد را سنجاق کنید."
-TRANSLATIONS[hi]="त्वरित पहुँच में पिन करें|हटाने के लिए राइट-क्लिक करें|पहले से ही पिन किया हुआ है।|सीमा पहुँच गई|आप अधिकतम 5 आइटम पिन कर सकते हैं।"
-TRANSLATIONS[vi]="Ghim v o Truy cập nhanh|Nhấp chuột phải để xóa|Đã được ghim.|Đã đạt giới hạn|Bạn có thể ghim tối đa 5 mục."
-TRANSLATIONS[uk]="Закріпити у швидкому доступі|Правий клік для видалення|Вже закріплено.|Ліміт досягнуто|Можна закріпити не більше 5 елементів."
-TRANSLATIONS[bar]="An Schnejzuagriff oheftn|Rechtsklick zum Entferna|Scho ogeheft.|Limit erreicht|Du konnst maximal 5 Elemente oheftn."
-TRANSLATIONS[hes]="An de Schnellzugriff ahefte|Rechtsklick zum Entferne|Schun aageheft.|Limit erreicht|Du kannsch maximal 5 Elemente ahefte."
-TRANSLATIONS[lb]="Un de Schnellzougrëff upennen|Rietsklick fir ze läschen|Scho festgemaach.|Limit erreecht|Dir kënnt maximal 5 Elementer upennen."
-TRANSLATIONS[pcm]="Pin to Quick Access|Right click to remove|E don already pin.|Limit Reached|You fit pin maximum of 5 items."
-
+TRANSLATIONS[en]="Deceptive Link: Text displays '%s' but actually leads to '%t'|Deceptive Link: Leads to|Cloud/Shortener Host: Link points to '%s'|Cloud/Shortener Link:|Deceptive Link|link(s) display a different domain name in the text than their actual destination (underlined in red).|Cloud/ShortURL|link(s) point to a URL shortener or free serverless/cloud storage host."
+TRANSLATIONS[de]="Trügerischer Link: Text zeigt '%s', führt aber tatsächlich zu '%t'|Trügerischer Link: Führt zu|Cloud/Shortener-Host: Link führt zu '%s'|Cloud/Shortener-Link:|Trügerischer Link|Link(s) zeigen im Text einen anderen Domainnamen als das tatsächliche Ziel (rot unterstrichen).|Cloud/Kurz-URL|Link(s) verweisen auf einen URL-Shortener oder einen kostenlosen Serverless/Cloud-Speicher-Host."
+TRANSLATIONS[es]="Enlace engañoso: El texto muestra '%s' pero en realidad lleva a '%t'|Enlace engañoso: Lleva a|Host Cloud/Shortener: El enlace apunta a '%s'|Enlace Cloud/Shortener:|Enlace engañoso|enlace(s) muestran un nombre de dominio diferente en el texto que su destino real (subrayado en rojo).|Cloud/URL corta|enlace(s) apuntan a un acortador de URL o host de almacenamiento en la nube/serverless gratuito."
+TRANSLATIONS[fr]="Lien trompeur : Le texte affiche '%s' mais mène en réalité   '%t'|Lien trompeur : Mène  |Hôte Cloud/Réducteur : Le lien pointe vers '%s'|Lien Cloud/Réducteur :|Lien trompeur|lien(s) affichent un nom de domaine différent dans le texte de leur destination réelle (souligné en rouge).|Cloud/URL courte|lien(s) pointent vers un réducteur d'URL ou un hôte de stockage cloud/serverless gratuit."
+TRANSLATIONS[it]="Link ingannevole: Il testo mostra '%s' ma in realt  porta a '%t'|Link ingannevole: Porta a|Host Cloud/Shortener: Il link punta a '%s'|Link Cloud/Shortener:|Link ingannevole|link mostrano un nome a dominio diverso nel testo rispetto alla loro destinazione reale (sottolineato in rosso).|Cloud/URL breve|link puntano a un accorciatore di URL o host di archiviazione cloud/serverless gratuito."
+TRANSLATIONS[pt]="Link Enganoso: O texto exibe '%s', mas na verdade leva a '%t'|Link Enganoso: Leva a|Host Cloud/Shortener: O link aponta para '%s'|Link Cloud/Shortener:|Link Enganoso|link(s) exibem um nome de domínio diferente no texto de seu destino real (sublinhado em vermelho).|Cloud/URL curta|link(s) apontam para um encurtador de URL ou host de armazenamento em nuvem/serverless gratuito."
+TRANSLATIONS[ru]="Обманчивая ссылка: Текст показывает '%s', но на самом деле ведет на '%t'|Обманчивая ссылка: Ведет на|Облако/Сокращатель: Ссылка указывает на '%s'|Ссылка на Облако/Сокращатель:|Обманчивая ссылка|ссылка(и) показывают в тексте доменное имя, отличное от их реального пункта назначения (подчеркнуто красным).|Облако/Короткий URL|ссылка(и) указывают на сокращатель URL или бесплатный бессерверный/облачный хостинг."
+TRANSLATIONS[tr]="Yanıltıcı Bağlantı: Metin '%s' gösteriyor ancak aslında '%t' adresine yönlendiriyor|Yanıltıcı Bağlantı: Şuraya yönlendirir|Bulut/Kısaltıcı Sunucusu: Bağlantı '%s' adresini işaret ediyor|Bulut/Kısaltıcı Bağlantısı:|Yanıltıcı Bağlantı|bağlantı(lar) metinde gerçek hedeflerinden farklı bir alan adı gösteriyor (kırmızı ile altı çizili).|Bulut/Kısa URL|bağlantı(lar) bir URL kısaltıcıya veya ücretsiz sunucusuz/bulut depolama sunucusuna işaret ediyor."
+TRANSLATIONS[zh-cn]="欺骗性链接：文本显示 '%s'，但实际指向 '%t'|欺骗性链接：指向|云/缩短器主机：链接指向 '%s'|云/缩短器链接：|欺骗性链接|链接在文本中显示的域名与其在实际目 不同（用红色下划线 出）。|云/短网址|链接指向网址缩短器或免费的 服务器/云存储主机。"
+TRANSLATIONS[ja]="欺瞞的なリンク: テキストは '%s' と表示していますが、実際には '%t' に移動します|欺瞞的なリンク: リンク先|クラウド/短縮ホスト: リンクは '%s' を指しています|クラウド/短縮リンク:|欺瞞的なリンク|リンクは実際の宛先とは異なるドメイン名をテキストで表示します（赤色で下線）。|クラウド/短縮URL|リンクはURL短縮サービスまたは無料のサーバーレス/クラウドストレージホストを指しています。"
+TRANSLATIONS[ko]="기만 인 링크: 텍스트에 '%s'이(가) 표시되지만 실 로는 '%t'(으)로 이동합니다.|기만 인 링크: 이동 경로|클라우드/단축기 호스트: 링크가 '%s'을(를) 가리킵니다.|클라우드/단축기 링크:|기만 인 링크|링크가 실  목 지와 다른 도메인 이름을 텍스트에 표시합니다(빨간색 밑줄).|클라우드/단축 URL|링크가 URL 단축기 또는 무료 서버리스/클라우드 스 리지 호스트를 가리킵니다."
+TRANSLATIONS[ar]="رابط خادع: يعرض النص '%s' ولكنه يؤدي في الواقع إلى '%t'|رابط خادع: يؤدي إلى|مضيف السحابة/التقصير: يشير الرابط إلى '%s'|رابط السحابة/التقصير:|رابط خادع|رابط (روابط) تعرض اسم نطاق مختلف في النص عن وجهتها الفعلية (تحتها خط أحمر).|سحابة/رابط قصير|رابط (روابط) تشير إلى مقصر URL أو مضيف تخزين سحابي/بدون خادم مجاني."
+TRANSLATIONS[fa]="پیوند فریبنده: متن '%s' را نشان می دهد اما در واقع به '%t' منتهی می شود|پیوند فریبنده: منتهی می شود به|میزبان ابری/کوتاه کننده: پیوند به '%s' اشاره می کند|پیوند ابری/کوتاه کننده:|پیوند فریبنده|پیوند(ها) نام دامنه متفاوتی را در متن نسبت به مقصد واقعی خود نشان می دهند (زیر آن خط قرمز کشیده شده است).|ابری/نشانی اینترنتی کوتاه|پیوند(ها) به یک کوتاه کننده URL یا میزبان ذخیره سازی ابری/بدون سرور رایگان اشاره می کنند."
+TRANSLATIONS[hi]="भ्रामक लिंक: पा  '%s' दिखाता है लेकिन वास्तव में '%t' की ओर ले जाता है|भ्रामक लिंक: की ओर ले जाता है|क्लाउड/शॉर्टनर होस्ट: लिंक '%s' की ओर इशारा करता है|क्लाउड/शॉर्टनर लिंक:|भ्रामक लिंक|लिंक पा  में अपने वास्तविक गंतव्य से भिन्न डोमेन नाम प्रदर्शित करते हैं (लाल रंग में रेखांकित)।|क्लाउड/लघु URL|लिंक URL शॉर्टनर या मुफ़्त सर्वरलेस/क्लाउड स्टोरेज होस्ट की ओर इशारा करते हैं।"
+TRANSLATIONS[vi]="Liên kết lừa đảo: Văn bản hiển thị '%s' nhưng thực tế dẫn đến '%t'|Liên kết lừa đảo: Dẫn đến|Máy lưu trữ Cloud/Rút gọn: Liên kết trỏ đến '%s'|Liên kết Cloud/Rút gọn:|Liên kết lừa đảo|liên kết hiển thị tên miền khác trong văn bản so với đích đến thực tế của chúng (được gạch dưới bằng m u đỏ).|Cloud/URL ngắn|liên kết trỏ đến trình rút gọn URL hoặc máy lưu trữ đám mây/không máy chủ miễn phí."
+TRANSLATIONS[uk]="Оманливе посилання: Текст показує '%s', але насправді веде на '%t'|Оманливе посилання: Веде на|Хмара/Скорочувач: Посилання вказує на '%s'|Посилання на Хмару/Скорочувач:|Оманливе посилання|посилання показують у тексті доменне ім'я, відмінне від їхнього реального пункту призначення (підкреслено червоним).|Хмара/Короткий URL|посилання вказують на скорочувач URL або безкоштовний безсерверний/хмарний хостинг."
+TRANSLATIONS[bar]="Täuschenda Link: Text zoagt '%s', führt aba wirklich zua '%t'|Täuschenda Link: Führt zua|Cloud/Shortener-Host: Link zoagt auf '%s'|Cloud/Shortener-Link:|Täuschenda Link|Link(s) zoagn an andan Domainnaman im Text ois eahna echtes Zui (rot untastrichn).|Cloud/Kurz-URL|Link(s) zoagn auf an URL-Shortener oda an kostnlosn Serverless/Cloud-Speicha-Host."
+TRANSLATIONS[hes]="Täuschender Link: Text zeischt '%s', führt awwer in Echt zu '%t'|Täuschender Link: Führt zu|Cloud/Shortener-Host: Link zeischt uff '%s'|Cloud/Shortener-Link:|Täuschender Link|Link(s) zeische e annern Domainname im Text als es echde Ziel (rot unnertstrichen).|Cloud/Kurz-URL|Link(s) weisen uff en URL-Shortener oder en kosdelose Serverless/Cloud-Speicher-Host."
+TRANSLATIONS[lb]="Täuschende Link: Text weist '%s', féiert awer tatsächlech op '%t'|Täuschende Link: Féiert op|Cloud/Shortener-Host: Link weist op '%s'|Cloud/Shortener-Link:|Täuschende Link|Link(en) weisen en aneren Domain-Numm am Text wéi hir tatsächlech Destinatioun (rout ënnerstrach).|Cloud/Kuerz-URL|Link(en) weisen op en URL-Shortener oder e gratis Serverless/Cloud-Späicher-Host."
+TRANSLATIONS[pcm]="Trick Link: Text show '%s' but e actually lead go '%t'|Trick Link: Lead go|Cloud/Shortener Host: Link dey point to '%s'|Cloud/Shortener Link:|Trick Link|link(s) display different domain name for di text than di actual destination (dem underline am red).|Cloud/ShortURL|link(s) point to URL shortener or free serverless/cloud storage host."
 #
 # ==============================================================================
 # EXECUTION ENGINE

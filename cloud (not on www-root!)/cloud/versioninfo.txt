@@ -1,3 +1,7 @@
+5.0.328
+	Release Date: October 15, 2026
+	Security: Webmail: Major phishing security enhancements - deceptive links handling, typo domains, contact-graph, corpe Identity on Freemail,...
+
 5.0.327
 	Release Date: October 15, 2026
 	Fix: Webmail: Cannot set properties of null (setting &#039;value&#039;)

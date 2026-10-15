@@ -391,6 +391,79 @@ if (basename($_SERVER['PHP_SELF']) == basename(__FILE__)) {
             'hermes'           => ['myhermes.de', 'hermes-europe.de', 'evri.com']
         ];
 
+
+
+		// ANTI-PHISHING CONFIGURATION
+		// Master switches for individual phishing heuristics
+		$cloud_webmail_phish_check_contacts      = true; // #1: Contact-Graph & Cousin-Domain (Levenshtein) check
+		$cloud_webmail_phish_check_deceptive_url = true; // #2: Pre-Click Deceptive Anchor (<a> text vs. href)
+		$cloud_webmail_phish_check_freemail_corp = true; // #6: Corporate Identity on Free Webmail
+		$cloud_webmail_phish_check_smuggling     = true; // #7: HTML/SVG Smuggling & Container Inspection
+		$cloud_webmail_phish_check_bec_intent    = true; // #8: AI-BEC Financial/Credential Coercion Scoring
+		$cloud_webmail_phish_check_alignment     = true; // #9: Return-Path / Sender vs. From Alignment
+		$cloud_webmail_phish_check_cloud_links   = true; // #10: Serverless, Cloud-Bucket & URL-Shortener Links
+		
+		// Global trusted whitelist (bypasses heuristics #1, #2, #6, #8, #9, #10)
+		$cloud_webmail_phish_whitelist_domains   = [];   // e.g. ['partner-company.de', 'trusted.org']
+		$cloud_webmail_phish_whitelist_emails    = [];   // e.g. ['ceo-private@gmail.com']
+		
+		// #1: Contact-Graph & Cousin-Domain (Levenshtein) Settings
+		$cloud_webmail_phish_levenshtein_depth   = 2;    // Max typo distance (1 = strict, 2 = recommended, 3 = aggressive)
+		$cloud_webmail_phish_contact_max_scan    = 500;  // Max number of contacts/auto-contacts to evaluate
+		$cloud_webmail_phish_homoglyphs          = [     // Normalized before Levenshtein comparison
+			'rn' => 'm', 'vv' => 'w', 'cl' => 'd', '0' => 'o', '1' => 'l', '!' => 'i'
+		];
+		
+		// #6: Corporate Identity on Free Webmail Settings
+		$cloud_webmail_phish_freemail_domains    = [
+			'gmail.com', 'googlemail.com', 'yahoo.com', 'yahoo.de', 'outlook.com', 'hotmail.com',
+			'live.com', 'msn.com', 'aol.com', 'icloud.com', 'me.com', 'gmx.de', 'gmx.net',
+			'gmx.at', 'gmx.ch', 'web.de', 't-online.de', 'freenet.de', 'mail.ru', 'yandex.com',
+			'proton.me', 'protonmail.com', 'tutamail.com', 'tutanota.com'
+		];
+		$cloud_webmail_phish_corp_keywords       = [
+			'gmbh', 'ag', 'kg', 'ohg', 'ug', 'e.v.', 'inc', 'ltd', 'llc', 'corp', 'plc',
+			'support', 'service', 'helpdesk', 'billing', 'buchhaltung', 'rechnung', 'invoice',
+			'accounting', 'finance', 'hr', 'personalabteilung', 'payroll', 'ceo', 'vorstand',
+			'geschäftsführung', 'geschaeftsfuehrung', 'administration', 'security', 'it-support'
+		];
+		
+		// #7: HTML/SVG Smuggling & Container Inspection Settings
+		$cloud_webmail_phish_container_exts      = [
+			'iso', 'img', 'vhd', 'vhdx', 'lnk', 'one', 'hta', 'chm', 'cab', 'diagcab', 'udf'
+		];
+		$cloud_webmail_phish_smuggle_inspect_exts = ['html', 'htm', 'svg', 'shtml', 'xhtml', 'mht', 'mhtml'];
+		$cloud_webmail_phish_smuggle_max_kb      = 2048; // Max file size (KB) to scan inside attachments
+		$cloud_webmail_phish_smuggle_patterns    = [
+			'atob\s*\(', 'Blob\s*\(', 'createObjectURL', 'msSaveOrOpenBlob', 'Uint8Array\s*\(',
+			'fromCharCode', '<script\b', 'onload\s*=', 'onerror\s*=', 'http-equiv=["\']?refresh',
+			'window\.location', 'document\.write\s*\(', 'eval\s*\('
+		];
+		
+		// #8: AI-BEC Intent & Financial/Credential Coercion Triggers
+		$cloud_webmail_phish_bec_keywords        = [
+			'iban', 'bic', 'swift', 'bankverbindung', 'kontonummer', 'neues konto', 'changed bank',
+			'updated bank', 'wire transfer', 'überweisung', 'ueberweisung', 'dringend', 'urgent',
+			'sofort', 'immediately', 'gift card', 'geschenkkarte', 'gutscheinkarte', 'apple card',
+			'steam card', 'geheimhalten', 'confidential', 'streng vertraulich', 'keep this between us',
+			'passwort läuft ab', 'password expires', 'mfa', '2fa', 'konto gesperrt', 'account suspended'
+		];
+		
+		// #9: Return-Path Alignment Allowed Third-Party ESPs
+		$cloud_webmail_phish_esp_domains         = [
+			'sendgrid.net', 'amazonses.com', 'mailchimp.com', 'mcsv.net', 'rsgsv.net', 'mailgun.org',
+			'postmarkapp.com', 'spf.protection.outlook.com', 'google.com', 'SPARKPOSTMAIL.COM',
+			'mandrillapp.com', 'hubspotemail.net', 'salesforce.com', 'zendesk.com', 'freshdesk.com'
+		];
+		
+		// #10: Serverless, Cloud-Bucket & URL-Shortener Link Hosts
+		$cloud_webmail_phish_cloud_link_hosts    = [
+			'workers.dev', 'pages.dev', 'web.app', 'firebaseapp.com', 'blob.core.windows.net',
+			's3.amazonaws.com', 'r2.dev', 'vercel.app', 'netlify.app', 'herokuapp.com',
+			'ngrok.io', 'ngrok-free.app', 'trycloudflare.com', 'github.io', 'gitlab.io',
+			'bit.ly', 'tinyurl.com', 't.co', 'cutt.ly', 'rb.gy', 'is.gd', 'v.gd', 'ow.ly', 'rebrand.ly'
+		];
+
 // ###############################################################################
 
 
