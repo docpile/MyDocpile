@@ -1,3 +1,16 @@
+5.0.326
+	Release Date: October 15, 2026
+	Fix: EAS: Saving of drafts produces several items instead of one; will not be automatically deleted on sending
+	Release Date: October 15, 2026
+	Improvement: Webmail: Clearer error messages displayed using the common message box function
+	Fix: Webmail: mydocpile-imap-pool does not recognize mydocpile_runtime.so
+	Improvement: Webmail: Have a hovering delete mail (like the new mail one) when in mobile mode; after delete, open the next message
+	Fix: Webmail: Drafts do not show up instantly in mail list view
+	Fix: Webmail: Clicking on a mailbox should directly forward to the inbox. Does not happen all the time, leading to errors
+	Fix: EAS: Attachments not readable anymore
+	Fix: EAS: Printing fails: Connection failed: IMAP Connection failed: connection failed
+	Fix: EAS: PDF preview fails
+
 5.0.325
 	Release Date: October 14, 2026
 	Feature: Webmail: Full featured EAS mail implementation
