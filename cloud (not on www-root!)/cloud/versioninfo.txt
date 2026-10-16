@@ -1,3 +1,10 @@
+5.0.331
+	Release Date: October 16, 2026
+	Fix: Webmail: Raw EAS mails not shown
+	Fix: Wewbmail: Deleted drafts are not deleted from list cache in smartbox
+	Fix: EAS; Replies have the wrong sending mailbox
+	Fix: Critical: Webmail notification error on mobile devices stops webmail client from receiving new mails
+
 5.0.330
 	Release Date: October 16, 2026
 	Improvement: Webmail: Phishing filter improvements, exclusion lists
