@@ -1,3 +1,8 @@
+5.0.330
+	Release Date: October 16, 2026
+	Improvement: Webmail: Phishing filter improvements, exclusion lists
+	Improvement: Webmail: Display text containing URLs as links
+
 5.0.329
 	Release Date: October 15, 2026
 	Security: Webmail: Major phishing security enhancements - deceptive links handling, typo domains, contact-graph, corpe Identity on Freemail,...
