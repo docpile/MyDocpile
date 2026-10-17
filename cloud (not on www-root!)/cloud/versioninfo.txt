@@ -1,5 +1,8 @@
-5.1.332
+5.1.333
 	Release Date: October 17, 2026
+	Fix: Passkeys sometimes not accepted with alias domain names
+	Fix: Webmail: Mobile delete button is under the new mail button
+	Fix: Tabs on a mobile device (as dropdown box) are not clickable
 	Security: Passkey integration
 
 5.0.331
