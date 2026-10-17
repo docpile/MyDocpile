@@ -8,9 +8,6 @@
 	Fix: Wewbmail: Deleted drafts are not deleted from list cache in smartbox
 	Fix: EAS; Replies have the wrong sending mailbox
 	Fix: Critical: Webmail notification error on mobile devices stops webmail client from receiving new mails
-
-5.0.330
-	Release Date: October 16, 2026
 	Improvement: Webmail: Phishing filter improvements, exclusion lists
 	Improvement: Webmail: Display text containing URLs as links
 
@@ -50,17 +47,11 @@
 4.5.320
 	Release Date: September 28, 2026
 	Feature: Webmail: Introduction of a background IMAP proxy service to keep connections open for performance
-
-4.5.319
-	Release Date: September 28, 2026
 	Improvement: Webmail fetching and UX performance improvements
 
 4.5.318
 	Release Date: September 26, 2026
 	Security: Security hotfixes for the interoperability between the cloud and the mail modules
-
-4.5.317
-	Release Date: September 26, 2026
 	Security: Zip extraction security vulnerabilities
 	Fix: Onlyoffice collaboration fix with multiuser same document editing
 	Fix: Shares for dirs and documents must be healed after moving or renaming the original shared object
@@ -71,13 +62,7 @@
 	Release Date: September 24, 2026
 	Fix: Main menu must not be displayed in non-cloud tabs
 	Improvement: In list view, now the background changes slightly for folders with rights different to the cloud
-
-4.5.315
-	Release Date: September 24, 2026
 	Feature: Quick Access Buttons on the toolbar - user configurable
-
-4.5.314
-	Release Date: September 24, 2026
 	Fix: Print document errors with edit-print rights when multiple documents selected
 	Improvement: Main toolbar &quot;half&quot; items display hotfix
 	Security: Smaller rights management corrections to support full flexibility in rights management
@@ -86,36 +71,20 @@
 	Release Date: September 23, 2026
 	Improvement: Image editor pseudo HDR added, also hotfixes
 	Fix: Webmail phishing filter bugfix, was too aggressive
-
-4.5.312
-	Release Date: September 23, 2026
-	Release Date: September 22, 2026
 	Fix: Image editor bugfixes
 
 4.5.311
 	Release Date: September 22, 2026
 	Fix: Preview HTTP 410 errors
-	Feature: New Image Converter
-
-4.4.310
-	Release Date: September 22, 2026
 	Fix: Printing of several files not working since one of the last updates
 	Improvement: Support for several further picture file formats
 
 4.4.309
 	Release Date: September 21, 2026
-	Release Date: September 21, 2026
 	Security: Webmail phishing resistance enhancements
-
-4.4.308
-	Release Date: September 21, 2026
-	Release Date: September 21, 2026
 	Improvement: Webmail App Icon Badging (OS-level Notification Dot)
 	Improvement: Webmail Native File Sharing (Web Share API) similar to the cloud native sharing
 	Improvement: Webmail optional Mailto: Protocol Handler Registration &amp; Interception
-
-4.4.307
-	Release Date: September 21, 2026
 	Improvement: Webmail several usability enhancements on mobile devices
 	Fix: Error &quot;share-list_ERROR&quot; in logfiles with share-less accounts
 	Fix: Hotfixes for several variable definititions and conditions
@@ -132,7 +101,6 @@
 	Security: Strict code signing and verification implemented
 
 4.3.305
-	Release Date: September 20, 2026
 	Release Date: September 19, 2026
 	Improvement: Maintenance mode improvements, e.g. allow for saving currently edited files and not to interrupt uploads and downloads
 	Security: Webdav: Several security enhancements (e.g. usage of clamav if installed, strict limits on file sizes...)
