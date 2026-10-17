@@ -102,6 +102,7 @@ secure_code="$secure_code"
 opt_cloud="$opt_cloud"
 ocr_langs="${ocr_langs[*]}"
 opt_mailparse="$opt_mailparse"
+opt_passkeys="$opt_passkeys"
 PHP_BIN="$PHP_BIN"
 home_NAS_network="$home_NAS_network"
 home_NAS_autologin="$home_NAS_autologin"
@@ -411,6 +412,10 @@ function gather_configuration() {
     msg_ask "Install Mailparse PHP extension (performance enhancement for webmail)? (Y/n): " 
     read opt_mailparse
     opt_mailparse=${opt_mailparse:-Y}
+
+    msg_ask "Enable Passkey (WebAuthn) passwordless & 2FA login support? (Y/n): "
+    read opt_passkeys
+    opt_passkeys=${opt_passkeys:-Y}
 	
     home_NAS_network="false"
     home_NAS_autologin="false"
@@ -551,6 +556,9 @@ function resolve_system_packages() {
         league/oauth2-client league/oauth2-google thenetworg/oauth2-azure 
         webklex/php-imap
     )
+    if [[ "${opt_passkeys:-Y}" =~ ^[Yy]$ ]]; then
+        composer_packages+=(lbuchs/webauthn)
+    fi
     # Filter out already installed system packages so only missing ones remain
     local missing_packages=()
     for pkg in "${packages[@]}"; do
@@ -603,6 +611,7 @@ function show_configuration_summary() {
     fi
     echo "  IMAP Pooler Srvc:  $install_imap_pooler"
 	echo "  Install Mailparse: $opt_mailparse"
+	echo "  Enable Passkeys:   ${opt_passkeys:-Y}"
     if [[ "$home_NAS_network" == "true" ]]; then
         echo "  Home NAS Mode:     Enabled (Autologin: $home_NAS_autologin)"
     fi
@@ -829,6 +838,11 @@ function deploy_application_files() {
 
     if [ -d "$SRC_DIR/cloud (not on www-root!)" ]; then
         cp -a $update_flag "$SRC_DIR/cloud (not on www-root!)"/. "$CLOUD_DIR"/ || true
+        mkdir -p "$CLOUD_DIR/data/user_profiles"
+        chmod 750 "$CLOUD_DIR/data/user_profiles"
+        if [[ ! "${opt_passkeys:-Y}" =~ ^[Yy]$ ]]; then
+            rm -f "$CLOUD_DIR/bin/passkey_login.php"
+        fi
 		
         chown -R "$wwwuser":"$www_group" "$CLOUD_DIR"
         chmod -R ug+rwX "$CLOUD_DIR"
