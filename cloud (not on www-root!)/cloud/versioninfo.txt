@@ -1,5 +1,7 @@
-5.1.335
+5.1.336
 	Release Date: October 18, 2026
+	Fix: SFTP plugin hotfixes
+	Security: SFTP plugin security hotfixes
 	Security: Login multiple zero trust and 2FA enhancements
 
 5.1.334
