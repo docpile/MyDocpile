@@ -28,9 +28,9 @@ if (basename($_SERVER['PHP_SELF']) == basename(__FILE__)) {
 // ###############################################################################
 // HOME NAS SETTINGS
 // ###############################################################################
-	$home_NAS_network   = false;  // Set to true to enable home NAS
+	$home_NAS_network   = false;  // Set to true to enable home NAS mode
 	$home_NAS_autologin = false;  // Set to true to enable home NAS autologin (takes the first user account in the users.php file)
-	
+//	$home_NAS_trusted_ips = ['192.168.1.50']; // Optionally, add here all IP address(es) that can use the NAS autologin, leaving other local devices to use passkeys/passwords
 	
 // ===============================================================================
 // PATHS & FILES

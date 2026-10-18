@@ -1,3 +1,7 @@
+5.1.335
+	Release Date: October 18, 2026
+	Security: Login multiple zero trust and 2FA enhancements
+
 5.1.334
 	Release Date: October 17, 2026
 	Improvement: Webmail: Display title and meta tags in mails as additional header line
