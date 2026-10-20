@@ -1,3 +1,8 @@
+5.1.338
+	Release Date: October 20, 2026
+	Fix: Logviewer changes to detect passkey logins
+	Improvement: Webmail: Add &quot;Search the Web&quot; in mail context menu
+
 5.1.337
 	Release Date: October 18, 2026
 	Security: Login security hotfixes
