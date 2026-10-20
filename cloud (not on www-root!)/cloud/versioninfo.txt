@@ -1,5 +1,7 @@
-5.1.339
+5.1.340
 	Release Date: October 20, 2026
+	Fix: Logging enhancements
+	Security: Hotfix: Login impossible with longer user names and fast typing of user name and password without autofill usage
 	Security: Several security hotfixes
 	Fix: Webmail switch folders long delay
 	Fix: Logviewer changes to detect passkey logins
