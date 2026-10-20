@@ -1,5 +1,7 @@
-5.1.338
+5.1.339
 	Release Date: October 20, 2026
+	Security: Several security hotfixes
+	Fix: Webmail switch folders long delay
 	Fix: Logviewer changes to detect passkey logins
 	Improvement: Webmail: Add &quot;Search the Web&quot; in mail context menu
 
