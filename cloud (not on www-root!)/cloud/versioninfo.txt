@@ -1,3 +1,8 @@
+5.1.342
+	Release Date: October 24, 2026
+	Improvement: Change security_checks.php from parts to bin directory
+	Fix: Hotfix for webdav to work with SabreDav 4.7.1
+
 5.1.341
 	Release Date: October 21, 2026
 	Security: Several enhancements for login
