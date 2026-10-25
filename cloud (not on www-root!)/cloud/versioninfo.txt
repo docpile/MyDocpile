@@ -1,3 +1,7 @@
+5.2.343
+	Release Date: October 25, 2026
+	Feature: Obsidian Notes markup notebook support (Existing Obsidian vaults only, at least as for now no new vaults)
+
 5.1.342
 	Release Date: October 24, 2026
 	Improvement: Change security_checks.php from parts to bin directory
