@@ -1,3 +1,8 @@
+5.2.344
+	Release Date: October 30, 2026
+	Fix: Share upload errors
+	Fix: Edit with less than modify rights errors
+
 5.2.343
 	Release Date: October 25, 2026
 	Feature: Obsidian Notes markup notebook support (Existing Obsidian vaults only, at least as for now no new vaults)
