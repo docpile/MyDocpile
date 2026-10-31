@@ -1,3 +1,7 @@
+5.2.345
+	Release Date: October 31, 2026
+	Security: Rights system changed to be more flexible and especially be independent from fixed role names in users.php $MYCLOUD_RIGHTS_MATRIX array
+
 5.2.344
 	Release Date: October 30, 2026
 	Fix: Share upload errors
