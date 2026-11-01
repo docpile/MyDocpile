@@ -15,7 +15,7 @@
  - A webmail reading pane that makes reading mails as secure as any technically possible: Image filter and proxy; all links get intercepted and checked when clicking; DMARC compliance display; and so on.
  - As security is the main goal: There are no backdoors - when using encryption and you loose your keys, your data will be lost.
 
-Currently, the software contains the following basic modules:
+**Currently, the software contains the following basic modules:**
  - **Full featured File cloud** including secure sharing, file preview and optional OnlyOffice integration
  - **Webmail** with cloud connection
  - **Knowledge Management**: Obsidian compatible vault within the file cloud, including editing (for me, this is the Onenote replacement)
