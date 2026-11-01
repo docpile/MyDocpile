@@ -1,3 +1,8 @@
+5.2.346
+	Release Date: November 01, 2026
+	Fix: Default action for pictures has changed to download instead of preview
+	Improvement: Public sharing improvements
+
 5.2.345
 	Release Date: October 31, 2026
 	Security: Rights system changed to be more flexible and especially be independent from fixed role names in users.php $MYCLOUD_RIGHTS_MATRIX array
