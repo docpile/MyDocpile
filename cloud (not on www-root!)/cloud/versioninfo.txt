@@ -1,5 +1,10 @@
-5.2.347
+5.2.348
 	Release Date: November 01, 2026
+	Improvement: Obsidian: Colors in tree view
+	Improvement: Obsidian: General settings dialog (per Obsidian container, on double click onto the main vault directory)
+	Improvement: Obsidian: Color chooser when double clicking onto main folder (1st level subfolder) in Obsidian vault container
+	Fix: Obsidian: Since Obsidian does not like markdown within html tags, use html tags e.g. for bold when within any html tab
+	Improvement: Obsidian: Automatically change markdown to html styles and vice versa when saving so as to prefer markdown where possible
 	Fix: Hotfix: Files couldn&#039;t be edited anymore
 	Fix: Default action for pictures has changed to download instead of preview
 	Improvement: Public sharing improvements
