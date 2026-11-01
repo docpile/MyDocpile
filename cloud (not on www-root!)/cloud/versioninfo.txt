@@ -1,5 +1,6 @@
-5.2.346
+5.2.347
 	Release Date: November 01, 2026
+	Fix: Hotfix: Files couldn&#039;t be edited anymore
 	Fix: Default action for pictures has changed to download instead of preview
 	Improvement: Public sharing improvements
 
