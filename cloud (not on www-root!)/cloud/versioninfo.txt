@@ -1,5 +1,7 @@
-5.2.349
+5.2.350
 	Release Date: November 02, 2026
+	Improvement: Search in Obsidian vault complete overhaul
+	Improvement: Obsidian Notes RC1
 	Improvement: Obsidian: When copying or moving notes, take along the attachments and images
 	Improvement: Obsidian: When deleting a note, take along attachments and images as long asthey are not needed anywhere else
 	Improvement: Obsidian: Print to PDF, to printer, save as Word document,...
