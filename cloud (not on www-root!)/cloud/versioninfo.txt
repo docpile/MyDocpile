@@ -1,5 +1,6 @@
-5.2.351
+5.2.352
 	Release Date: November 02, 2026
+	Security: Several Bugfixes
 	Improvement: Obsidian Notes RC1
 	Improvement: Obsidian: Search and Replace
 	Improvement: Search in Obsidian vault complete overhaul
