@@ -17,6 +17,7 @@ sort_help_topics() {
         "office_mode"    # Document Management
         "online_office"  # Online Office
         "text_editor"    # Code & Text Editor
+        "mynotetaker"    # Obsidian Notes
         "settings"       # Dialog: Settings
         "view"           # Preview & Media
         "search"         # Dialog: Search

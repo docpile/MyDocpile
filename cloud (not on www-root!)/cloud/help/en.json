@@ -688,6 +688,197 @@
     ]
   },
   {
+    "id": "mynotetaker",
+    "icon": "edit",
+    "title": "Knowledge Base & Notes",
+    "keywords": "notes knowledge base mynotetaker notebook link markdown wiki structure editor callout excalidraw translate",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "edit",
+        "text": "Knowledge Base & Notes (MyNotetaker)"
+      },
+      {
+        "type": "p",
+        "text": "I can do much more than just store your files. With **MyNotetaker**, I offer you a complete, interconnected notebook system. It is 100% compatible with the popular 'Obsidian' note-taking app."
+      },
+      {
+        "type": "grid",
+        "cards": [
+          {
+            "title": "What is this good for?",
+            "text": "It is perfect for building a personal Wikipedia, a daily journal, managing complex projects, or keeping track of study notes. It helps you connect ideas instead of just storing them."
+          },
+          {
+            "title": "Why not just Word documents?",
+            "text": "Word files are isolated. MyNotetaker links your files together. If you change a concept in one place, you can instantly click through to related thoughts."
+          }
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "📓 1. Setting up your Notebook"
+      },
+      {
+        "type": "p",
+        "text": "We need a root folder for your notes. (Please don't confuse this with my secure E2E Vaults! This is just a standard folder optimized for text.)"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Navigate to a normal, unencrypted cloud folder.",
+          "Right-click an empty space to open my context menu.",
+          "Select **New...** and then **New Knowledge Base (Vault)**.",
+          "Give it a name like 'My Journal' or 'Project Wiki'."
+        ]
+      },
+      {
+        "type": "p",
+        "text": "I will instantly give this new folder a colored background and a special icon so you always recognize it."
+      },
+      {
+        "type": "h2",
+        "text": "✍️ 2. Two Ways to Write"
+      },
+      {
+        "type": "p",
+        "text": "Open your new Notebook, right-click, and select [badge:New Note]. When you open it, you will notice my toolbar. I offer you two different writing modes:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "**Visual Editor (WYSIWYG):** This is the default. It works just like a normal word processor. What you see is what you get.",
+          "**Code Editor (Raw Markdown):** Click the button that looks like a code tag `< >`. This switches to a pure text mode for fast typers who prefer writing formatting symbols by hand."
+        ]
+      },
+      {
+        "type": "warn",
+        "text": "I save everything automatically in the background. But if you see a tiny orange dot near the title, it means you have unsaved changes. You can always press [key:Ctrl]+[key:S] to save manually!"
+      },
+      {
+        "type": "h2",
+        "text": "🔗 3. Connecting your Thoughts"
+      },
+      {
+        "type": "p",
+        "text": "Your notes should never be dead ends. Linking is the core principle of MyNotetaker."
+      },
+      {
+        "type": "ul",
+        "items": [
+          "While typing, simply press two square brackets: `[[`",
+          "I will immediately pop up a list of all your other notes.",
+          "Select one to insert a permanent link. You can now click from one idea directly to the next."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "🏗️ 4. How do I structure my notes best?"
+      },
+      {
+        "type": "p",
+        "text": "You can create as many subfolders as you want! I recommend combining different methods to keep things easy to find:"
+      },
+      {
+        "type": "table",
+        "headers": [
+          "Method",
+          "When to use it"
+        ],
+        "rows": [
+          {
+            "c1": "**Links `[[...]]`**",
+            "c2": "Use this constantly. If a note mentions a 'Project X', wrap it in brackets. It naturally creates a web of knowledge."
+          },
+          {
+            "c1": "**Tags `#...`**",
+            "c2": "Use tags for states or contexts. E.g., `#todo`, `#urgent`, or `#idea`. You can easily search for these later."
+          },
+          {
+            "c1": "**Folders**",
+            "c2": "You can have as many folders as you want! Use them to build a deep hierarchy or group your notes into categories like 'Work', 'Private', or 'Archive'."
+          }
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "🛠️ 5. Powerful Formatting Tools"
+      },
+      {
+        "type": "p",
+        "text": "My toolbar is packed with features to make your notes look professional:"
+      },
+      {
+        "type": "grid",
+        "cards": [
+          {
+            "title": "Callouts (Info Boxes)",
+            "text": "Want to highlight a warning or a tip? Click the 'Quote' icon to insert a Callout. It creates a beautiful colored box that makes important text stand out."
+          },
+          {
+            "title": "Smart Tables & Columns",
+            "text": "Click the Table icon to insert a data grid, or the Columns icon to place text side-by-side. I will automatically align everything neatly for you."
+          },
+          {
+            "title": "Interactive Tasks",
+            "text": "Click the Checkbox icon to insert a to-do list. You can actually click the boxes later to check them off as you complete your work!"
+          }
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "🖼️ 6. Handling Images & Drawings"
+      },
+      {
+        "type": "p",
+        "text": "You don't need to manually sort images. Just drag and drop a photo from your computer directly into the text editor! I will upload it into a hidden attachments folder and embed it right where your cursor is."
+      },
+      {
+        "type": "tip",
+        "text": "*Excalidraw Support:* If you drop an `.excalidraw` sketch file into your notebook, I won't just store it—I will actually render the drawing directly inside your note!"
+      },
+      {
+        "type": "h2",
+        "text": "🎨 7. Colors & Deep Settings"
+      },
+      {
+        "type": "p",
+        "text": "To keep a visual overview, right-click your Notebook folder and select [badge:Properties]. Here you can:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "**Vault Background Color:** Give each notebook a distinct overall tint so you know exactly where you are.",
+          "**Folder Colors:** Right-click any specific subfolder inside your notebook and select [badge:Folder Color] to give it its own unique color!",
+          "**Hide Folders:** Tell me to hide messy system folders from your tree view.",
+          "**Configure Attachments:** Tell me exactly where I should put new images when you drag them in.",
+          "**Hide YAML:** Toggle whether I should show or hide technical 'Frontmatter' data at the top of your notes."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "🚀 8. Search, Translate & Export"
+      },
+      {
+        "type": "grid",
+        "cards": [
+          {
+            "title": "Search & Replace",
+            "text": "Did a project name change? Right-click your Notebook and select 'Search & Replace in Vault...'. I will safely update the text across all your files at once."
+          },
+          {
+            "title": "Inline Translation",
+            "text": "Highlight any text in your note, right-click, and select 'Translate'. I will translate it directly on the screen without you having to open a new tab."
+          },
+          {
+            "title": "PDF Export",
+            "text": "Need to share a note? Click the Print button. I will convert your text, images, and formatting into a clean PDF file you can download or save to the cloud."
+          }
+        ]
+      }
+    ]
+  },
+  {
     "id": "text_editor",
     "icon": "edit",
     "title": "Code & Text Editor",

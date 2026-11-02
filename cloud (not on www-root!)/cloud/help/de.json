@@ -688,6 +688,197 @@
     ]
   },
   {
+    "id": "mynotetaker",
+    "icon": "edit",
+    "title": "Wissensdatenbank & Notizen",
+    "keywords": "notizen wissensdatenbank mynotetaker notizbuch verlinken markdown wiki struktur editor callout excalidraw übersetzen",
+    "content": [
+      {
+        "type": "h1",
+        "icon": "edit",
+        "text": "Wissensdatenbank & Notizen (MyNotetaker)"
+      },
+      {
+        "type": "p",
+        "text": "Ich kann viel mehr, als nur deine Dateien aufbewahren. Mit **MyNotetaker** biete ich dir ein komplettes, vernetztes Notizbuch-System. Es ist zu 100% kompatibel mit der bekannten 'Obsidian' Notiz-App."
+      },
+      {
+        "type": "grid",
+        "cards": [
+          {
+            "title": "Wofür ist das gut?",
+            "text": "Perfekt für dein eigenes Wikipedia, ein Tagebuch, für komplexe Projekte oder Mitschriften im Studium. Es hilft dir, Ideen zu verknüpfen, statt sie nur abzulegen."
+          },
+          {
+            "title": "Warum nicht einfach Word-Dateien?",
+            "text": "Word-Dateien sind isoliert. MyNotetaker verbindet deine Texte. Änderst du ein Konzept, kannst du dich sofort durch verwandte Gedanken klicken."
+          }
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "📓 1. Dein Notizbuch einrichten"
+      },
+      {
+        "type": "p",
+        "text": "Wir brauchen einen Hauptordner für deine Notizen. (Bitte verwechsle das nicht mit meinen sicheren E2E-Tresoren! Dies ist ein normaler Ordner, optimiert für Text.)"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Navigiere in einen normalen, unverschlüsselten Cloud-Ordner.",
+          "Mache einen Rechtsklick ins Leere, um mein Kontextmenü zu öffnen.",
+          "Wähle **Neu...** und dann **Neue Wissensdatenbank (Vault)**.",
+          "Gib dem Ganzen einen Namen wie 'Mein Tagebuch' oder 'Projekt-Wiki'."
+        ]
+      },
+      {
+        "type": "p",
+        "text": "Ich verpasse diesem neuen Ordner sofort einen farbigen Hintergrund und ein eigenes Symbol, damit du ihn immer erkennst."
+      },
+      {
+        "type": "h2",
+        "text": "✍️ 2. Zwei Arten zu schreiben"
+      },
+      {
+        "type": "p",
+        "text": "Öffne dein neues Notizbuch, klicke rechts und wähle [badge:Neue Notiz]. Wenn du sie öffnest, siehst du meine Werkzeugleiste. Ich biete dir zwei Schreib-Modi:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "**Visueller Editor (WYSIWYG):** Das ist der Standard. Er funktioniert wie ein normales Schreibprogramm. Was du siehst, ist was du bekommst.",
+          "**Code-Editor (Roh-Markdown):** Klicke auf den Button mit den eckigen Klammern `< >`. Das wechselt in einen reinen Textmodus für Schnelltipper, die Formatierungen lieber per Hand schreiben."
+        ]
+      },
+      {
+        "type": "warn",
+        "text": "Ich speichere alles automatisch im Hintergrund. Aber wenn du einen winzigen orangefarbenen Punkt neben dem Titel siehst, hast du noch ungespeicherte Änderungen. Du kannst jederzeit [key:Strg]+[key:S] drücken, um manuell zu speichern!"
+      },
+      {
+        "type": "h2",
+        "text": "🔗 3. Deine Gedanken verknüpfen"
+      },
+      {
+        "type": "p",
+        "text": "Deine Notizen sollten keine Sackgassen sein. Das Verlinken ist das Kernprinzip von MyNotetaker."
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Tippe während des Schreibens einfach zwei eckige Klammern: `[[`",
+          "Ich blende dir sofort eine Liste all deiner anderen Notizen ein.",
+          "Wähle eine aus, um einen dauerhaften Link zu setzen. Nun kannst du von einer Idee direkt zur nächsten springen."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "🏗️ 4. Wie strukturiere ich meine Notizen am besten?"
+      },
+      {
+        "type": "p",
+        "text": "Du kannst so viele Unterordner erstellen, wie du möchtest! Ich empfehle dir eine Kombination verschiedener Wege, um Dinge leicht wiederzufinden:"
+      },
+      {
+        "type": "table",
+        "headers": [
+          "Methode",
+          "Wann du sie nutzen solltest"
+        ],
+        "rows": [
+          {
+            "c1": "**Links `[[...]]`**",
+            "c2": "Nutze das ständig. Wenn ein Text 'Projekt X' erwähnt, setze es in Klammern. So wächst ein natürliches Wissensnetz."
+          },
+          {
+            "c1": "**Tags `#...`**",
+            "c2": "Nutze Tags für Zustände. Z. B. `#todo`, `#dringend` oder `#idee`. Danach kannst du später kinderleicht suchen."
+          },
+          {
+            "c1": "**Ordner**",
+            "c2": "Du kannst so viele Ordner haben, wie du willst! Nutze sie, um tiefe Hierarchien zu bauen oder deine Notizen in Kategorien wie 'Arbeit', 'Privat' oder 'Archiv' zu ordnen."
+          }
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "🛠️ 5. Mächtige Formatierungswerkzeuge"
+      },
+      {
+        "type": "p",
+        "text": "Meine Werkzeugleiste ist vollgepackt mit Funktionen, damit deine Notizen professionell aussehen:"
+      },
+      {
+        "type": "grid",
+        "cards": [
+          {
+            "title": "Callouts (Infoboxen)",
+            "text": "Möchtest du eine Warnung oder einen Tipp hervorheben? Klicke auf das Zitat-Symbol. Ich erstelle eine schöne farbige Box, die wichtigen Text ins Auge springen lässt."
+          },
+          {
+            "title": "Tabellen & Spalten",
+            "text": "Klicke auf das Tabellen-Symbol, um ein Datenraster einzufügen, oder auf das Spalten-Symbol, um Text nebeneinander zu platzieren. Ich richte alles automatisch sauber für dich aus."
+          },
+          {
+            "title": "Interaktive Aufgaben",
+            "text": "Klicke auf das Checkbox-Symbol für eine To-Do-Liste. Du kannst die Kästchen später tatsächlich anklicken, um sie als erledigt abzuhaken!"
+          }
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "🖼️ 6. Umgang mit Bildern & Zeichnungen"
+      },
+      {
+        "type": "p",
+        "text": "Du musst Bilder nicht manuell sortieren. Ziehe ein Foto von deinem Computer einfach per Drag & Drop direkt in den Texteditor! Ich lade das Bild in einen versteckten Anhänge-Ordner hoch und binde es exakt dort ein, wo dein Cursor ist."
+      },
+      {
+        "type": "tip",
+        "text": "*Excalidraw-Unterstützung:* Wenn du eine `.excalidraw` Skizze in dein Notizbuch ziehst, speichere ich sie nicht nur ab – ich rendere die Zeichnung sogar direkt sichtbar in deiner Notiz!"
+      },
+      {
+        "type": "h2",
+        "text": "🎨 7. Farben & Tiefe Einstellungen"
+      },
+      {
+        "type": "p",
+        "text": "Für einen besseren visuellen Überblick machst du einen Rechtsklick auf deinen Notizbuch-Ordner und wählst [badge:Eigenschaften]. Hier kannst du:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "**Vault-Hintergrundfarbe:** Gib jedem Notizbuch einen eigenen Grundton, damit du genau weißt, wo du bist.",
+          "**Ordnerfarben:** Klicke mit der rechten Maustaste auf einen beliebigen Unterordner im Notizbuch und wähle [badge:Ordnerfarbe], um ihm eine ganz eigene Farbe zu geben!",
+          "**Ordner verstecken:** Sag mir, ob ich unordentliche Systemordner in der Baumansicht ausblenden soll.",
+          "**Anhänge konfigurieren:** Bestimme genau, wo ich neue Bilder ablegen soll.",
+          "**YAML ausblenden:** Schalte um, ob ich technische 'Frontmatter'-Daten ganz oben in deinen Notizen zeigen oder verstecken soll."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "🚀 8. Suchen, Übersetzen & Exportieren"
+      },
+      {
+        "type": "grid",
+        "cards": [
+          {
+            "title": "Suchen & Ersetzen",
+            "text": "Hat sich ein Projektname geändert? Rechtsklick auf das Notizbuch -> 'Suchen & Ersetzen...'. Ich aktualisiere den Text sicher in all deinen Dateien auf einmal."
+          },
+          {
+            "title": "Inline-Übersetzung",
+            "text": "Markiere Text in deiner Notiz, klicke rechts und wähle 'Übersetzen'. Ich übersetze ihn direkt auf dem Bildschirm, ohne dass du einen neuen Tab öffnen musst."
+          },
+          {
+            "title": "PDF Export",
+            "text": "Musst du eine Notiz teilen? Klicke auf den Drucken-Button. Ich wandle Text, Bilder und Formatierung in eine saubere PDF um, die du herunterladen oder in der Cloud speichern kannst."
+          }
+        ]
+      }
+    ]
+  },
+  {
     "id": "text_editor",
     "icon": "edit",
     "title": "Code- & Texteditor",

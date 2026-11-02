@@ -1,11 +1,11 @@
 5.2.351
 	Release Date: November 02, 2026
+	Improvement: Obsidian Notes RC1
 	Improvement: Obsidian: Search and Replace
 	Improvement: Search in Obsidian vault complete overhaul
-	Improvement: Obsidian Notes RC1
 	Improvement: Obsidian: When copying or moving notes, take along the attachments and images
 	Improvement: Obsidian: When deleting a note, take along attachments and images as long asthey are not needed anywhere else
-	Improvement: Obsidian: Print to PDF, to printer, save as Word document,...
+	Improvement: Obsidian: Print to PDF, to printer
 	Fix: Obsidian: When doing a cloud root with a vault, switching to another cloud keeps the Obsidian formatting.
 
 5.2.348
