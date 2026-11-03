@@ -1,3 +1,7 @@
+5.2.353
+	Release Date: November 03, 2026
+	Improvement: Obsidian help
+
 5.2.352
 	Release Date: November 02, 2026
 	Security: Several Bugfixes
