@@ -1,3 +1,7 @@
+6.0.354
+	Release Date: November 04, 2026
+	Feature: MyNotetaker: Obsidian compatible knowledge base with many features
+
 5.2.353
 	Release Date: November 03, 2026
 	Improvement: Obsidian help
