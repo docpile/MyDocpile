@@ -1,5 +1,6 @@
-6.0.355
+6.0.356
 	Release Date: November 05, 2026
+	Fix: Commander mode error in connection with MyNotetaker. Keep MyNotetaker out of commander mode
 	Improvement: MyNotetaker: Tab bar and side bar implementation
 
 6.0.354
