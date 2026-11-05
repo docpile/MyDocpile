@@ -1,3 +1,7 @@
+6.0.355
+	Release Date: November 05, 2026
+	Improvement: MyNotetaker: Tab bar and side bar implementation
+
 6.0.354
 	Release Date: November 04, 2026
 	Feature: MyNotetaker: Obsidian compatible knowledge base with many features
