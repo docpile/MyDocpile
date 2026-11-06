@@ -1,5 +1,6 @@
-6.0.357
+6.0.358
 	Release Date: November 06, 2026
+	Security: Security hotfixes
 	Improvement: Complete text editor overhaul to act more like a coding editor
 	Fix: Hotfix for PDF editing with OnlyOffice enabled
 
