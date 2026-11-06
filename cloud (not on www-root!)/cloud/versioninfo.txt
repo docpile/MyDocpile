@@ -1,3 +1,8 @@
+6.0.357
+	Release Date: November 06, 2026
+	Improvement: Complete text editor overhaul to act more like a coding editor
+	Fix: Hotfix for PDF editing with OnlyOffice enabled
+
 6.0.356
 	Release Date: November 05, 2026
 	Fix: Commander mode error in connection with MyNotetaker. Keep MyNotetaker out of commander mode
