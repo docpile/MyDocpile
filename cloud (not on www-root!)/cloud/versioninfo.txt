@@ -1,5 +1,6 @@
-6.0.359
+6.0.360
 	Release Date: November 06, 2026
+	Improvement: Text editor enhancement for code editing
 	Improvement: Admin log viewer enhancements
 	Security: Security hotfixes
 	Improvement: Complete text editor overhaul to act more like a coding editor
