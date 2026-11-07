@@ -1,3 +1,9 @@
+6.0.361
+	Release Date: November 07, 2026
+	Feature: Search within the mail display pane
+	Improvement: Editor improvements for code editing
+	Fix: MyNoteTaker: Hide right sidebar on phones
+
 6.0.360
 	Release Date: November 06, 2026
 	Improvement: Text editor enhancement for code editing
