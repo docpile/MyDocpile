@@ -266,10 +266,11 @@ if (basename($_SERVER['PHP_SELF']) == basename(__FILE__)) {
 	$zip_warn_limit = 300 * 1024 * 1024;
 	
 	// Admin Mode (SFTP): Main switch. If set to "false", admin_mode (SFTP) is not possible
-	$cloud_enable_admin_mode = true;
+	$cloud_enable_admin_mode = false;
 	
     // Admin Mode (SFTP): Optional file to store the passwords for the SFTP accounts
-    //                    Syntax: sha-256_of_the_cloud_key=password 
+    //                    Syntax: sha-256_of_the_cloud_path=password
+    //                    e.g. sha256 of "myuser@mydomain.com:2531" (without quotes, given the SSH runs on port 2531)
     //                    As the password is to be stored on the server together with the key,
 	//                    this is almost as being in clear text. DO NOT USE ON PUBLIC SERVERS!
     //                    You have to create the file by hand, and edit it by hand
