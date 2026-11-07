@@ -1,5 +1,10 @@
-6.0.362
+6.0.363
 	Release Date: November 07, 2026
+	Fix: Hotfix for Onlyoffice appearing only in the text editor window
+	Improvement: Refresh enhancements
+	Improvement: Text editor enhancements to autosave
+	Fix: Text edit RAM manager to release unused undo ram
+	Improvement: Graceful Network &amp; UI Watchdog
 	Security: No SFTP based clouds without either passkey or 2FA login. In password login without 2FA they simply do not exist, but in this case non-2fa login still possible
 	Feature: Search within the mail display pane
 	Improvement: Editor improvements for code editing
