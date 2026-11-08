@@ -1,3 +1,7 @@
+6.0.364
+	Release Date: November 08, 2026
+	Improvement: Greater cloud network failure resilience
+
 6.0.363
 	Release Date: November 07, 2026
 	Fix: Hotfix for Onlyoffice appearing only in the text editor window
