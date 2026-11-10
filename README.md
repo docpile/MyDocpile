@@ -8,27 +8,28 @@
  - As soon as AI hacking is more "under control" or, _reliable_ AI agents can help me, the code will be plain text again.
  - This never was intended, I always did open source. Even now, **I'd be more than happy to supply you with the unencoded source** as long as you agree to not use any AI to analyze the code or, to publish it e.g. as a fork or so. **Simply contact me to get the sources.** I believe in open source, and yes, you should be able to look into the code base. But in my opinion, AI shouldn't. Again, simply contact me for the sources.
 
-**The principal idea for this whole app was security:**
+
+**[Official Website](https://docpile.de)**
+
+### **Currently, the software contains the following basic modules:**
+ - **_MyDocpile:_** Full featured File cloud including secure sharing, file preview and optional OnlyOffice integration
+ - **_MyWebmail:_** Secure webmail with cloud connection
+ - **_MyNotetaker:_** Knowledge Management: Obsidian compatible vault within the file cloud, including editing (for me, this is the Onenote replacement)
+
+### **The principal idea for this whole app was security:**
  - As much zero trust as reasonably possible, especially also on server side. Don't trust anything...
  - End-to-End-Encryption options in cloud (as replacement for famous Boxcryptor) and webmail (here, PGP compatible).
  - Login safety (as much as possible without further external dependencies, see above)
  - A webmail reading pane that makes reading mails as secure as any technically possible: Image filter and proxy; all links get intercepted and checked when clicking; DMARC compliance display; and so on.
- - As security is the main goal: There are no backdoors - when using encryption and you loose your keys, your data will be lost.
-
-**Currently, the software contains the following basic modules:**
- - **Full featured File cloud** including secure sharing, file preview and optional OnlyOffice integration
- - **Webmail** with cloud connection
- - **Knowledge Management**: Obsidian compatible vault within the file cloud, including editing (for me, this is the Onenote replacement)
+ - As security is the main goal: To be clear on that - there are no backdoors. Nowhere. When e.g. using encryption and you loose your keys, your data will be lost. 
 
 There is no database needed to run this cloud. This makes it possible to run ig even on the smallest devices.
 
 Of course, I'd be more than happy to receive some kind of a feedback - this product should become ever more stable, reliable and also secure over time. Also, feature requests are very welcome.
 
-**[Official Website](https://docpile.de)**
-
 [Changelog](cloud%20(not%20on%20www-root!)/cloud/versioninfo.txt)
 
-**Table of contents:**
+### **Table of contents:**
 - [My Document Pile - MyDocpile](#my-document-pile---mydocpile)
   - [Screenshots](#screenshots)
   - [MyDocpile](#mydocpile)
@@ -199,19 +200,21 @@ The MyDocpile software is designed to have **the least depenencies possible**. S
 * *Remark:* The Exchange EAS feature is still in beta, meaning: it likely won't work right now.
 
 ### 7. Security Infrastructure
-* **Security first:** Follows a consequent security first strategy
+* **Security first:** Follows a consequent security first strategy. 
 * **Login security:**
   * Several measures taken against brute forcing
   * Also, the login process is isolated from the logged in context
   * Password hashes are consequently checked against HIBP at every single login
-* **Zero Trust (almost):** Implements a strict regime for all server calls; most of the calls are even following zero trust principles
+  * Optional security components like a WAF can be tied in
+* **Zero Trust (almost):** Implements a strict regime for all server calls; if any possible, calls are even following zero trust principles
+* **Zero Knowledge (optional):** Clouds and  mails can be fully end-to-end encrypted. As for mails, GPG is fully supported, including a GPG key server component
 * **CSRF Protection:** Tokens and nonces are generated using multi-entropy sources and required on every single write or sensitive read operation 
-* **Role-Based Access Control (RBAC):** All operations strictly check against fine grained user permissions 
+* **Role-Based Access Control (RBAC):** All operations check against fine grained user permissions 
 * **Path Jailing:** Uses aggressive validation to ensure bad actors cannot execute directory traversal attacks 
 * **Cache Management:** Mail caches, address books and other sensitive private data is stored encrypted on the disk. This currently is not end-to-end (maybe in a future release), but at least way more secure than other apps do (by putting this clear-text into a database)
 
 ### 8. Integration Into Other Applications
-* The login UI submitted here is just an excerpt of the login used in my much larger (and safer) real-life application login; however, it gives you an impression of the needs of the MyDocpile application itself and should be sufficiently secure for smaller implementations.  
+* The login UI submitted here is just an excerpt of the login used in my much larger real-life application login; however, it gives you an impression of the needs of the MyDocpile application itself and should be sufficiently secure for smaller implementations.  
 
 
 ---
