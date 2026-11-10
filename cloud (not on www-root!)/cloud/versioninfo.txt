@@ -1,3 +1,7 @@
+6.0.367
+	Release Date: November 10, 2026
+	Fix: Editor improvements
+
 6.0.366
 	Release Date: November 09, 2026
 	Security: Security hotfixes
