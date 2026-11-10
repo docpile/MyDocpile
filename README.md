@@ -6,6 +6,8 @@
  - Since the AI hacking techniques have made such an incredible progress within the last few months, for security reasons, and for the time being, I decided to upload the code only in an encoded version (meaning closed source).
  - Unfortunately, I am not in a position to roll out hotfixes within a few hours at any time - just because a malicious AI did find a vulnerability.
  - As soon as AI hacking is more "under control" or, _reliable_ AI agents can help me, the code will be plain text again.
+ - In order to get the code running on your server, _you will need to have a PHP extension installed._ In most cases this will be automatically done during setup. The source code of that extension is included in the folder "php-extension" so that you know what you install.
+ - It turned out that running this "obfuscated" code even adds to security since these php files cannot be modified  after release.
  - This never was intended, I always did open source. Even now, **I'd be more than happy to supply you with the unencoded source** as long as you agree to not use any AI to analyze the code or, to publish it e.g. as a fork or so. **Simply contact me to get the sources.** I believe in open source, and yes, you should be able to look into the code base. But in my opinion, AI shouldn't. Again, simply contact me for the sources.
 
 
@@ -23,7 +25,7 @@
  - A webmail reading pane that makes reading mails as secure as any technically possible: Image filter and proxy; all links get intercepted and checked when clicking; DMARC compliance display; and so on.
  - As security is the main goal: To be clear on that - there are no backdoors. Nowhere. When e.g. using encryption and you loose your keys, your data will be lost. 
 
-There is no database needed to run this cloud. This makes it possible to run ig even on the smallest devices.
+There is no database needed to run this cloud. This makes it possible to run it even on the smallest devices.
 
 Of course, I'd be more than happy to receive some kind of a feedback - this product should become ever more stable, reliable and also secure over time. Also, feature requests are very welcome.
 
