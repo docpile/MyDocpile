@@ -1,5 +1,6 @@
-6.0.367
+6.0.368
 	Release Date: November 10, 2026
+	Security: Ransomware shield implemented
 	Fix: Editor improvements
 
 6.0.366

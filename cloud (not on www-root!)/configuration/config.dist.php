@@ -23,7 +23,7 @@ if (basename($_SERVER['PHP_SELF']) == basename(__FILE__)) {
 	//    "all"   = all checks
 	//    "bin"   = only bin dir (login code)
 	//    "cloud" = only cloud dir (application code)
-	$SecureCode = 'all';
+	$SecureCode = 'none';
 	
 // ###############################################################################
 // HOME NAS SETTINGS
