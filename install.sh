@@ -1052,6 +1052,49 @@ function install_plesk_pecl_apcu() {
     fi
 }
 
+function install_php_extension() {
+    msg_info "Installing MyDocpile runtime extension for PHP $PHP_VERSION..."
+    local so_source="$CLOUD_DIR/extension/mydocpile_runtime_${PHP_VERSION}.so"
+    
+    if [ ! -f "$so_source" ]; then
+        msg_warn "Compiled extension for PHP $PHP_VERSION not found at $so_source."
+        msg_warn "If code is encrypted, execution will fail!"
+        return 1
+    fi
+
+    local ext_dir
+    ext_dir=$("$PHP_BIN" -r "echo ini_get('extension_dir');" 2>/dev/null)
+
+    if [ -z "$ext_dir" ] || [ ! -d "$ext_dir" ]; then
+        msg_error "Could not determine PHP extension_dir."
+        return 1
+    fi
+
+    execute_logged cp "$so_source" "$ext_dir/mydocpile_runtime.so"
+    execute_logged chmod 755 "$ext_dir/mydocpile_runtime.so"
+
+    local ini_dir
+    ini_dir=$("$PHP_BIN" --ini | grep "Scan for additional .ini files in:" | sed -e 's/.*:\s*//')
+    
+    if command -v plesk >/dev/null 2>&1; then
+        echo "extension=mydocpile_runtime.so" > "/opt/plesk/php/$PHP_VERSION/etc/php.d/00-mydocpile.ini"
+        execute_logged systemctl restart plesk-php${PHP_VERSION//./}-fpm || true
+    else
+        SYS_PHP_VERSION=$("$PHP_BIN" -r "echo PHP_MAJOR_VERSION.'.'.PHP_MINOR_VERSION;")
+        if [[ "$PKG_MNGR" == "apt" ]]; then
+            echo -e "; priority=00\nextension=mydocpile_runtime.so" > "/etc/php/$SYS_PHP_VERSION/mods-available/mydocpile.ini"
+            execute_logged phpenmod mydocpile || true
+        elif [[ "$PKG_MNGR" == "dnf" || "$PKG_MNGR" == "yum" || "$PKG_MNGR" == "zypper" ]]; then
+            echo "extension=mydocpile_runtime.so" > "${ini_dir:-/etc/php.d}/00-mydocpile.ini"
+        elif [[ "$PKG_MNGR" == "pacman" ]]; then
+            echo "extension=mydocpile_runtime.so" > "/etc/php/conf.d/00-mydocpile.ini"
+        fi
+        execute_logged systemctl restart "php$SYS_PHP_VERSION-fpm" php-fpm apache2 httpd nginx || true
+    fi
+
+    msg_success "MyDocpile runtime extension installed and services reloaded."
+}
+
 function setup_imap_pooler_service() {
     if [[ "$install_imap_pooler" =~ ^[Yy]$ ]]; then
         msg_info "Installing IMAP Connection Pooler service..."
@@ -1277,6 +1320,7 @@ case $MODE in
         install_plesk_pecl_apcu
 		fetch_repository_if_missing
         deploy_application_files ""
+        install_php_extension
         generate_config
         install_local_onlyoffice
         setup_onlyoffice_proxy
@@ -1300,6 +1344,7 @@ case $MODE in
         install_plesk_pecl_apcu
 		fetch_repository_if_missing
         deploy_application_files ""
+        install_php_extension
         generate_config
         install_local_onlyoffice
         setup_onlyoffice_proxy
@@ -1319,7 +1364,8 @@ case $MODE in
         install_system_packages
         install_plesk_pecl_apcu
         deploy_application_files ""
-		fetch_repository_if_missing
+		install_php_extension
+        fetch_repository_if_missing
         install_composer_components
         if [[ "$opt_mailparse" =~ ^[Yy]$ ]]; then optional_component_mailparse; fi
 		setup_cronjobs
@@ -1333,6 +1379,7 @@ case $MODE in
         gather_configuration
         detect_php_binary
         generate_config
+        install_php_extension
         install_local_onlyoffice
         setup_onlyoffice_proxy
 		verify_initial_integrity
@@ -1353,6 +1400,7 @@ case $MODE in
         install_plesk_pecl_apcu
 		fetch_repository_if_missing
         deploy_application_files "-u"
+        install_php_extension
         install_composer_components
         update_onlyoffice_container
 		setup_imap_pooler_service
