@@ -1,3 +1,7 @@
+6.0.369
+	Release Date: November 11, 2026
+	Security: Several security hotfixes and enhancements
+
 6.0.368
 	Release Date: November 10, 2026
 	Security: Ransomware shield implemented
