@@ -1,5 +1,6 @@
-6.0.372
+6.0.373
 	Release Date: November 12, 2026
+	Fix: Tree visibility should also be on a per cloud basis, saved immediately after toggle
 	Fix: Several bugfixes
 	Improvement: Tab switching performance greatly improved
 	Fix: SFTP plugin: When starting in subdir, the tree is not built up
