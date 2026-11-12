@@ -1,3 +1,8 @@
+6.0.371
+	Release Date: November 12, 2026
+	Fix: SFTP plugin: When starting in subdir, the tree is not built up
+	Fix: SFTP plugin: Editor autosave does not work and brings errors in logs
+
 6.0.370
 	Release Date: November 11, 2026
 	Fix: Webmail: Saving drafts kicks you out of the mail servers in EAS, and in IMAP ends in &quot;too many redirects&quot;
