@@ -1,5 +1,7 @@
-6.0.371
+6.0.372
 	Release Date: November 12, 2026
+	Fix: Several bugfixes
+	Improvement: Tab switching performance greatly improved
 	Fix: SFTP plugin: When starting in subdir, the tree is not built up
 	Fix: SFTP plugin: Editor autosave does not work and brings errors in logs
 
