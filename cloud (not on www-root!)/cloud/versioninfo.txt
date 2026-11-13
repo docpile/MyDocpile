@@ -1,5 +1,6 @@
-6.0.376
+6.0.377
 	Release Date: November 13, 2026
+	Update: Small internal change in the release versioner program
 	Improvement: Don&#039;t show category labels when toolbar is pinned
 	Fix: Several hotfixes
 	Fix: Webmail: IMAP connection pooling errors on O365
