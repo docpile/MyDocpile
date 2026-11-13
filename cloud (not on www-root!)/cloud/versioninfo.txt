@@ -1,5 +1,6 @@
-6.0.374
+6.0.375
 	Release Date: November 13, 2026
+	Fix: Several hotfixes
 	Fix: Webmail: IMAP connection pooling errors on O365
 
 6.0.373
