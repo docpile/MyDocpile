@@ -1,5 +1,6 @@
-6.0.375
+6.0.376
 	Release Date: November 13, 2026
+	Improvement: Don&#039;t show category labels when toolbar is pinned
 	Fix: Several hotfixes
 	Fix: Webmail: IMAP connection pooling errors on O365
 
