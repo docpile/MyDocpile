@@ -1,3 +1,7 @@
+6.0.379
+	Release Date: November 19, 2026
+	Fix: Editor bugfixes (code recognition)
+
 6.0.378
 	Release Date: November 18, 2026
 	Fix: Editor: Auto translate invisible space chars to spaces when pasting in code mode
