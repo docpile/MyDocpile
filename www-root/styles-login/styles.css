@@ -116,14 +116,14 @@ body.cloud-login input[type="password"] {
     background-color: #e9e4c9;
 }
 
-+body.cloud-login input[type="text"]:-webkit-autofill,
-+body.cloud-login input[type="password"]:-webkit-autofill,
-+body.cloud-login input[type="text"]:-webkit-autofill:hover, 
-+body.cloud-login input[type="password"]:-webkit-autofill:hover, 
-+body.cloud-login input[type="text"]:-webkit-autofill:focus, 
-+body.cloud-login input[type="password"]:-webkit-autofill:focus {
-+    -webkit-box-shadow: 0 0 0 30px #e9e4c9 inset !important;
-+}
+body.cloud-login input[type="text"]:-webkit-autofill,
+body.cloud-login input[type="password"]:-webkit-autofill,
+body.cloud-login input[type="text"]:-webkit-autofill:hover, 
+body.cloud-login input[type="password"]:-webkit-autofill:hover, 
+body.cloud-login input[type="text"]:-webkit-autofill:focus, 
+body.cloud-login input[type="password"]:-webkit-autofill:focus {
+    -webkit-box-shadow: 0 0 0 30px #e9e4c9 inset !important;
+}
 
 
 /* Mobile Responsiveness for Login */
