@@ -235,7 +235,10 @@ if (basename($_SERVER['PHP_SELF']) == basename(__FILE__)) {
 	
 	// Public shares: Maximum login attempts before lockout 
 	$cloud_public_max_login_attempts = 5;
-	
+
+	// PDF OCR - maximum pages 
+	$cloud_ocr_max_pages = 1000;
+
 	// Icons: Icon cache dir
 	// -> CHANGE THIS IF NEEDED
 	$cloud_icon_cache = '/home/mycloud/icon_cache';

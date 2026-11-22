@@ -1,6 +1,7 @@
-6.0.381
+6.0.382
 	Release Date: November 22, 2026
-	Security: Several security hotfixes
+	Security: About 60 security and zero trust hotfixes
+	Fix: IMAP proxy service not correctly closes connections
 
 6.0.380
 	Release Date: November 21, 2026
