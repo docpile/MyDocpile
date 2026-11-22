@@ -1,7 +1,13 @@
-6.0.382
+6.1.385
 	Release Date: November 22, 2026
-	Security: About 60 security and zero trust hotfixes
-	Fix: IMAP proxy service not correctly closes connections
+	Minor version update
+	Major server-side mail handling update
+	Feature: EAS client complete overhaul to cache more data on the server (reducing the number of connections to EAS)
+	Feature: Webmail OAUTH2 now run by the existing service to minimize number of connections needed
+	Fix: Editor Tab width problems - longer file names leave tab "X" invisible
+	Fix: PHP code showed non-existent errors in the sidebar/status bar
+	Security: About 70 security and zero trust hotfixes
+	Fix: IMAP proxy service die not correctly close connections, leading to error messages
 
 6.0.380
 	Release Date: November 21, 2026
