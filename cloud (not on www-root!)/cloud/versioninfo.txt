@@ -1,3 +1,7 @@
+6.0.381
+	Release Date: November 22, 2026
+	Security: Several security hotfixes
+
 6.0.380
 	Release Date: November 21, 2026
 	Fix: Bugfixes
