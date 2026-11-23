@@ -1,3 +1,9 @@
+6.1.386
+	Release Date: November 23, 2026
+	Security: Webmail attachment security enhanced
+	Fix: Webmail RFC compliance enhanced
+	Security: Webmail general security enhancements
+
 6.1.385
 	Release Date: November 22, 2026
 	Minor version update
