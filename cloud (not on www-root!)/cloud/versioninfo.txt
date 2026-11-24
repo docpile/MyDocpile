@@ -1,5 +1,6 @@
-6.1.388
+6.1.389
 	Release Date: November 24, 2026
+	Improvement: Webmail slight UI overhaul
 	Fix: Webmail bugfixes
 	Security: Webmail security enhancements
 	Improvement: Webmail SmartBox additonal folders in the dropdown box
