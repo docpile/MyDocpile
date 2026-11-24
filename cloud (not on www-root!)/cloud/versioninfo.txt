@@ -1,5 +1,6 @@
-6.1.389
+6.1.390
 	Release Date: November 24, 2026
+	Improvement: Webmail RFC compliance enhanced
 	Improvement: Webmail slight UI overhaul
 	Fix: Webmail bugfixes
 	Security: Webmail security enhancements
